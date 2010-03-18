@@ -1,3 +1,25 @@
+operation names
+
+add_file
+modify_file
+delete_file
+rename_file
+
+
+// ok so current structure thinkign
+
+DudleyCollectionManager
+
+    holds
+    the database we hold filesystem state while running
+
+    holds the m_files
+    - use the fileinfo database
+dudley_fileinfo
+Dudley
+
+
+
 //t need to have in memory state to record local filesystem state
 // would prefer to be able to no copy state from sql to do comparisons..
 // but leave that for now..

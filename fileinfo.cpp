@@ -1,0 +1,84 @@
+#include "fileinfo.h"
+#include <QCryptographicHash>
+#include <QFile>
+#include <QIODevice>
+#include <QDebug>
+
+FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi)
+{
+    // read the status from the qFileInfo object into our object..
+    m_collectionPath = collectionPath;
+    m_filePath = filePath;
+    update(qfi);
+}
+
+FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+{
+    m_filePath = filePath;
+    m_collectionPath = collectionPath;
+    update(modifiedAt, sizeInBytes, sha1);
+}
+
+// we call this when updating collection from log file
+void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+{
+    m_modifiedAt = modifiedAt;
+    m_sizeInBytes = sizeInBytes;
+    m_sha1 = sha1;
+}
+
+// we call this to update in memory collection from disk
+void FileInfo::update(QFileInfo* qfi)
+{
+    // should check that filePath is the same
+    m_modifiedAt = qfi->lastModified();
+    m_sizeInBytes = qfi->size();
+    updateFingerPrint();
+}
+
+QDateTime FileInfo::lastModified()
+{
+    return m_modifiedAt;
+}
+
+QString FileInfo::fingerPrint()
+{
+    return m_sha1;
+}
+
+void FileInfo::updateFingerPrint()
+{
+    m_sha1 = readFingerPrint();
+}
+
+QString FileInfo::readFingerPrint()
+{
+    QFile file(m_collectionPath+"/"+m_filePath);
+    if (file.open(QIODevice::ReadOnly)){
+        //QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
+        return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
+    }else{
+        return "failed to open file for fingerprint";
+    }
+}
+
+QString FileInfo::filePath()
+{
+    return m_filePath;
+}
+
+QString FileInfo::oldFilePath()
+{
+    return m_oldFilePath;
+}
+
+qint64 FileInfo::size()
+{
+    return m_sizeInBytes;
+}
+
+void FileInfo::rename(QString newFilePath)
+{
+    m_oldFilePath = m_filePath;
+    m_filePath = newFilePath;
+}

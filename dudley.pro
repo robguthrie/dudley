@@ -7,7 +7,7 @@ CONFIG += console
 CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
-    dudleylog.cpp \
-    dudleyfileinfo.cpp
-HEADERS += dudleylog.h \
-    dudleyfileinfo.h
+    fileinfocollection.cpp \
+    fileinfo.cpp
+HEADERS += fileinfocollection.h \
+    fileinfo.h
