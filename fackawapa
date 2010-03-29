@@ -1,0 +1,67 @@
+am sure that using zsync in an unintrusive way to distribute updates to files would be sweet.
+
+backend stores
+hashbuckets
+local file storage
+amazon storage
+limited size local backends
+ignore command
+revert command
+include command?
+branching? yes.. had already thought of this.. .. ways to search other peoples fileinfocollections
+bittorrent distribution (easy to enable in s3)
+client to client? just bitorrent again? dont waste time thinking about it yet
+gui interface
+options for hashbuckets:
+    dudley storage formats
+            amazon
+                stores file in amazon, using their hash as the key
+                uses a .dudley/reponame/ prefix on the key?
+                maxSize
+                computes upload cost and storage cost
+
+            hash_dir
+                next thing i will build.
+                copies files specified by a fileinfocollection into a hash_dir
+                stores files and allows preservation of history
+                maxSize
+                path
+
+            working_dir
+                no going to persue
+                just have .dudley/history/timestamp.logs
+                two computers could accept eachothers changes if they wanted
+                    how would the dudley clients talk to eachother..via amazon initially? so both talking to hashstore
+                    later on they could communicate directly with tcp
+                stores files by filePath on disk
+                no history just accept and push changes
+
+    amazon backing store
+
+
+hash_dir
+StorageCollection
+    // keys are supposed to be sha1 strings
+    bool hasFile(key)
+    bool addFile(key, QFile *file) (key, value)
+    QFile* getFile(key)
+
+    // given a pointer to a fileinfocollection.. something tell us what you got..
+    QStringList matchFingerPrints(QStringList *prints)
+
+distribution of histories
+    a .dudley file eg robsphotos.dudley specifies history files to play to get a fileinfocollection, they are kept relative to the .dudley file
+        ideally we will beable to compress .gz these and we can merge .log files
+        .dudley/history/2009-231244532535.log
+        .dudley/history/2010-242342353252.log
+
+        lists history files you must play inorder to view the current filesystem, and know the keys for files in the hashbuckets mentioned.
+
+        points to a head of history http://robguthrie.com/photos.duds
+
+mikes photos.dudley - dudley info file to enable you to pull history files from some http thing..
+    hashbucket path www.mikeszomzom.com/photos/
+        from where you can grab
+            .dudley/history/*.log - pieces of history
+            .dudley/branches/master
+
