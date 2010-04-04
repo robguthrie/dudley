@@ -8,6 +8,10 @@ CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfocollection.cpp \
-    fileinfo.cpp
+    fileinfo.cpp \
+    logger.cpp \
+    storagecollection.cpp
 HEADERS += fileinfocollection.h \
-    fileinfo.h
+    fileinfo.h \
+    logger.h \
+    storagecollection.h

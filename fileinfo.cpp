@@ -4,12 +4,26 @@
 #include <QIODevice>
 #include <QDebug>
 
-FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi)
+FileInfo::FileInfo(QString filePath, QString collectionPath, bool read_sha1)
+{
+    QFileInfo *qfi = new QFileInfo(collectionPath+"/"+filePath);
+    m_collectionPath = collectionPath;
+    m_filePath = filePath;
+    m_modifiedAt = qfi->lastModified();
+    m_sizeInBytes = qfi->size();
+    if (read_sha1){
+        updateFingerPrint();
+    }else{
+        m_sha1 = "";
+    }
+}
+
+FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi, bool read_sha1s)
 {
     // read the status from the qFileInfo object into our object..
     m_collectionPath = collectionPath;
     m_filePath = filePath;
-    update(qfi);
+    update(qfi, read_sha1s);
 }
 
 FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
@@ -27,14 +41,40 @@ void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
     m_sha1 = sha1;
 }
 
-// we call this to update in memory collection from disk
-void FileInfo::update(QFileInfo* qfi)
+// harmless way to see if we are out of date
+bool FileInfo::modified(QFileInfo *qfi)
 {
+
     // should check that filePath is the same
-    m_modifiedAt = qfi->lastModified();
-    m_sizeInBytes = qfi->size();
-    updateFingerPrint();
+    if (m_modifiedAt.toString(Qt::ISODate) != qfi->lastModified().toString(Qt::ISODate)){
+        return true;
+    }else{
+        return false;
+    }
 }
+
+bool FileInfo::isIdenticalContent(FileInfo *fi)
+{
+    if (this->size() == fi->size()){
+        if (this->fingerPrint() == fi->fingerPrint()){
+            return true;
+        }
+    }
+    return false;
+}
+
+//// we call this to update in memory collection from disk
+//void FileInfo::update(QFileInfo* qfi, bool read_sha1)
+//{
+//    // should check that filePath is the same
+//    m_modifiedAt = qfi->lastModified();
+//    m_sizeInBytes = qfi->size();
+//    if (read_sha1){
+//        updateFingerPrint();
+//    }else{
+//        m_sha1 = "";
+//    }
+//}
 
 QDateTime FileInfo::lastModified()
 {
@@ -43,6 +83,7 @@ QDateTime FileInfo::lastModified()
 
 QString FileInfo::fingerPrint()
 {
+    if (m_sha1 == "") updateFingerPrint();
     return m_sha1;
 }
 

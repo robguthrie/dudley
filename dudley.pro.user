@@ -76,11 +76,11 @@
   <valuemap type="QVariantMap">
    <value key="ProjectExplorer.BuildConfiguration.DisplayName" type="QString">Debug</value>
    <valuelist key="abstractProcess.Environment" type="QVariantList">
-    <value type="QString">DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-UlIatypIth,guid=91c5edeb9e5d45eecb300cba4ba163e3</value>
-    <value type="QString">DESKTOP_SESSION=default</value>
+    <value type="QString">DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-BGATFh8DE8,guid=bebc3830d5b9530c6743777a4bae87de</value>
+    <value type="QString">DESKTOP_SESSION=kde</value>
     <value type="QString">DISPLAY=:0</value>
     <value type="QString">DM_CONTROL=/var/run/xdmctl</value>
-    <value type="QString">GPG_AGENT_INFO=/tmp/gpg-xrkjnM/S.gpg-agent:1775:1</value>
+    <value type="QString">GPG_AGENT_INFO=/tmp/gpg-vpgD1s/S.gpg-agent:1617:1</value>
     <value type="QString">GS_LIB=/home/rob/.fonts</value>
     <value type="QString">GTK2_RC_FILES=/etc/gtk-2.0/gtkrc:/home/rob/.gtkrc-2.0:/home/rob/.gtkrc-2.0-kde4:/home/rob/.kde/share/config/gtkrc-2.0</value>
     <value type="QString">GTK_RC_FILES=/etc/gtk/gtkrc:/home/rob/.gtkrc::/home/rob/.kde/share/config/gtkrc</value>
@@ -91,31 +91,32 @@
     <value type="QString">KDE_SESSION_VERSION=4</value>
     <value type="QString">LANG=en_NZ.UTF-8</value>
     <value type="QString">LANGUAGE=</value>
+    <value type="QString">LIBGL_DRIVERS_PATH=/usr/lib32/dri:/usr/lib64/dri</value>
     <value type="QString">LOGNAME=rob</value>
-    <value type="QString">PATH=/home/rob/qt4sdk/qt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</value>
+    <value type="QString">PATH=/home/rob/qtsdk-2010.02/qt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</value>
     <value type="QString">PWD=/home/rob</value>
-    <value type="QString">QTDIR=/home/rob/qt4sdk/qt</value>
+    <value type="QString">QTDIR=/home/rob/qtsdk-2010.02/qt</value>
     <value type="QString">QT_PLUGIN_PATH=/home/rob/.kde/lib/kde4/plugins/:/usr/lib/kde4/plugins/</value>
-    <value type="QString">SESSION_MANAGER=local/vaio:@/tmp/.ICE-unix/1909,unix/vaio:/tmp/.ICE-unix/1909</value>
+    <value type="QString">SESSION_MANAGER=local/rob-desktop:@/tmp/.ICE-unix/1705,unix/rob-desktop:/tmp/.ICE-unix/1705</value>
     <value type="QString">SHELL=/bin/bash</value>
     <value type="QString">SHLVL=0</value>
-    <value type="QString">SSH_AGENT_PID=1773</value>
-    <value type="QString">SSH_AUTH_SOCK=/tmp/ssh-QqZqEv1705/agent.1705</value>
+    <value type="QString">SSH_AGENT_PID=1616</value>
+    <value type="QString">SSH_AUTH_SOCK=/tmp/ssh-jfAnsb1571/agent.1571</value>
     <value type="QString">USER=rob</value>
     <value type="QString">WINDOWPATH=7</value>
     <value type="QString">XCURSOR_THEME=oxy-white</value>
     <value type="QString">XDG_DATA_DIRS=/usr/share:/usr/share:/usr/local/share</value>
-    <value type="QString">XDG_SESSION_COOKIE=88a76fc0a8bc457bd405300349139bce-1268868066.607570-710064105</value>
+    <value type="QString">XDG_SESSION_COOKIE=8c6e9091c1b791d6a85cfd624ba87980-1269729245.545330-1026207403</value>
     <value type="QString">XDM_MANAGED=method=classic</value>
    </valuelist>
    <valuelist key="abstractProcess.arguments" type="QVariantList">
     <value type="QString">/home/rob/src/dudley/dudley.pro</value>
     <value type="QString">-spec</value>
-    <value type="QString">linux-g++</value>
+    <value type="QString">linux-g++-64</value>
     <value type="QString">-r</value>
     <value type="QString">CONFIG+=debug</value>
    </valuelist>
-   <value key="abstractProcess.command" type="QString">/home/rob/qt4sdk/qt/bin/qmake</value>
+   <value key="abstractProcess.command" type="QString">/home/rob/qtsdk-2010.02/qt/bin/qmake</value>
    <value key="abstractProcess.enabled" type="bool">false</value>
    <value key="abstractProcess.workingDirectory" type="QString">/home/rob/src/dudley</value>
   </valuemap>
@@ -125,11 +126,11 @@
   <valuemap type="QVariantMap">
    <value key="ProjectExplorer.BuildConfiguration.DisplayName" type="QString">Debug</value>
    <valuelist key="abstractProcess.Environment" type="QVariantList">
-    <value type="QString">DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-UlIatypIth,guid=91c5edeb9e5d45eecb300cba4ba163e3</value>
-    <value type="QString">DESKTOP_SESSION=default</value>
+    <value type="QString">DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-BGATFh8DE8,guid=bebc3830d5b9530c6743777a4bae87de</value>
+    <value type="QString">DESKTOP_SESSION=kde</value>
     <value type="QString">DISPLAY=:0</value>
     <value type="QString">DM_CONTROL=/var/run/xdmctl</value>
-    <value type="QString">GPG_AGENT_INFO=/tmp/gpg-xrkjnM/S.gpg-agent:1775:1</value>
+    <value type="QString">GPG_AGENT_INFO=/tmp/gpg-vpgD1s/S.gpg-agent:1617:1</value>
     <value type="QString">GS_LIB=/home/rob/.fonts</value>
     <value type="QString">GTK2_RC_FILES=/etc/gtk-2.0/gtkrc:/home/rob/.gtkrc-2.0:/home/rob/.gtkrc-2.0-kde4:/home/rob/.kde/share/config/gtkrc-2.0</value>
     <value type="QString">GTK_RC_FILES=/etc/gtk/gtkrc:/home/rob/.gtkrc::/home/rob/.kde/share/config/gtkrc</value>
@@ -140,21 +141,22 @@
     <value type="QString">KDE_SESSION_VERSION=4</value>
     <value type="QString">LANG=en_NZ.UTF-8</value>
     <value type="QString">LANGUAGE=</value>
+    <value type="QString">LIBGL_DRIVERS_PATH=/usr/lib32/dri:/usr/lib64/dri</value>
     <value type="QString">LOGNAME=rob</value>
-    <value type="QString">PATH=/home/rob/qt4sdk/qt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</value>
+    <value type="QString">PATH=/home/rob/qtsdk-2010.02/qt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</value>
     <value type="QString">PWD=/home/rob</value>
-    <value type="QString">QTDIR=/home/rob/qt4sdk/qt</value>
+    <value type="QString">QTDIR=/home/rob/qtsdk-2010.02/qt</value>
     <value type="QString">QT_PLUGIN_PATH=/home/rob/.kde/lib/kde4/plugins/:/usr/lib/kde4/plugins/</value>
-    <value type="QString">SESSION_MANAGER=local/vaio:@/tmp/.ICE-unix/1909,unix/vaio:/tmp/.ICE-unix/1909</value>
+    <value type="QString">SESSION_MANAGER=local/rob-desktop:@/tmp/.ICE-unix/1705,unix/rob-desktop:/tmp/.ICE-unix/1705</value>
     <value type="QString">SHELL=/bin/bash</value>
     <value type="QString">SHLVL=0</value>
-    <value type="QString">SSH_AGENT_PID=1773</value>
-    <value type="QString">SSH_AUTH_SOCK=/tmp/ssh-QqZqEv1705/agent.1705</value>
+    <value type="QString">SSH_AGENT_PID=1616</value>
+    <value type="QString">SSH_AUTH_SOCK=/tmp/ssh-jfAnsb1571/agent.1571</value>
     <value type="QString">USER=rob</value>
     <value type="QString">WINDOWPATH=7</value>
     <value type="QString">XCURSOR_THEME=oxy-white</value>
     <value type="QString">XDG_DATA_DIRS=/usr/share:/usr/share:/usr/local/share</value>
-    <value type="QString">XDG_SESSION_COOKIE=88a76fc0a8bc457bd405300349139bce-1268868066.607570-710064105</value>
+    <value type="QString">XDG_SESSION_COOKIE=8c6e9091c1b791d6a85cfd624ba87980-1269729245.545330-1026207403</value>
     <value type="QString">XDM_MANAGED=method=classic</value>
    </valuelist>
    <value key="abstractProcess.IgnoreReturnValue" type="bool">false</value>

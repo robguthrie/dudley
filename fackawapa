@@ -1,3 +1,63 @@
+2010-04-02
+
+ok so both stoagecollection and fileinfocollection should ideally inherit from same FileCollection superclass.
+    - not so.
+    - we just want to be able to compare the two's collections. anything else is dance theory.
+
+move hide logger behind fileinfocollection.
+
+WorkingCollection
+
+
+we can compare two states of history..
+    usually the current state (recently built from history) or the state as we see it on disk..
+        - we dont really compare the state by each fileinfo with some other checks
+        - FileInfoCollection readStateFromDisk()
+        - compare disk_state to history_state?
+          - history_state can compare itself to disk_state and generate log_events detailing the operations necessary to be identical to disk_state.
+          - a set of log events returned
+
+
+          and you can take em or leave em..
+
+this is quite different from the process of requesting files
+    we can ask if a collection has a file (by name or key)
+
+a fileinfo collection has
+    filepaths, modified dates
+    sometimes has copies of files mentioned.
+    has a close relationship with a on disk representation
+
+FileInfoCollection is at one state.
+
+should try to get disk state seperate from history state until comparison.
+
+    a history log
+        state
+            modify state by adding file operations (log entries)
+
+
+        logger
+            is all about reading and writing stored state/history
+
+    which can be accessed directly via filePath or through collection with key
+
+
+a storagecollection
+    key access to objects, these are not fileinfos..
+    does not know filepaths or modified dates or history
+    just objects, their size, and their fingerprint.
+    is dumb.. and should not have much logic on it.. i think
+    actually has all the data it lists.
+    you can add and remove objects with a key. the storage is abstracted
+
+2010-04-01
+seperate the scan and the result detection so that we know what files are missing before we mark them as deleted..
+this is necessary for the stoagecollection to know what to introduce to the working directory.
+having online historys will be good.
+
+some other time
+
 am sure that using zsync in an unintrusive way to distribute updates to files would be sweet.
 
 backend stores

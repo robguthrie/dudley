@@ -4,13 +4,20 @@
 #include "logger.h"
 #include "fileinfocollection.h"
 #include <QDebug>
-Logger::Logger(QString logFileDir, bool verbose)
+
+// logger is a file collection history log
+Logger::Logger(QString logFileDir, QString collection_path,  bool verbose)
 {
     m_verbose = verbose;
     m_logFileDir = logFileDir;
+    m_collection = new FileInfoCollection(collection_path);
 }
 
-void Logger::playLogs(FileInfoCollection* collection)
+// given a collection object.. play the list of file operations stored
+// across each log file representing the history, (they each represent a commit)
+// so that the collection object represents the last
+// known state of the directory we track
+void Logger::playLogs()
 {
     // foreach .log file in the directory play it into the collection
     QDir dir(m_logFileDir);
@@ -20,7 +27,7 @@ void Logger::playLogs(FileInfoCollection* collection)
     for (int i = 0; i < list.size(); ++i) {
         QString filename = list.at(i);
         if (filename.endsWith(".log")) {
-            readLogFile(m_logFileDir+"/"+filename, collection);
+            readLogFile(m_logFileDir+"/"+filename, m_collection);
         }
     }
 }
@@ -69,7 +76,8 @@ void Logger::readLogFile(QString logFilePath, FileInfoCollection* collection)
     }
 }
 
-// flush the m_logLines to the file
+// flush the staged operations to a commit log file
+// should probably do the operation, fileInfo* to log line here..
 void Logger::writeLogFile()
 {
     if (m_logLines.size() > 0){
@@ -90,8 +98,24 @@ void Logger::writeLogFile()
     }
 }
 
+// show the operations staged to be written to a history commit file.
+void Logger::printLogFile()
+{
+    if (m_logLines.size() > 0){
+        std::cout << m_logLines.join("\n") << endl;
+    }
+}
+
+// proposeAmmendments(collection)
+// given a fileinfo_collection propose ammendments to history,
+// required to make member fileinfocollection represent the new_collection's state
+
+
+// add an operation to the staging area
+// move bulk of this code to the flush function
 QString Logger::log(QString operation, FileInfo* fi)
 {
+
     // if the eventname is update or add
     // datetime, operation, filepath
     // datetime, add_file, filepath, mtime(ISO), size, sha1
@@ -124,4 +148,99 @@ QString Logger::log(QString operation, FileInfo* fi)
         std::cout << "not saying "<< qPrintable(line) << std::endl;
 
     return line;
+}
+
+/*
+  rethink
+  recursively get a qlist of qfileinfos for the whole working tree?
+  can a qstringlist of paths do?
+  benchmark ?
+  - this is the ondisk state.
+
+  we compare this to our fileinfocolleciton
+  first, determine missing files
+  then split found files (ie: the whole list) into known and unknown files
+  then split known into modified and unchanged
+  - at this stage we wanna read sha1's for modified and unknown files
+  then split unknown into renamed (removing them from missing) and new
+  then turn remaining missing files into deleted
+  and stage these changes in the logger
+  */
+
+void Logger::stageChangesFromWorkingDir()
+{
+    QStringList *found_files;
+    findAllFiles(m_path, found_files);
+
+    // first determine missing files.
+    QList<QString> missingFilePaths = m_files.keys();
+    QString filePath;
+    foreach(filePath, found_files) missingFilePaths.removeAll(filePath);
+
+    // now for all the found_files ..split into known and unknown files
+    QString known_files;
+    QString unknown_files;
+    foreach(filePath, found_files){
+        if (m_files.contains(filePath)){
+            known_files << filePath;
+
+            // check if that file has been modified
+            FileInfo *fi = m_files.value(filePath);
+            FileInfo *new_fi = new FileInfo(filePath, m_path, qfi);
+            if (fi->lastModified() != new_fi->lastModified()){
+                // file has changed on disk
+                // dont want to update our collection.. just stage it in the logger
+                logger->log("modify_file", new_fi);
+            }
+        }else{
+            unknown_files << filePath;
+            FileInfo *unknown_fi = new FileInfo(filePath, m_path);
+            QString missingFilePath;
+            foreach(missingFilePath, missingFilePaths){
+                FileInfo *missing_fi = m_files.value(missingFilePath);
+                if (missing_fi->isIdenticalContent(unknown_fi)){
+                    // this unknown(looks new) file is actually a missing file renamed
+                    missingFilePaths.removeAll(missingFilePath);
+                    unknown_files.removeAll(filePath);
+                    logger->log("rename_file", missingFilePath, filePath);
+                }
+            }
+        }
+    }
+
+    // deleted sweep
+    foreach(key, missingFilePaths){
+        logger->log("delete_file", fi);
+    }
+
+    // finally decare the remaining unknown files to be new files
+    foreach(unknown_fi, unknown_files){
+        logger->log("add_file", unknown_fi);
+    }
+
+}
+
+void Logger::findAllFiles(QString path, QStringList *found_files)
+{
+    // first grab the list of files
+    QDir dir(path);
+    dir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
+    dir.setSorting(QDir::Name);
+    QStringList fileNames = dir.entryList();
+    QString fileName;
+    foreach(fileName, fileNames) found_files << relativeFilePath(path+'/'+fileName);
+
+    for (int i = 0; i < list.size(); ++i) {
+        recursiveListFiles(path+"/"+dirs[0], found_files);
+    }
+
+    // then recurse down into every directory
+    QDir dir(path);
+    dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
+    dir.setSorting(QDir::Name);
+    QStringList dirs = dir.entryList();
+
+    for (int i = 0; i < list.size(); ++i) {
+        recursiveListFiles(path+"/"+dirs[0], found_files);
+    }
 }
