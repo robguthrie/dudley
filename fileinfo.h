@@ -10,11 +10,11 @@ class FileInfo
 
 
 public:
-    FileInfo(QString filePath, QString collectionPath, bool read_sha1 = false);
-    FileInfo(QString filePath, QString collectionPath, QFileInfo *qfi, bool read_sha1s = false);
+    FileInfo(QString filePath, QString collectionPath, bool read_sha1 = true);
+    FileInfo(QString filePath, QString collectionPath, QFileInfo *qfi, bool read_sha1 = true);
     FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool modified(QFileInfo *qfi);
-    void update(QFileInfo *qfi, bool read_sha1);
+    void update(QFileInfo *qfi, bool read_sha1 = true);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void rename(QString newFilePath);
     bool isIdenticalContent(FileInfo* fi);

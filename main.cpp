@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     QString config_path = collection_path+"/.dudley";
     QString logsDir = config_path + "/logs";
     QStringList params;
-    for(i = 1; i < argc; ++i){
+    for(int i = 1; i < argc; ++i){
         params << argv[i];
     }
     if (params.size() == 0){

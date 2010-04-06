@@ -21,7 +21,9 @@ public:
     void readLogFile(QString logFilePath, FileInfoCollection* collection);
     void writeLogFile();
     void printLogFile();
-    QString log(QString operation, FileInfo* fi);
+    QString log(QString operation, FileInfo* fi, QString newFilePath = "");
+    void stageWorkingDirectory();
+    void stageFileInfoCollection();
 };
 
 #endif // LOGGER_H

@@ -11,19 +11,18 @@ FileInfo::FileInfo(QString filePath, QString collectionPath, bool read_sha1)
     m_filePath = filePath;
     m_modifiedAt = qfi->lastModified();
     m_sizeInBytes = qfi->size();
+    m_sha1 = "";
     if (read_sha1){
         updateFingerPrint();
-    }else{
-        m_sha1 = "";
     }
 }
 
-FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi, bool read_sha1s)
+FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi, bool read_sha1)
 {
     // read the status from the qFileInfo object into our object..
     m_collectionPath = collectionPath;
     m_filePath = filePath;
-    update(qfi, read_sha1s);
+    update(qfi, read_sha1);
 }
 
 FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)

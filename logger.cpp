@@ -113,7 +113,7 @@ void Logger::printLogFile()
 
 // add an operation to the staging area
 // move bulk of this code to the flush function
-QString Logger::log(QString operation, FileInfo* fi)
+QString Logger::log(QString operation, FileInfo* fi, QString newFilePath)
 {
 
     // if the eventname is update or add
@@ -123,32 +123,31 @@ QString Logger::log(QString operation, FileInfo* fi)
     // datetime, move_file, filepath, newfilepath
 
     QStringList tokens;
-    QString escapedFilePath = fi->filePath().replace(",", "DUDLEYCOMMA");
 
 //    tokens.append(currentTime.toString(Qt::ISODate));
     tokens.append(operation);
+
     if (operation == "modify_file" || operation == "add_file"){
-        tokens.append(escapedFilePath);
+        tokens.append(fi->filePath());
         tokens.append(fi->lastModified().toString(Qt::ISODate));
         tokens.append(QString::number(fi->size()));
         tokens.append(fi->fingerPrint());
     }else if ( operation == "delete_file") {
-        tokens.append(escapedFilePath);
+        tokens.append(fi->filePath());
     }else if ( operation == "rename_file") {
-        tokens.append(fi->oldFilePath().replace(",", "DUDLEYCOMMA"));
-        tokens.append(escapedFilePath);
+        tokens.append(fi->filePath());
+        tokens.append(newFilePath);
     }else{
-        std::cout << "invalid log operation: " << qPrintable(operation) << std::endl;
+        std::cout << "unrecognised log operation: " << qPrintable(operation) << std::endl;
     }
+    tokens.replaceInStrings(",", "DUDLEYCOMMA");
     QString line = tokens.join(",");
     m_logLines = m_logLines << line;
     if (m_verbose)
         std::cout << qPrintable(line) << std::endl;
-    else
-        std::cout << "not saying "<< qPrintable(line) << std::endl;
-
     return line;
 }
+
 
 /*
   rethink
@@ -167,10 +166,10 @@ QString Logger::log(QString operation, FileInfo* fi)
   and stage these changes in the logger
   */
 
-void Logger::stageChangesFromWorkingDir()
+void Logger::stageWorkingDirectory()
 {
-    QStringList *found_files;
-    findAllFiles(m_path, found_files);
+    QStringList found_files;
+    findAllFiles(m_collection->path(), &found_files);
 
     // first determine missing files.
     QList<QString> missingFilePaths = m_files.keys();
@@ -185,12 +184,12 @@ void Logger::stageChangesFromWorkingDir()
             known_files << filePath;
 
             // check if that file has been modified
-            FileInfo *fi = m_files.value(filePath);
-            FileInfo *new_fi = new FileInfo(filePath, m_path, qfi);
-            if (fi->lastModified() != new_fi->lastModified()){
+            FileInfo *stored_fi = m_files.value(filePath);
+            FileInfo *current_fi = new FileInfo(filePath, m_path, qfi); // reads the sha1 by default
+            if (stored_fi->lastModified() != current_fi->lastModified()){
                 // file has changed on disk
                 // dont want to update our collection.. just stage it in the logger
-                logger->log("modify_file", new_fi);
+                logger->log("modify_file", current_fi);
             }
         }else{
             unknown_files << filePath;
@@ -202,7 +201,7 @@ void Logger::stageChangesFromWorkingDir()
                     // this unknown(looks new) file is actually a missing file renamed
                     missingFilePaths.removeAll(missingFilePath);
                     unknown_files.removeAll(filePath);
-                    logger->log("rename_file", missingFilePath, filePath);
+                    logger->log("rename_file", missing_fi, filePath);
                 }
             }
         }
@@ -217,6 +216,20 @@ void Logger::stageChangesFromWorkingDir()
     foreach(unknown_fi, unknown_files){
         logger->log("add_file", unknown_fi);
     }
+
+}
+
+/*  we compare this to our fileinfocolleciton
+  first, determine missing files
+  then split found files (ie: the whole list) into known and unknown files
+  then split known into modified and unchanged
+  - at this stage we wanna read sha1's for modified and unknown files
+  then split unknown into renamed (removing them from missing) and new
+  then turn remaining missing files into deleted
+  and stage these changes in the logger
+  */
+void Logger::stageFileInfoCollection()
+{
 
 }
 
