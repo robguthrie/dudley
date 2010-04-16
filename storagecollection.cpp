@@ -10,45 +10,37 @@ StorageCollection::StorageCollection(QString path)
     scanCollection();
 }
 
+
+
+bool StorageCollection::initialize()
+{
+    QDir dir;
+    return dir.mkpath(m_path);
+}
+
+bool StorageCollection::isInitialized()
+{
+    QDir dir;
+    return dir.exists(m_path);
+}
+
+
 void StorageCollection::scanCollection()
 {
-    // read all the filenames into the hash
-    if (!QFile::exists(m_path)){
-        QDir dir;
-        dir.mkdir(m_path);
-        std::cout << "created storage collection at " << qPrintable(m_path) << std::endl;
-    }
     QDir dir(m_path);
     dir.setFilter(QDir::Files);
-    m_keys = dir.entryList();
-    qDebug() << m_keys;
+    QString files = dir.entryList();
+    QString key;
+    foreach(key, files){
+        m_keys.insert(key, 1);
+    }
+}
+
+bool StorageCollection::contains(QString key){
+    return m_keys.contains(key);
 }
 
 bool StorageCollection::addFile(QString key, QFile *file)
 {
-    // copy the qfile to path/key
-    // return true if it worked
-    // where
-    m_path
-}
 
-void StorageCollection::hasFiles(QStringList *keys)
-{
-    //delete the entires that are not present
-
-}
-
-bool StorageCollection::hasFile(QString key)
-{
-    // if path/key exists return true else flase
-}
-
-bool StorageCollection::removeFile(QString key)
-{
-    // remove the file.. return true if the file existed, false if not
-}
-
-QFile* StorageCollection::getFile(QString key)
-{
-    // return a QFile pointer to the file identified by key
 }

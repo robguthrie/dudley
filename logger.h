@@ -14,16 +14,24 @@ private:
     QString m_logFileDir;
     QStringList m_logLines;
     void readLogLine(QString line);
-public:
-    Logger(QString logFileDir, bool verbose = false);
-
-    void playLogs(FileInfoCollection* collection);
+    void addLogLine(QStringList tokens);
     void readLogFile(QString logFilePath, FileInfoCollection* collection);
+    void logAddFile(FileInfo* fi);
+    void logModifyFile(FileInfo* fi);
+    void logDeleteFile(QString file_path);
+    void logRenameFile(QString file_path, QString new_file_path);
+    void findAllFiles(QString path, QStringList *found_files);
+public:
+    Logger(QString collection_path,  bool verbose = false);
+    bool initialize();
+    bool isInitialized();
+    void playLogs();
     void writeLogFile();
     void printLogFile();
-    QString log(QString operation, FileInfo* fi, QString newFilePath = "");
     void stageWorkingDirectory();
     void stageFileInfoCollection();
+    QStringList* filesOnDisk();
+    FileInfoCollection* collection();
 };
 
 #endif // LOGGER_H

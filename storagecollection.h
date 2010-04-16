@@ -10,17 +10,14 @@ class StorageCollection
 {
 private:
     QString m_path;
-    QStringList m_keys;
-    void scanCollection();
+    QHash<QString, int> m_keys;
+
 public:
     StorageCollection(QString path);
-    QStringList hasFiles(QStringList keys);
-    // keys are supposed to be sha1 strings
-    bool hasFile(QString key);
-    bool addFile(QString key, QFile *file); // (key, value);
-    bool removeFile(QString key);
-    QFile* getFile(QString key);
-
+    bool initialize();
+    bool isInitialized();
+    void scanCollection();
+    bool contains(QString key);
 };
 
 #endif // STORAGECOLLECTION_H

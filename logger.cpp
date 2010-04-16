@@ -6,11 +6,23 @@
 #include <QDebug>
 
 // logger is a file collection history log
-Logger::Logger(QString logFileDir, QString collection_path,  bool verbose)
+Logger::Logger(QString collection_path,  bool verbose)
 {
     m_verbose = verbose;
-    m_logFileDir = logFileDir;
+    m_logFileDir = collection_path+"/.dudley/logs";
     m_collection = new FileInfoCollection(collection_path);
+}
+
+bool Logger::initialize()
+{
+    QDir dir;
+    return dir.mkpath(m_logFileDir);
+}
+
+bool Logger::isInitialized()
+{
+    QDir dir;
+    return dir.exists(m_logFileDir);
 }
 
 // given a collection object.. play the list of file operations stored
@@ -38,18 +50,18 @@ void Logger::readLogFile(QString logFilePath, FileInfoCollection* collection)
 {
     QString line;
     QFile file(logFilePath);
-    if (file.open(QFile::ReadOnly)) {
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         if (m_verbose)
             std::cout << "Reading Logfile: " << qPrintable(logFilePath) << std::endl;
-        char buf[1024];
 
-        while (file.readLine(buf, sizeof(buf)) != -1){
+        QTextStream in(&file);
+        while (!in.atEnd()){
 
             //  operation, filepath
             //  add_file, filepath, mtime(ISO), size, sha1
             //  remove_file, filepath
             //  move_file, filepath, newfilepath
-            line = QString(buf);
+            QString line = in.readLine();
             QStringList parts = line.split(',');
             // we ignore the line timestamp.. it will be used later..
             QString operation(parts[0].trimmed());
@@ -102,52 +114,54 @@ void Logger::writeLogFile()
 void Logger::printLogFile()
 {
     if (m_logLines.size() > 0){
-        std::cout << m_logLines.join("\n") << endl;
+        std::cout << qPrintable(m_logLines.join("\n")) << endl;
     }
 }
 
-// proposeAmmendments(collection)
-// given a fileinfo_collection propose ammendments to history,
-// required to make member fileinfocollection represent the new_collection's state
-
-
-// add an operation to the staging area
-// move bulk of this code to the flush function
-QString Logger::log(QString operation, FileInfo* fi, QString newFilePath)
+void Logger::logAddFile(FileInfo* fi)
 {
-
-    // if the eventname is update or add
-    // datetime, operation, filepath
-    // datetime, add_file, filepath, mtime(ISO), size, sha1
-    // datetime, remove_file, filepath
-    // datetime, move_file, filepath, newfilepath
-
     QStringList tokens;
-
-//    tokens.append(currentTime.toString(Qt::ISODate));
-    tokens.append(operation);
-
-    if (operation == "modify_file" || operation == "add_file"){
-        tokens.append(fi->filePath());
-        tokens.append(fi->lastModified().toString(Qt::ISODate));
-        tokens.append(QString::number(fi->size()));
-        tokens.append(fi->fingerPrint());
-    }else if ( operation == "delete_file") {
-        tokens.append(fi->filePath());
-    }else if ( operation == "rename_file") {
-        tokens.append(fi->filePath());
-        tokens.append(newFilePath);
-    }else{
-        std::cout << "unrecognised log operation: " << qPrintable(operation) << std::endl;
-    }
-    tokens.replaceInStrings(",", "DUDLEYCOMMA");
-    QString line = tokens.join(",");
-    m_logLines = m_logLines << line;
-    if (m_verbose)
-        std::cout << qPrintable(line) << std::endl;
-    return line;
+    tokens << "add_file"
+           << fi->filePath()
+           << fi->lastModified().toString(Qt::ISODate)
+           << QString::number(fi->size())
+           << fi->fingerPrint();
+    addLogLine(tokens);
 }
 
+void Logger::logModifyFile(FileInfo* fi)
+{
+    QStringList tokens;
+    tokens << "modify_file"
+           << fi->filePath()
+           << fi->lastModified().toString(Qt::ISODate)
+           << QString::number(fi->size())
+           << fi->fingerPrint();
+    addLogLine(tokens);
+}
+
+void Logger::logDeleteFile(QString file_path)
+{
+    QStringList tokens;
+    tokens << "delete_file"
+           << file_path;
+    addLogLine(tokens);
+}
+
+void Logger::logRenameFile(QString file_path, QString new_file_path)
+{
+    QStringList tokens;
+    tokens << "rename_file"
+           << file_path
+           << new_file_path;
+    addLogLine(tokens);
+}
+
+void Logger::addLogLine(QStringList tokens)
+{
+   tokens.replaceInStrings(",", "DUDLEYCOMMA");
+   m_logLines << tokens.join(",");
+}
 
 /*
   rethink
@@ -168,55 +182,62 @@ QString Logger::log(QString operation, FileInfo* fi, QString newFilePath)
 
 void Logger::stageWorkingDirectory()
 {
-    QStringList found_files;
-    findAllFiles(m_collection->path(), &found_files);
+    QString collection_path = m_collection->path();
 
-    // first determine missing files.
-    QList<QString> missingFilePaths = m_files.keys();
-    QString filePath;
-    foreach(filePath, found_files) missingFilePaths.removeAll(filePath);
+    QStringList* found_files = new QStringList;
+    if (m_verbose) std::cout << "reading filetree" << std::endl;
+    findAllFiles(collection_path, found_files);
 
-    // now for all the found_files ..split into known and unknown files
-    QString known_files;
-    QString unknown_files;
-    foreach(filePath, found_files){
-        if (m_files.contains(filePath)){
-            known_files << filePath;
 
-            // check if that file has been modified
-            FileInfo *stored_fi = m_files.value(filePath);
-            FileInfo *current_fi = new FileInfo(filePath, m_path, qfi); // reads the sha1 by default
-            if (stored_fi->lastModified() != current_fi->lastModified()){
-                // file has changed on disk
-                // dont want to update our collection.. just stage it in the logger
-                logger->log("modify_file", current_fi);
-            }
-        }else{
-            unknown_files << filePath;
-            FileInfo *unknown_fi = new FileInfo(filePath, m_path);
-            QString missingFilePath;
-            foreach(missingFilePath, missingFilePaths){
-                FileInfo *missing_fi = m_files.value(missingFilePath);
-                if (missing_fi->isIdenticalContent(unknown_fi)){
-                    // this unknown(looks new) file is actually a missing file renamed
-                    missingFilePaths.removeAll(missingFilePath);
-                    unknown_files.removeAll(filePath);
-                    logger->log("rename_file", missing_fi, filePath);
-                }
+    QString file_path;
+
+    // a missing file is in the collection but not on the disk
+    // an unknown file is on the disk but not in the collection
+    if (m_verbose) std::cout << "checking for files which have gone missing" << std::endl;
+    QStringList missing_file_paths = m_collection->missingFilePaths(*found_files);
+    if (m_verbose) std::cout << "checking for files which are unrecognised" << std::endl;
+    QStringList unknown_found_file_paths = m_collection->unknownFilePaths(*found_files);
+    if (m_verbose) std::cout << "checking for known files" << std::endl;
+    QStringList known_found_file_paths = m_collection->knownFilePaths(*found_files);
+
+
+    if (m_verbose) std::cout << "scanning known files for modifications" << std::endl;
+    foreach(file_path, known_found_file_paths){
+        // check if that file has been modified
+        FileInfo *stored_fi = m_collection->getFileInfo(file_path);
+        FileInfo *current_fi = new FileInfo(file_path, collection_path);
+        if (stored_fi->lastModified().toString(Qt::ISODate) != current_fi->lastModified().toString(Qt::ISODate)){
+            // file has changed on disk but filename is the same.
+            // stage the change
+            logModifyFile(current_fi);
+        }
+    }
+
+    if (m_verbose) std::cout << "scanning unknown files" << std::endl;
+    foreach(file_path, unknown_found_file_paths){
+        FileInfo *unknown_fi = new FileInfo(file_path, collection_path);
+        QString missing_file_path;
+        foreach(missing_file_path, missing_file_paths){
+            FileInfo *missing_fi = m_collection->getFileInfo(missing_file_path);
+            if (missing_fi->isIdenticalTo(unknown_fi)){
+                // this unknown file is actually a missing file renamed
+                missing_file_paths.removeAll(missing_file_path);
+                unknown_found_file_paths.removeAll(file_path);
+                logRenameFile(missing_file_path, file_path);
             }
         }
     }
 
-    // deleted sweep
-    foreach(key, missingFilePaths){
-        logger->log("delete_file", fi);
-    }
-
     // finally decare the remaining unknown files to be new files
-    foreach(unknown_fi, unknown_files){
-        logger->log("add_file", unknown_fi);
+    if (m_verbose) std::cout << "scanning new files" << std::endl;
+    foreach(file_path, unknown_found_file_paths){
+        FileInfo *unknown_fi = new FileInfo(file_path, collection_path);
+        logAddFile(unknown_fi);
     }
 
+    // deleted sweep
+    foreach(file_path, missing_file_paths)
+        logDeleteFile(file_path);
 }
 
 /*  we compare this to our fileinfocolleciton
@@ -233,6 +254,13 @@ void Logger::stageFileInfoCollection()
 
 }
 
+QStringList* Logger::filesOnDisk()
+{
+    QStringList *found_files;
+    findAllFiles(m_path, found_files);
+    return found_files;
+}
+
 void Logger::findAllFiles(QString path, QStringList *found_files)
 {
     // first grab the list of files
@@ -241,19 +269,20 @@ void Logger::findAllFiles(QString path, QStringList *found_files)
     dir.setSorting(QDir::Name);
     QStringList fileNames = dir.entryList();
     QString fileName;
-    foreach(fileName, fileNames) found_files << relativeFilePath(path+'/'+fileName);
-
-    for (int i = 0; i < list.size(); ++i) {
-        recursiveListFiles(path+"/"+dirs[0], found_files);
+    foreach(fileName, fileNames){
+        found_files->append(m_collection->relativeFilePath(path+'/'+fileName));
     }
 
     // then recurse down into every directory
-    QDir dir(path);
-    dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
-    dir.setSorting(QDir::Name);
-    QStringList dirs = dir.entryList();
 
-    for (int i = 0; i < list.size(); ++i) {
-        recursiveListFiles(path+"/"+dirs[0], found_files);
+    dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
+    QStringList dirs = dir.entryList();
+    for (int i = 0; i < dirs.size(); ++i) {
+        findAllFiles(path+"/"+dirs[i], found_files);
     }
+}
+
+FileInfoCollection* Logger::collection()
+{
+    return m_collection;
 }

@@ -1,0 +1,74 @@
+check that resident linked indexes are scoped to that resident.
+and new link carrys resident id
+  general_assessments
+  medical_assessments
+  medications
+  wounds
+  care_plands
+  activities
+  accidents
+  incidents
+  infections
+  restraints
+  medication_errors
+  bls_measurements
+  bpw_measurements
+  hospital_stays
+
+General Assessment
+  optional next review due at - checkbox
+
+Resident Profile
+  - remove stupid bounds from date select for born_on
+  - deceased checkbox
+  - discharged checkbox
+  - named_scope current_residents should look at discharged
+  
+Accidents Form
+  autocomplete (not create) resident, staff names, witnessed by
+  
+remove addresses controller from main index
+add addresses to person/resident/staff
+
+Hospital Stays
+  linkto with id from resident
+  autocomplete resident name
+
+Incidents 
+  autocomplete (not create) resident
+  hide staff, and pull from current_person
+  autocomplete person notified
+  
+Infections
+  autocomplete person
+  hide, pull staff from current_person
+  consider making infection type a table.. autocomplete and create?
+
+medication errors
+  hide author pull from current_person
+  resident autocomplete
+  
+remove resident, staff profiles from main index
+
+Activity evaluations
+  autocomplete resident
+  pull staff from cnt_prson
+
+
+Bpw, bsl measurements
+  link index from resident for resident history
+  link new from resident
+  remove from main index
+
+link general, medical assessments from resident if not done already
+  autocomplete resident name
+  
+put unique index on people
+
+required fields - need to list and enforce
+
+wounds - photo upload (resident too)
+restraints - make stopped at optional
+hospital_stay - make end_on optional
+
+breadcrumb

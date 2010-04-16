@@ -1,28 +1,28 @@
 #include "fileinfo.h"
+#include <iostream>
 #include <QCryptographicHash>
 #include <QFile>
 #include <QIODevice>
 #include <QDebug>
 
-FileInfo::FileInfo(QString filePath, QString collectionPath, bool read_sha1)
+FileInfo::FileInfo(QString file_path, QString collection_path)
 {
-    QFileInfo *qfi = new QFileInfo(collectionPath+"/"+filePath);
+    QFileInfo *qfi = new QFileInfo(collection_path+"/"+file_path);
+    m_collectionPath = collection_path;
+    m_filePath = file_path;
+    m_modifiedAt = qfi->lastModified();
+    m_sizeInBytes = qfi->size();
+    m_sha1 = "";
+}
+
+FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi)
+{
+    // read the status from the qFileInfo object into our object..
     m_collectionPath = collectionPath;
     m_filePath = filePath;
     m_modifiedAt = qfi->lastModified();
     m_sizeInBytes = qfi->size();
     m_sha1 = "";
-    if (read_sha1){
-        updateFingerPrint();
-    }
-}
-
-FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi, bool read_sha1)
-{
-    // read the status from the qFileInfo object into our object..
-    m_collectionPath = collectionPath;
-    m_filePath = filePath;
-    update(qfi, read_sha1);
 }
 
 FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
@@ -31,6 +31,7 @@ FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedA
     m_collectionPath = collectionPath;
     update(modifiedAt, sizeInBytes, sha1);
 }
+
 
 // we call this when updating collection from log file
 void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
@@ -52,28 +53,17 @@ bool FileInfo::modified(QFileInfo *qfi)
     }
 }
 
-bool FileInfo::isIdenticalContent(FileInfo *fi)
+bool FileInfo::isIdenticalTo(FileInfo *fi)
 {
     if (this->size() == fi->size()){
         if (this->fingerPrint() == fi->fingerPrint()){
             return true;
+        }else{
+            return false;
         }
     }
     return false;
 }
-
-//// we call this to update in memory collection from disk
-//void FileInfo::update(QFileInfo* qfi, bool read_sha1)
-//{
-//    // should check that filePath is the same
-//    m_modifiedAt = qfi->lastModified();
-//    m_sizeInBytes = qfi->size();
-//    if (read_sha1){
-//        updateFingerPrint();
-//    }else{
-//        m_sha1 = "";
-//    }
-//}
 
 QDateTime FileInfo::lastModified()
 {
@@ -96,6 +86,7 @@ QString FileInfo::readFingerPrint()
     QFile file(m_collectionPath+"/"+m_filePath);
     if (file.open(QIODevice::ReadOnly)){
         //QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
+        std::cout << "reading fingerprint of " << qPrintable(m_filePath) << std::endl;
         return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
     }else{
         return "failed to open file for fingerprint";
@@ -107,11 +98,6 @@ QString FileInfo::filePath()
     return m_filePath;
 }
 
-QString FileInfo::oldFilePath()
-{
-    return m_oldFilePath;
-}
-
 qint64 FileInfo::size()
 {
     return m_sizeInBytes;
@@ -119,6 +105,5 @@ qint64 FileInfo::size()
 
 void FileInfo::rename(QString newFilePath)
 {
-    m_oldFilePath = m_filePath;
     m_filePath = newFilePath;
 }

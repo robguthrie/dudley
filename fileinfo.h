@@ -10,14 +10,14 @@ class FileInfo
 
 
 public:
-    FileInfo(QString filePath, QString collectionPath, bool read_sha1 = true);
-    FileInfo(QString filePath, QString collectionPath, QFileInfo *qfi, bool read_sha1 = true);
+    FileInfo(QString filePath, QString collectionPath);
+    FileInfo(QString filePath, QString collectionPath, QFileInfo *qfi);
     FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool modified(QFileInfo *qfi);
-    void update(QFileInfo *qfi, bool read_sha1 = true);
+    void readFromDisk(QFileInfo *qfi);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void rename(QString newFilePath);
-    bool isIdenticalContent(FileInfo* fi);
+    bool isIdenticalTo(FileInfo *fi);
     QDateTime lastModified();
     QString fingerPrint();
     QString readFingerPrint();

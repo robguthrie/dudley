@@ -25,13 +25,22 @@ public:
     FileInfoCollection(QString path);
     bool exists();
     QString path();
+    FileInfo* getFileInfo(QString file_path);
     void update(QString filePath, QFileInfo *qfi, bool read_sha1);
     void update(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool remove(QString filePath);
     bool rename(QString filePath, QString newFilePath);
-    bool rename(FileInfo *fileInfo, QString newFilePath);
+    void rename(FileInfo *fileInfo, QString newFilePath);
+    bool containsFilePath(QString file_path);
     void scanForChanges(QString path, Logger *logger, bool read_sha1s, bool write_log = false, bool print_log = false);
     QString relativeFilePath(QString path);
+
+    QHash<QString, FileInfo*> knownFiles(QStringList *found_files);
+    QHash<QString, FileInfo*> missingFiles(QStringList *found_files);
+
+    QStringList knownFilePaths(QStringList *found_files);
+    QStringList unknownFilePaths(QStringList *found_files);
+    QStringList missingFilePaths(QStringList *found_files);
 };
 
 #endif // FILEINFOCOLLECTION_H
