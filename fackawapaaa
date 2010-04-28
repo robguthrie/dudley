@@ -1,3 +1,247 @@
+2010-04-28
+
+Ok so thinking about how to manage histories..
+repo state logs need to be synchronized.. how?
+i want to copy my log files around, merging directories of them usually..
+dudley needs to push and pull log files from some address.
+
+rails app at the middle, it would take the filerepostate commits, and provide interface to manage any merge conflicts, and rollback
+so a dudley client would connect and identify itself
+user, backed by authlogic
+could be a fake form post
+
+username
+password
+commit_id - primary id for the commit can be any string
+filerepo_name
+something representing the body of the commit.. my csv is pretty good
+
+if dudley became a daemon then i could have p2p sync
+would also be good to have direct file copy, and rsync
+ideally, dudley would be multi transfer protocol
+
+http
+bittorrent
+rsync
+
+and dudley nodes would just make it happen..
+
+filerepostate changes need to be broadcast to nodes, where is a node to look?
+could be a central place.. would be be nice if it didn't have to be..
+
+between computers i can just copy logfiles around
+
+----
+
+so what if i setup two copies of a repo to use the same local state
+repo1
+repo1
+
+---
+tasks
+- move log files into ~/.dudley/filerepostates/name/. log files here
+- require a name if creating a new filerepo state
+- or specify the name of an existing state
+    this assigns a dir to be a working dir for a filerepostate
+    the filerepostate is kept in the users home dudley config
+    we will leave a wee dudley_config file to remember the name for the state within the dir
+
+so `dudley sync`
+    looks for dudley.ini in the current dir
+    if it finds it..
+        check that we have that filerepostate in the central log library
+            if not.. there might be a url mentioned where we can ask for it
+    else
+        say we gotta name a filerepostate to use or initialize a new one
+
+    if we assign a filerepostate to the current dir
+        then create a dudley.ini file in the root of the dir with:
+        filerepostate name
+
+dudley status
+    show changes that would be committed to the filerepostate
+    also shows changes that would be preformed on working directory
+
+dudley commit
+    stages changes in the working directory into the local filerepostate
+
+dudley update
+    will modify the working directory to represent the filerepostate
+    at first we just return a list of operations we would perform.
+    but we really need to locate files to copy from our registered filerepos
+    and copy them into the local repo
+
+    this is a pretty special operation..
+    dudley needs query filerepos, and ask them if they have the file we want
+    then it needs to copy the file into the working directory.. or add it to a
+    download queue
+
+ok so we have a central local filerepostate
+so dudley sync within a file
+
+test script
+    create a dir repo1
+    initialize it with dudley as state1
+    copy in some files
+    commit
+    create another dir repo2
+    initialize it to state1
+    update
+    ensure that files came across
+
+    delete from repo2
+    rename something in repo2
+    modifiy something in repo2
+    add something new to repo2
+    commit
+    update repo1
+
+    ensure that the dirs have the same files
+
+
+
+
+
+copy a bunch of files into repo1, and get them synced into repo2.
+
+when talking to a server
+so there is a push.. of one or more commits
+and a pull
+so dudley needs to request the list of latest commit ids from the server (with an optional datetime cut off)
+dudley then determines if it has any commits not listed within that date range
+so want to get dudley client posting a form to a webserver
+then get it to download new commits
+
+
+
+
+
+
+
+
+
+
+
+2010-04-23 14:18
+dudley client will allow you to select paths as filerepos and login to a dudley
+server which will be the central point for exchanging state data and being a torrent tracker
+
+the dudley client might be given some state data via the website (on poll or websocket push)
+and join a torrent to get the new files.
+
+from the website you can see which clients you have logged in and what their repos
+are. kinda like audiogalaxy, but not fuzzy on the files.. we can do that tho!
+
+So the website can tell you how well protected your filerepos are.
+
+dudley clients need to advertise their request for a file on the central tracker
+other dudleys with that file will start torrenting it if they are able.
+
+
+
+for each filerepo
+    summary:
+        3 copies of data
+        average torrent speed
+
+    recent events:
+    robdesktop pushed some changes --
+        a new log file is uploaded
+    laptop polled(or is told about via websockets), downloads latest changesets
+
+    hesterlaptop pulled for updates
+
+ are synchronized to, when that collection was last seen, which machines it was seen on
+
+
+after this step we will look at privacy and exposing data to friends..
+ but now just consider it a single user app. might be best.
+
+
+
+
+2010-04-20 11:39
+move .dudley to user home
+fileinfocollection history logs should be kept there, along with known paths
+to storage collections/working dirs
+
+FileRepoStateLogger
+    - has a single state of its own.. possibly belongs to a state
+      FileRepoState* m_state;
+
+    - is responsible for recording changes to workingfilerepo over time
+    - when it is passed another FileRepoState it will stage the differences
+      between the states as changes to be written to the log
+    - when the changes are written to the log.. the internal state will represent
+      the appended state.
+
+FileRepoState
+    - old fileinfocollection
+    is a record of state of a FileRepo
+    we can compare two FileRepoStates for changes
+    we can compare two FileRepos (both working from the same state) to produce a transfer queue
+
+FileRepo
+    instanciated with a FileRepoState object via constructor
+    description:
+        provides access to files mentioned in our FileRepoState
+
+    methods:
+        list files mentioned in state absent from the repo
+        list files mentioned in state present in the repo
+        add file (mentioned in the state) to repo
+        delete file (mentioned in the state) from repo
+
+WorkingFileRepo
+    inherits from FileRepo
+    stores files on disk, in working directory format
+
+    because a user directly modifies the ondisk format..
+        we may want to stage these changes in the state object we we given on construction
+    we can stage changes in the FileRepoState with a working file repo
+
+StorageFileRepo
+    using this enables easy local historical backup.
+    store and retrieve files by their fingerprint
+    first and simplest storage interface
+
+S3FileRepo
+    upload files to s3
+    a variety of on-bucket formats are possible
+
+TransferManager
+
+    - with two fileRepos, working from the same FileRepoState you can produce
+      a transferqueue
+
+
+
+
+    change management via logger
+    stageChanges against a working dir
+
+    compare to WorkingStore
+        files missing in working dir?
+        files renamed
+        files modified
+        files unrecognised
+
+    compare to StorageCollection
+        files missing in storage collection?
+            where else can they be found?
+
+
+
+WorkingDir
+    compare to fileinfocollection
+
+
+
+2010-04-17 20:25
+
+one of the most usable ways to present this is to show a list of known storage locations
+and what they all hold.
+
 2010-04-11
 with redesigned logger and simplified fileinfocollection have old functionality back
 need to make an ignore system..

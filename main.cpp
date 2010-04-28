@@ -5,50 +5,65 @@
 #include <QDebug>
 #include <QSettings>
 
-#include "fileinfocollection.h"
-#include "storagecollection.h"
-#include "logger.h"
+#include "filerepo.h"
+#include "filerepostate.h"
+#include "filerepostatelogger.h"
+#include "workingfilerepo.h"
 
 // my master backup is on the internet
-
+using namespace std;
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
 
     QString collection_path = QDir::currentPath();
+    QString logs_dir = QDir::currentPath() + "/.dudley/logs";
+    cout << "logs_dir:" << qPrintable(logs_dir) << endl;
     QStringList params;
     for(int i = 1; i < argc; ++i) params << argv[i];
 
     if (params.size() == 0){
-        std::cout << "default action undefined right now" << std::endl;
+        cout << "default action undefined right now" << endl;
     }else{
-        Logger *logger = new Logger(collection_path, false);
+        // check that the working directory and logger are initialized
         if (params[0] == "track"){
+            // start working filerepo at our location
+            FileRepoStateLogger *logger = new FileRepoStateLogger(logs_dir);
             if ((params.size() > 1) && (params[1] == "init")){
                 if (logger->initialize()){
-                    std::cout << "initialized history log within " << qPrintable(collection_path) << std::endl;
+                    cout << "initialized history log within " << qPrintable(collection_path) << endl;
                 }else{
-                    std::cout << "failed to initialize history log within " << qPrintable(collection_path) << std::endl;
+                    cerr << "failed to initialize history log within " << qPrintable(collection_path) << endl;
+                    return 1;
                 }
             }else{
-
-                if (logger->isInitialized()){
-                    logger->playLogs();
-                    logger->stageWorkingDirectory();
-                    logger->printLogFile();
-                    // print some statistics about the repo
-                    if ((params.size() > 1) && (params[1] == "commit")){
-                        logger->writeLogFile();
-                    }
-                }else{
-                    std::cout << "dudley history not found. run track init or cd to correct directory" << std::endl;
+                if (!logger->isInitialized()){
+                    cerr << "histoy log not initialized. run 'track init'' or cd to correct directory:" << qPrintable(logs_dir) << endl;
+                    return 1;
+                }
+                FileRepoState *state = new FileRepoState(logger);
+                WorkingFileRepo *repo = new WorkingFileRepo(collection_path, state);
+                repo->stageChanges();
+                logger->printLogFile();
+                // print some statistics about the repo
+                if ((params.size() > 1) && (params[1] == "commit")){
+                    logger->writeLogFile();
                 }
             }
-        } else if (params[0] == "sync"){
+        }
+    }
+    return 0;
+        /* else if (params[0] == "sync"){
             // want to know a transfer list required to make the working directory
             // represent the fileinfocollection in full
             // which files are missing within the working dir?
             // which files are missing from the storage collection?
+            // QueueManager
+
+            // list files in the fileinfocollection and not in storage
+            // storageCollection->listMissingFiles(fileInfoCollection)
+            // storageCollection->listStoredFiles(fileInfoCollection)
+            // queueManager->upload(file to storage colleciton)
             if (logger->isInitialized()){
                 StorageCollection* storage = new StorageCollection("/home/rob/dudley_store");
                 storage->scanCollection();
@@ -78,14 +93,7 @@ int main(int argc, char *argv[])
                 }
             }
         } else {
-            std::cout << "command unknown" << std::endl;
-        }
-
-    }
-
-
-
-
-    return 0;
+            cout << "command unknown" << endl;
+        }*/
 }
 

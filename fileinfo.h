@@ -5,14 +5,14 @@
 #include <QString>
 #include <QFileInfo>
 
+class FileRepoState;
+
 class FileInfo
 {
 
 
 public:
-    FileInfo(QString filePath, QString collectionPath);
-    FileInfo(QString filePath, QString collectionPath, QFileInfo *qfi);
-    FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool modified(QFileInfo *qfi);
     void readFromDisk(QFileInfo *qfi);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
@@ -28,7 +28,7 @@ public:
     qint64 size();
 
 private:
-
+    FileRepoState* m_parent;
     QDateTime m_modifiedAt; // last modification date of file
     qint64 m_sizeInBytes;
     QString m_filePath;

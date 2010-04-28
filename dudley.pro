@@ -7,11 +7,15 @@ CONFIG += console
 CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
-    fileinfocollection.cpp \
     fileinfo.cpp \
-    logger.cpp \
-    storagecollection.cpp
-HEADERS += fileinfocollection.h \
-    fileinfo.h \
-    logger.h \
-    storagecollection.h
+    filerepostate.cpp \
+    filerepostatelogger.cpp \
+    filerepo.cpp \
+    workingfilerepo.cpp \
+    storagefilerepo.cpp
+HEADERS += fileinfo.h \
+    filerepostate.h \
+    filerepostatelogger.h \
+    filerepo.h \
+    workingfilerepo.h \
+    storagefilerepo.h

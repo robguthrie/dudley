@@ -5,30 +5,9 @@
 #include <QIODevice>
 #include <QDebug>
 
-FileInfo::FileInfo(QString file_path, QString collection_path)
-{
-    QFileInfo *qfi = new QFileInfo(collection_path+"/"+file_path);
-    m_collectionPath = collection_path;
-    m_filePath = file_path;
-    m_modifiedAt = qfi->lastModified();
-    m_sizeInBytes = qfi->size();
-    m_sha1 = "";
-}
-
-FileInfo::FileInfo(QString filePath, QString collectionPath, QFileInfo* qfi)
-{
-    // read the status from the qFileInfo object into our object..
-    m_collectionPath = collectionPath;
-    m_filePath = filePath;
-    m_modifiedAt = qfi->lastModified();
-    m_sizeInBytes = qfi->size();
-    m_sha1 = "";
-}
-
-FileInfo::FileInfo(QString filePath, QString collectionPath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+FileInfo::FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
     m_filePath = filePath;
-    m_collectionPath = collectionPath;
     update(modifiedAt, sizeInBytes, sha1);
 }
 
@@ -41,18 +20,7 @@ void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
     m_sha1 = sha1;
 }
 
-// harmless way to see if we are out of date
-bool FileInfo::modified(QFileInfo *qfi)
-{
-
-    // should check that filePath is the same
-    if (m_modifiedAt.toString(Qt::ISODate) != qfi->lastModified().toString(Qt::ISODate)){
-        return true;
-    }else{
-        return false;
-    }
-}
-
+// are is the file (namelessly) identical to another
 bool FileInfo::isIdenticalTo(FileInfo *fi)
 {
     if (this->size() == fi->size()){
@@ -72,25 +40,7 @@ QDateTime FileInfo::lastModified()
 
 QString FileInfo::fingerPrint()
 {
-    if (m_sha1 == "") updateFingerPrint();
     return m_sha1;
-}
-
-void FileInfo::updateFingerPrint()
-{
-    m_sha1 = readFingerPrint();
-}
-
-QString FileInfo::readFingerPrint()
-{
-    QFile file(m_collectionPath+"/"+m_filePath);
-    if (file.open(QIODevice::ReadOnly)){
-        //QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
-        std::cout << "reading fingerprint of " << qPrintable(m_filePath) << std::endl;
-        return QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex();
-    }else{
-        return "failed to open file for fingerprint";
-    }
 }
 
 QString FileInfo::filePath()
