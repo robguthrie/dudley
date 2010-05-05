@@ -58,6 +58,9 @@ so `dudley sync`
         then create a dudley.ini file in the root of the dir with:
         filerepostate name
 
+dudley init statename
+    initialize this workign directory to follow a filerepostate
+
 dudley status
     show changes that would be committed to the filerepostate
     also shows changes that would be preformed on working directory
