@@ -18,6 +18,7 @@ public:
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void rename(QString newFilePath);
     bool isIdenticalTo(FileInfo *fi);
+    bool seemsIdenticalTo(QFileInfo q);
     QDateTime lastModified();
     QString fingerPrint();
     QString readFingerPrint();

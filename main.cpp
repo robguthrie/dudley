@@ -9,8 +9,13 @@
 #include "filerepostate.h"
 #include "filerepostatelogger.h"
 #include "workingfilerepo.h"
+#include "output.h"
 
 // my master backup is on the internet
+
+/*
+    at this stage dudley is about syncing to an http server
+*/        
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -18,7 +23,6 @@ int main(int argc, char *argv[])
 
     QString collection_path = QDir::currentPath();
     QString logs_dir = QDir::currentPath() + "/.dudley/logs";
-    cout << "logs_dir:" << qPrintable(logs_dir) << endl;
     QStringList params;
     for(int i = 1; i < argc; ++i) params << argv[i];
 
@@ -31,14 +35,14 @@ int main(int argc, char *argv[])
             FileRepoStateLogger *logger = new FileRepoStateLogger(logs_dir);
             if ((params.size() > 1) && (params[1] == "init")){
                 if (logger->initialize()){
-                    cout << "initialized history log within " << qPrintable(collection_path) << endl;
+                    Output::info(QString("initialized history log within ").append(collection_path));
                 }else{
-                    cerr << "failed to initialize history log within " << qPrintable(collection_path) << endl;
+                    Output::error(QString("failed to initialize history log within ").append(collection_path));
                     return 1;
                 }
             }else{
                 if (!logger->isInitialized()){
-                    cerr << "histoy log not initialized. run 'track init'' or cd to correct directory:" << qPrintable(logs_dir) << endl;
+                    Output::error(QString("histoy log not initialized. run 'track init'' or cd to correct directory"));
                     return 1;
                 }
                 FileRepoState *state = new FileRepoState(logger);

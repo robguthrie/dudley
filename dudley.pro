@@ -12,10 +12,16 @@ SOURCES += main.cpp \
     filerepostatelogger.cpp \
     filerepo.cpp \
     workingfilerepo.cpp \
-    storagefilerepo.cpp
+    storagefilerepo.cpp \
+    output.cpp \
+    transferqueue.cpp
+    
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
     filerepo.h \
     workingfilerepo.h \
-    storagefilerepo.h
+    storagefilerepo.h \
+    output.h \
+    transferqueue.h
+    

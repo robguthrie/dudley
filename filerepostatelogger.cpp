@@ -1,6 +1,7 @@
 #include "filerepostatelogger.h"
 #include <QDir>
 #include <iostream>
+#include "output.h"
 // logger is a file state history log
 FileRepoStateLogger::FileRepoStateLogger(QString logsDir)
 {
@@ -50,7 +51,7 @@ void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
     QString line;
     QFile file(logFilePath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-//       std::cout << "Reading Logfile: " << qPrintable(logFilePath) << std::endl;
+        Output::info(QString("Reading Logfile: ").append(logFilePath));
 
         QTextStream in(&file);
         while (!in.atEnd()){
@@ -86,7 +87,7 @@ void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
         }
         file.close();
     }else{
-        std::cout << "Could not read Logfile: " << qPrintable(logFilePath) << std::endl;
+        Output::error(QString("Could not read Logfile: ").append(logFilePath));
     }
 }
 
@@ -103,11 +104,11 @@ void FileRepoStateLogger::writeLogFile()
         if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
             QTextStream out(&file);
             out << m_logLines.join("\n") << endl;
-            std::cout << qPrintable(QString::number(m_logLines.size())) << " lines appended to logfile" << std::endl;
+            Output::info(QString::number(m_logLines.size()).append(" lines appended to logfile"));
             file.close();
             m_logLines.empty();
         }else{
-            std::cout << "could not open history.log for writing" << std::endl;
+            Output::error("could not open history.log for writing");
         }
     }
 }

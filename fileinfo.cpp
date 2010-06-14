@@ -33,6 +33,13 @@ bool FileInfo::isIdenticalTo(FileInfo *fi)
     return false;
 }
 
+// try to cheaply detect change in a file
+// we just compare mtime and size....
+bool FileInfo::seemsIdenticalTo(QFileInfo q){
+    return (this->lastModified().toString(Qt::ISODate) == q.lastModified().toString(Qt::ISODate)) &&
+           (this->size() == q.size());
+}
+
 QDateTime FileInfo::lastModified()
 {
     return m_modifiedAt;

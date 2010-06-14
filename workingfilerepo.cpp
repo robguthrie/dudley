@@ -2,6 +2,8 @@
 #include <iostream>
 #include <QCryptographicHash>
 #include <QDir>
+#include "output.h"
+
 WorkingFileRepo::WorkingFileRepo(QString path, FileRepoState* state)
 {
     m_state = state;
@@ -30,7 +32,7 @@ WorkingFileRepo::WorkingFileRepo(QString path, FileRepoState* state)
 */
 void WorkingFileRepo::stageChanges()
 {
-    std::cout << "reading working dir" << std::endl;
+    Output::info(QString("reading working dir"));
 
     QStringList found_files = filesOnDisk();
 
@@ -53,7 +55,8 @@ void WorkingFileRepo::stageChanges()
         // and we only want to read the sha1 if the mtime has changed
         FileInfo *stored_fi = m_state->fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
-        if (stored_fi->lastModified().toString(Qt::ISODate) != qfi.lastModified().toString(Qt::ISODate)){
+        if (!stored_fi->seemsIdenticalTo(qfi)){
+            //
             // file has changed on disk but filename is the same.
             // record the new values for the file
             m_state->modifyFile(file_path, qfi.lastModified(), qfi.size(),
@@ -132,7 +135,7 @@ FileInfo* WorkingFileRepo::newFileInfo(QString filePath)
 QString WorkingFileRepo::readFingerPrint(QString filePath)
 {
     QFile file(m_path+'/'+filePath);
-    std::cout << "reading fingerprint of " << qPrintable(filePath) << std::endl;
+    Output::info(QString("reading fingerprint of ").append(filePath));
     QCryptographicHash hash(QCryptographicHash::Sha1);
     if (file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
             while (!file.atEnd())
