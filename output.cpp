@@ -1,5 +1,6 @@
 #include "output.h"
 
+
 void Output::debug(QString token)
 {
     std::cout << "dbug: " << qPrintable(token) << std::endl;
@@ -12,4 +13,9 @@ void Output::error(QString token)
 void Output::info(QString token)
 {
     std::cout << "i: " << qPrintable(token) << std::endl;
+}
+
+void Output::warning(QString token)
+{
+    std::cout << "w: " << qPrintable(token) << std::endl;
 }

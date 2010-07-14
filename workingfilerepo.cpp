@@ -1,22 +1,59 @@
 #include "workingfilerepo.h"
-#include <iostream>
 #include <QCryptographicHash>
 #include <QDir>
 #include "output.h"
 
-WorkingFileRepo::WorkingFileRepo(QString path, FileRepoState* state)
+WorkingFileRepo::WorkingFileRepo(QString path)
+    :FileRepo()
 {
-    m_state = state;
     m_path = path;
-    QDir dir;
-    if (!dir.exists(m_path)){
-        std::cerr << "cannot open working directory " << qPrintable(path) << std::endl;
+    // the m_state now is logging changes into the logger
+    FileRepoState m_state(m_path + "/.dudley/logs");
+}
+
+bool WorkingFileRepo::isReady()
+{
+    return canOpenWorkingDirectory && m_state->logger()->isReady();
+}
+
+bool WorkingFileRepo::hasFile(FileInfo file_info)
+{
+    return false;
+}
+
+bool WorkingFileRepo::initialize()
+{
+    if (this->canOpenWorkingDirectory()){
+        // initialize the history log
+        if (m_state->logger()->initialize()){
+            return true;
+        }else{
+            Output::error("Cannot initialize history logger");
+        }
+    }else{
+        Output::error(QString("Can't open working directory").append(m_path));
     }
+    return false;
+}
+
+bool WorkingFileRepo::canOpenWorkingDirectory() const
+{
+    QDir dir;
+    return dir.exists(m_path);
+}
+
+QString WorkingFileRepo::type()
+{
+    return QString("workingfilerepo");
+}
+
+QString WorkingFileRepo::path()
+{
+    return m_path;
 }
 
 /*
-    stateChanges is where we compare the working directory against
-    the recorded state.
+    currentState updates the m_state object to represent the current state
 
     first, determine missing files
     then split found files (ie: the whole list) into known and unknown files
@@ -24,13 +61,9 @@ WorkingFileRepo::WorkingFileRepo(QString path, FileRepoState* state)
     at this stage we wanna read sha1's for modified and unknown files
     then split unknown into renamed (removing them from missing) and new
     then turn remaining missing files into deleted
-    and stage these changes in the logger
 
-    thoughts:
-    do i create a new state object with the changes? no
-    because we can rollback our state
 */
-void WorkingFileRepo::stageChanges()
+void WorkingFileRepo::updateState()
 {
     Output::info(QString("reading working dir"));
 
@@ -38,14 +71,14 @@ void WorkingFileRepo::stageChanges()
 
     // a missing file is in the collection but not on the disk
     // checking for files which have gone missing
-    QStringList missing_file_paths = m_state->missingFilePaths(found_files);
+    QStringList missing_file_paths = m_state.missingFilePaths(found_files);
 
     // checking for files which are unrecognised
     // an unknown file is on the disk but not in the collection
-    QStringList unknown_found_file_paths = m_state->unknownFilePaths(found_files);
+    QStringList unknown_found_file_paths = m_state.unknownFilePaths(found_files);
 
     // checking for known files
-    QStringList known_found_file_paths = m_state->knownFilePaths(found_files);
+    QStringList known_found_file_paths = m_state.knownFilePaths(found_files);
 
     // scanning known files for modifications
     QString file_path;
@@ -53,13 +86,12 @@ void WorkingFileRepo::stageChanges()
         // check if that file has been modified
         // to save overhead.. we dont call newFileInfo as that reads the sha1
         // and we only want to read the sha1 if the mtime has changed
-        FileInfo *stored_fi = m_state->fileInfoByFilePath(file_path);
+        FileInfo *stored_fi = m_state.fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
         if (!stored_fi->seemsIdenticalTo(qfi)){
-            //
             // file has changed on disk but filename is the same.
             // record the new values for the file
-            m_state->modifyFile(file_path, qfi.lastModified(), qfi.size(),
+            m_state.modifyFile(file_path, qfi.lastModified(), qfi.size(),
                                 readFingerPrint(file_path));
         }
     }
@@ -69,25 +101,50 @@ void WorkingFileRepo::stageChanges()
         bool file_was_renamed = false;
         FileInfo *unknown_fi = newFileInfo(file_path);
         foreach(QString missing_file_path, missing_file_paths){
-            FileInfo *missing_fi = m_state->fileInfoByFilePath(missing_file_path);
+            FileInfo *missing_fi = m_state.fileInfoByFilePath(missing_file_path);
             if (missing_fi->isIdenticalTo(unknown_fi)){
                 // this unknown file is actually a missing file renamed
                 file_was_renamed = true;
                 missing_file_paths.removeAll(missing_file_path);
                 unknown_found_file_paths.removeAll(file_path);
-                m_state->renameFile(missing_file_path, file_path);
+                m_state.renameFile(missing_file_path, file_path);
             }
         }
 
         // add the file as new to the collection
-        if (!file_was_renamed) m_state->addFile(unknown_fi);
+        if (!file_was_renamed) m_state.addFile(unknown_fi);
     }
 
     // deleted sweep
-    foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
+    foreach(file_path, missing_file_paths) m_state.removeFile(file_path);
 }
 
+void WorkingFileRepo::addFile(QIODevice *sourceFile, FileInfo fileInfo)
+{
+    // why do i get a fileinfo here?
+    if (sourceFile->isReadable()){
+        // as we store files by their filePath in a working filerepo...
+        // create a new file and copy the bytes into it.
+        sourceFile->
+    }
+}
 
+bool WorkingFileRepo::deleteFile(FileInfo fileInfo)
+{
+    return false;
+}
+
+bool WorkingFileRepo::renameFile(FileInfo fileInfo, QString newFileName)
+{
+    return false;
+}
+
+bool WorkingFileRepo::hasFile(FileInfo fileInfo)
+{
+    return m_state.containsFileInfo(fileInfo);
+}
+
+// private functions
 
 QStringList WorkingFileRepo::filesOnDisk()
 {

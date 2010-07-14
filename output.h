@@ -10,7 +10,7 @@ public:
     static void debug(QString token);
     static void error(QString token);
     static void info(QString token);
-
+    static void warning(QString token);
 };
 
 #endif // OUTPUT_H

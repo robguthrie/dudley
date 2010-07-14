@@ -11,8 +11,11 @@ class FileRepoStateLogger
 public:
     FileRepoStateLogger(QString logsDir);
     bool initialize();
-    bool isInitialized();
+    bool isReady() const;
+    QString logsDir();
+    FileRepoState loadState();
     void loadState(FileRepoState* state);
+    QString logsDir() const;
     void writeLogFile();
     void printLogFile();
     void logAddFile(FileInfo* fi);

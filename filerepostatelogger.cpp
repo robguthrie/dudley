@@ -2,6 +2,7 @@
 #include <QDir>
 #include <iostream>
 #include "output.h"
+
 // logger is a file state history log
 FileRepoStateLogger::FileRepoStateLogger(QString logsDir)
 {
@@ -14,10 +15,27 @@ bool FileRepoStateLogger::initialize()
     return dir.mkpath(m_logsDir);
 }
 
-bool FileRepoStateLogger::isInitialized()
+bool FileRepoStateLogger::isReady() const
 {
     QDir dir;
     return dir.exists(m_logsDir);
+}
+
+QString FileRepoStateLogger::logsDir() const
+{
+    return m_logsDir;
+}
+
+// given a state object.. play the list of file operations stored
+// across each log file representing the history, (they each represent a commit)
+// so that the state object represents the last
+// known state of the directory we track
+FileRepoState FileRepoStateLogger::loadState()
+{
+    // foreach .log file in the directory play it into the state
+    FileRepoState* state = new FileRepoState();
+    loadState(state);
+    return (*state);
 }
 
 // given a state object.. play the list of file operations stored
@@ -27,6 +45,7 @@ bool FileRepoStateLogger::isInitialized()
 void FileRepoStateLogger::loadState(FileRepoState* state)
 {
     // foreach .log file in the directory play it into the state
+    state->stopLoggingChanges();
     QDir dir(m_logsDir);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
     dir.setSorting(QDir::Name);
@@ -37,6 +56,7 @@ void FileRepoStateLogger::loadState(FileRepoState* state)
             readLogFile(m_logsDir+"/"+filename, state);
         }
     }
+    state->logChanges(this);
 }
 
 /* open a logfile and read it. line by line. thus startign the process of
@@ -71,18 +91,18 @@ void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
                 qint64 sizeInBytes = parts[3].trimmed().toULongLong();
                 QString sha1 = parts[4].trimmed();
                 if (operation == "add_file"){
-                    state->addFileSilent(filePath, modifiedAt, sizeInBytes, sha1);
+                    state->addFile(filePath, modifiedAt, sizeInBytes, sha1);
                 }
                 if (operation == "modify_file"){
-                    state->modifyFileSilent(filePath, modifiedAt, sizeInBytes, sha1);
+                    state->modifyFile(filePath, modifiedAt, sizeInBytes, sha1);
                 }
             }
             if (operation == "remove_file") {
-                state->removeFileSilent(filePath);
+                state->removeFile(filePath);
             }
             if (operation == "rename_file"){
                 QString newFilePath = parts[2].trimmed().replace("DUDLEYCOMMA", ",");
-                state->renameFileSilent(filePath, newFilePath);
+                state->renameFile(filePath, newFilePath);
             }
         }
         file.close();

@@ -1,4 +1,5 @@
 #include "fileinfo.h"
+#include <QStringList>
 #include <iostream>
 #include <QCryptographicHash>
 #include <QFile>
@@ -63,4 +64,11 @@ qint64 FileInfo::size()
 void FileInfo::rename(QString newFilePath)
 {
     m_filePath = newFilePath;
+}
+
+QString FileInfo::toString()
+{
+    QStringList list;
+    list << m_sha1 << QString::number(m_sizeInBytes) << m_filePath;
+    return list.join(",");
 }

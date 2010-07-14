@@ -1,5 +1,10 @@
 #include "filerepo.h"
-//
-//FileRepo::FileRepo()
-//{
-//}
+
+FileRepo::FileRepo()
+{
+}
+
+FileRepoState* FileRepo::state()
+{
+    return m_state;
+}

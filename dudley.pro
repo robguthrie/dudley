@@ -14,8 +14,7 @@ SOURCES += main.cpp \
     workingfilerepo.cpp \
     storagefilerepo.cpp \
     output.cpp \
-    transferqueue.cpp
-    
+    filerepomanager.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -23,5 +22,5 @@ HEADERS += fileinfo.h \
     workingfilerepo.h \
     storagefilerepo.h \
     output.h \
-    transferqueue.h
-    
+    filerepomanager.h
+FORMS += mainwindow.ui

@@ -8,11 +8,22 @@
 #include "filerepostate.h"
 #include "fileinfo.h"
 #include "filerepostatelogger.h"
+#include "output.h"
 
-FileRepoState::FileRepoState(FileRepoStateLogger* logger)
+FileRepoState::FileRepoState()
 {
-    m_logger = logger;
-    reload();
+    m_logger = 0;
+}
+
+FileRepoState::FileRepoState(QString logs_dir)
+{
+    FileRepoStateLogger m_logger(logs_dir);
+    if (m_logger.isReady()){
+        m_logger.loadState(this);
+    }else{
+        // warn of unready logger..
+        Output::warning("FileRepoState cant open history. need to initialize logger");
+    }
 }
 
 FileRepoStateLogger* FileRepoState::logger()
@@ -20,16 +31,36 @@ FileRepoStateLogger* FileRepoState::logger()
     return m_logger;
 }
 
-void FileRepoState::reload()
+void FileRepoState::logChanges(FileRepoStateLogger* logger)
 {
-    m_files.clear();
-    m_fingerprints.clear();
-    m_logger->loadState(this);
+    m_logger = logger;
+}
+
+void FileRepoState::stopLoggingChanges()
+{
+    m_logger = 0;
+}
+
+// should support a commit message or label eventually
+bool FileRepoState::saveChanges()
+{
+    m_logger->writeLogFile();
+    return true;
+}
+
+bool FileRepoState::containsFileInfo(FileInfo file_info)
+{
+    return containsFingerPrint(file_info.fingerPrint());
 }
 
 bool FileRepoState::containsFilePath(QString file_path)
 {
     return m_files.contains(file_path);
+}
+
+bool FileRepoState::containsFingerPrint(QString finger_print)
+{
+    return m_fingerprints.contains(finger_print);
 }
 
 FileInfo* FileRepoState::fileInfoByFilePath(QString file_path)
@@ -50,17 +81,14 @@ void FileRepoState::addFile(FileInfo* file_info)
 
 void FileRepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
-    m_logger->logAddFile(filePath, modifiedAt, sizeInBytes, sha1);
-    addFileSilent(filePath, modifiedAt, sizeInBytes, sha1);
-}
-
-void FileRepoState::addFileSilent(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
-{
     if (!m_files.contains(filePath)){
         // update existing without touching disk
         FileInfo *fileInfo = new FileInfo(filePath, modifiedAt, sizeInBytes, sha1);
         m_files.insert(filePath, fileInfo);
         m_fingerprints.insert(sha1, fileInfo);
+        if (m_logger){
+            m_logger->logAddFile(filePath, modifiedAt, sizeInBytes, sha1);
+        }
     }else{
         // insert new
         std::cout << "adding file in error. its already indexed";
@@ -68,12 +96,6 @@ void FileRepoState::addFileSilent(QString filePath, QDateTime modifiedAt, qint64
 }
 
 void FileRepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
-{
-    m_logger->logModifyFile(filePath, modifiedAt, sizeInBytes, sha1);
-    modifyFileSilent(filePath, modifiedAt, sizeInBytes, sha1);
-}
-
-void FileRepoState::modifyFileSilent(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
     if (m_files.contains(filePath)){
         // update existing without touching disk
@@ -83,6 +105,9 @@ void FileRepoState::modifyFileSilent(QString filePath, QDateTime modifiedAt, qin
         m_fingerprints.remove(old_sha1);
         fileInfo->update(modifiedAt, sizeInBytes, sha1);
         m_fingerprints.insert(sha1, fileInfo);
+        if (m_logger){
+            m_logger->logModifyFile(filePath, modifiedAt, sizeInBytes, sha1);
+        }
     }else{
         std::cout << "trying to modify state for fileinfo which does not exist";
     }
@@ -90,40 +115,22 @@ void FileRepoState::modifyFileSilent(QString filePath, QDateTime modifiedAt, qin
 
 bool FileRepoState::removeFile(QString filePath)
 {
-
-    if (removeFileSilent(filePath)){
-        m_logger->logRemoveFile(filePath);
-        return true;
-    }else{
-        return false;
-    }
-}
-
-bool FileRepoState::removeFileSilent(QString filePath)
-{
     FileInfo *fileInfo = m_files.value(filePath);
     if (m_files.remove(filePath)){
         m_fingerprints.remove(fileInfo->fingerPrint());
+        if (m_logger) m_logger->logRemoveFile(filePath);
         return true;
     }else return false;
 }
 
 bool FileRepoState::renameFile(QString filePath, QString newFilePath)
 {
-
-    if (renameFileSilent(filePath, newFilePath)){
-        m_logger->logRenameFile(filePath, newFilePath);
-        return true;
-    }else return false;
-}
-
-bool FileRepoState::renameFileSilent(QString filePath, QString newFilePath)
-{
     if (m_files.contains(filePath)){
         FileInfo *fileInfo = m_files.value(filePath);
         m_files.remove(filePath);
         fileInfo->rename(newFilePath);
         m_files.insert(newFilePath, fileInfo);
+        if (m_logger) m_logger->logRenameFile(filePath, newFilePath);
         return true;
     }else return false;
 }

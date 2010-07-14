@@ -13,31 +13,23 @@ class FileInfo
 
 public:
     FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
-    bool modified(QFileInfo *qfi);
-    void readFromDisk(QFileInfo *qfi);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
-    void rename(QString newFilePath);
     bool isIdenticalTo(FileInfo *fi);
     bool seemsIdenticalTo(QFileInfo q);
+
     QDateTime lastModified();
     QString fingerPrint();
-    QString readFingerPrint();
-    void updateFingerPrint();
-
-    QString oldFilePath();
     QString filePath();
+    QString toString();
     qint64 size();
+    void rename(QString newFilePath);
 
 private:
     FileRepoState* m_parent;
     QDateTime m_modifiedAt; // last modification date of file
     qint64 m_sizeInBytes;
     QString m_filePath;
-    QString m_collectionPath;
-    QString m_oldFilePath;
     QString m_sha1;
-
-
 };
 
 #endif // FILEINFO_H

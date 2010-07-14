@@ -6,39 +6,23 @@
 class FileRepo
 {
 public:
-//    FileRepoileRepoState* state);
-//    bool containsFileByPath(QString filePath);
-//    bool containsFileByFingerPrint(QString filePath);
-//
+
     FileRepo();
 
-    // read the state from the repo
-    // passing a *lastKnownState might reduce the number of fingerprint reads required
-    FileRepoState readState(FileRepoState* lastKnownState = 0);
-
-
-    // manipulate the FileRepo with these functions
-    // i dont think i should use fileInfo objects here....
-    // we should generate our own sha1 if necessary
-
-    //possibly addFile should return a QIODevice to write to..
-    // no add file does the writing itself.. it needs to know where to read from
-    // how do we know the progress of the operation?
-    void addFile(QIODevice *sourceFile, QString fileName = "");
-    bool deleteFileByName(QString fileName);
-    bool deleteFileByFingerPrint(QString fingerPrint);
-    bool renameFile(QString oldFileName, QString newFileName);
-
-
-    // copy the contents of a file in this repo.. into the qiodevice
-    // obiously the qiodevice must be writable
-    void readFileByFingerPrint(QIODevice *destFile, QString fingerPrint);
-    void readFileByFileName(QIODevice *destFile, QString fileName);
-
-
-
+    // update the given state object to represent the current repo state
+    virtual bool isReady() = 0;
+    virtual void updateState() = 0;
+    virtual FileRepoState* state();
+    virtual void hasFile(FileInfo fileInfo) const = 0;
+//    virtual void addFile(QIODevice *sourceFile, FileInfo fileInfo) = 0;
+//    virtual bool deleteFile(FileInfo fileInfo) = 0;
+//    virtual bool renameFile(FileInfo fileInfo, QString newFileName) = 0;
+    //    virtual QIODevice readFile(FileInfo fileInfo);
+    virtual QString type() = 0;
+    virtual QString path() = 0;
 
 private:
+    FileRepoState *m_state;
 };
 
 #endif // FILEREPO_H

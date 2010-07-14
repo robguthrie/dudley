@@ -12,24 +12,27 @@ class FileRepoStateLogger;
 class FileRepoState
 {
 public:
-    FileRepoState(FileRepoStateLogger* logger);
+    FileRepoState();
+    FileRepoState(QString logs_dir);
+    void logChanges(FileRepoStateLogger* logger);
+    void stopLoggingChanges();
     FileRepoStateLogger* logger();
-    void reload();
+    bool saveChanges();
+    bool containsFileInfo(FileInfo file_info);
     bool containsFilePath(QString file_path);
+    bool containsFingerPrint(QString finger_print);
     FileInfo* fileInfoByFilePath(QString file_path);
     FileInfo* fileInfoByFingerPrint(QString sha1);
 
+    // manipulation
     void addFile(FileInfo* file_info);
     void addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
-    void addFileSilent(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void modifyFile(FileInfo* file_info);
     void modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
-    void modifyFileSilent(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool removeFile(QString filePath);
-    bool removeFileSilent(QString filePath);
     bool renameFile(QString filePath, QString newFilePath);
-    bool renameFileSilent(QString filePath, QString newFilePath);
 
+    // query
     QHash<QString, FileInfo*> knownFiles(QStringList found_files);
     QHash<QString, FileInfo*> missingFiles(QStringList found_files);
     QStringList missingFilePaths(QStringList found_files);
