@@ -17,14 +17,31 @@ FileRepoState::FileRepoState()
 
 FileRepoState::FileRepoState(QString logs_dir)
 {
-    FileRepoStateLogger m_logger(logs_dir);
-    if (m_logger.isReady()){
-        m_logger.loadState(this);
+    m_logger = new FileRepoStateLogger(logs_dir);
+    if (m_logger->isReady()){
+        m_logger->loadState(this);
     }else{
         // warn of unready logger..
         Output::warning("FileRepoState cant open history. need to initialize logger");
     }
 }
+
+FileRepoState::~FileRepoState()
+{
+    if (m_logger != 0) delete m_logger;
+}
+
+//QStringList FileRepoState::difference(FileRepoState *state)
+//{
+//    //prehaps insted of returning a qStringList we just return bool for different
+//    // and keep pending changes in the logger?
+//    // given a filerepostate create a log changes that would be required
+//    // to make self identical to the given state
+//
+//    // what files from state are missing in self
+//    // what files from state have different fingerprints to those in self
+//    // what files from self are not present in state?
+//}
 
 FileRepoStateLogger* FileRepoState::logger()
 {

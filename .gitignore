@@ -1,3 +1,4 @@
 *.o
 .dudley/
 dudley
+moc_*

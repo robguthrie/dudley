@@ -11,6 +11,9 @@ public:
     static void error(QString token);
     static void info(QString token);
     static void warning(QString token);
+    static void verbose(QString token);
+    const static bool show_verbose = true;
+    const static bool show_debug = true;
 };
 
 #endif // OUTPUT_H

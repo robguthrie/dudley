@@ -28,7 +28,7 @@ public:
     bool isReady();
     void updateState();
     FileRepoState* state();
-    void hasFile(FileInfo fileInfo) const;
+    bool hasFile(FileInfo fileInfo) const;
 //    virtual void addFile(QIODevice *sourceFile, FileInfo fileInfo) = 0;
 //    virtual bool deleteFile(FileInfo fileInfo) = 0;
 //    virtual bool renameFile(FileInfo fileInfo, QString newFileName) = 0;

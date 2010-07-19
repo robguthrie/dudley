@@ -2,6 +2,7 @@
 #include <QDir>
 #include <iostream>
 #include "output.h"
+#include <QCryptographicHash>
 
 // logger is a file state history log
 FileRepoStateLogger::FileRepoStateLogger(QString logsDir)
@@ -120,10 +121,14 @@ void FileRepoStateLogger::writeLogFile()
             QDir dir;
             dir.mkdir(m_logsDir);
         }
-        QFile file(m_logsDir+"/"+QDateTime::currentDateTime().toString(Qt::ISODate)+".log");
+        // first get the hash of the logfile
+        QByteArray log_data = m_logLines.join("\n").toUtf8();
+        QByteArray hash = QCryptographicHash::hash(log_data, QCryptographicHash::Sha1);
+
+        QFile file(m_logsDir+"/"+QDateTime::currentDateTime().toString(Qt::ISODate)+"_"+QString(hash)+".log");
         if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
             QTextStream out(&file);
-            out << m_logLines.join("\n") << endl;
+            out << log_data;
             Output::info(QString::number(m_logLines.size()).append(" lines appended to logfile"));
             file.close();
             m_logLines.empty();

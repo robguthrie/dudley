@@ -13,7 +13,7 @@ public:
     virtual bool isReady() = 0;
     virtual void updateState() = 0;
     virtual FileRepoState* state();
-    virtual void hasFile(FileInfo fileInfo) const = 0;
+    virtual bool hasFile(FileInfo fileInfo) const = 0;
 //    virtual void addFile(QIODevice *sourceFile, FileInfo fileInfo) = 0;
 //    virtual bool deleteFile(FileInfo fileInfo) = 0;
 //    virtual bool renameFile(FileInfo fileInfo, QString newFileName) = 0;
@@ -21,7 +21,7 @@ public:
     virtual QString type() = 0;
     virtual QString path() = 0;
 
-private:
+protected:
     FileRepoState *m_state;
 };
 

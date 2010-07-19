@@ -1,7 +1,8 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-03-01T13:29:30
 # -------------------------------------------------
-QT -= gui
+QT += gui \
+    network
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle
@@ -14,7 +15,8 @@ SOURCES += main.cpp \
     workingfilerepo.cpp \
     storagefilerepo.cpp \
     output.cpp \
-    filerepomanager.cpp
+    server.cpp \
+    dialog.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -22,5 +24,8 @@ HEADERS += fileinfo.h \
     workingfilerepo.h \
     storagefilerepo.h \
     output.h \
-    filerepomanager.h
-FORMS += mainwindow.ui
+    server.h \
+    dialog.h
+
+# filerepomanager.h
+FORMS += 

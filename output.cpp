@@ -3,12 +3,13 @@
 
 void Output::debug(QString token)
 {
-    std::cout << "dbug: " << qPrintable(token) << std::endl;
+    if (show_debug)
+    std::cout << "d: " << qPrintable(token) << std::endl;
 }
 
 void Output::error(QString token)
 {
-    std::cout << "e! " << qPrintable(token) << std::endl;
+    std::cout << "error: " << qPrintable(token) << std::endl;
 }
 void Output::info(QString token)
 {
@@ -17,5 +18,11 @@ void Output::info(QString token)
 
 void Output::warning(QString token)
 {
-    std::cout << "w: " << qPrintable(token) << std::endl;
+    std::cout << "warning: " << qPrintable(token) << std::endl;
+}
+
+void Output::verbose(QString token)
+{
+    if (show_verbose)
+    std::cout << "v: " << qPrintable(token) << std::endl;
 }

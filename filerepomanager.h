@@ -3,6 +3,15 @@
 
 #include "filerepo.h"
 
+/* this should be a dudley program manager
+   should list all our fileRepos that we host
+   with their formats and paths
+
+   and list known http urls for repos that we sync against
+
+   should this be per repo? no
+
+   */
 class FileRepoManager
 {
 public:

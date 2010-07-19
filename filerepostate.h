@@ -13,6 +13,7 @@ class FileRepoState
 {
 public:
     FileRepoState();
+    ~FileRepoState();
     FileRepoState(QString logs_dir);
     void logChanges(FileRepoStateLogger* logger);
     void stopLoggingChanges();

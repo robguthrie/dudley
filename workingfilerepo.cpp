@@ -8,17 +8,17 @@ WorkingFileRepo::WorkingFileRepo(QString path)
 {
     m_path = path;
     // the m_state now is logging changes into the logger
-    FileRepoState m_state(m_path + "/.dudley/logs");
+    m_state = new FileRepoState(m_path + "/.dudley/logs");
+}
+
+FileRepoState* WorkingFileRepo::state()
+{
+    return m_state;
 }
 
 bool WorkingFileRepo::isReady()
 {
-    return canOpenWorkingDirectory && m_state->logger()->isReady();
-}
-
-bool WorkingFileRepo::hasFile(FileInfo file_info)
-{
-    return false;
+    return canOpenWorkingDirectory() && this->m_state->logger()->isReady();
 }
 
 bool WorkingFileRepo::initialize()
@@ -65,20 +65,20 @@ QString WorkingFileRepo::path()
 */
 void WorkingFileRepo::updateState()
 {
-    Output::info(QString("reading working dir"));
+    Output::verbose(QString("building list of files"));
 
     QStringList found_files = filesOnDisk();
 
     // a missing file is in the collection but not on the disk
     // checking for files which have gone missing
-    QStringList missing_file_paths = m_state.missingFilePaths(found_files);
+    QStringList missing_file_paths = m_state->missingFilePaths(found_files);
 
     // checking for files which are unrecognised
     // an unknown file is on the disk but not in the collection
-    QStringList unknown_found_file_paths = m_state.unknownFilePaths(found_files);
+    QStringList unknown_found_file_paths = m_state->unknownFilePaths(found_files);
 
     // checking for known files
-    QStringList known_found_file_paths = m_state.knownFilePaths(found_files);
+    QStringList known_found_file_paths = m_state->knownFilePaths(found_files);
 
     // scanning known files for modifications
     QString file_path;
@@ -86,12 +86,12 @@ void WorkingFileRepo::updateState()
         // check if that file has been modified
         // to save overhead.. we dont call newFileInfo as that reads the sha1
         // and we only want to read the sha1 if the mtime has changed
-        FileInfo *stored_fi = m_state.fileInfoByFilePath(file_path);
+        FileInfo *stored_fi = m_state->fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
         if (!stored_fi->seemsIdenticalTo(qfi)){
             // file has changed on disk but filename is the same.
             // record the new values for the file
-            m_state.modifyFile(file_path, qfi.lastModified(), qfi.size(),
+            m_state->modifyFile(file_path, qfi.lastModified(), qfi.size(),
                                 readFingerPrint(file_path));
         }
     }
@@ -101,47 +101,51 @@ void WorkingFileRepo::updateState()
         bool file_was_renamed = false;
         FileInfo *unknown_fi = newFileInfo(file_path);
         foreach(QString missing_file_path, missing_file_paths){
-            FileInfo *missing_fi = m_state.fileInfoByFilePath(missing_file_path);
+            FileInfo *missing_fi = m_state->fileInfoByFilePath(missing_file_path);
             if (missing_fi->isIdenticalTo(unknown_fi)){
                 // this unknown file is actually a missing file renamed
                 file_was_renamed = true;
                 missing_file_paths.removeAll(missing_file_path);
                 unknown_found_file_paths.removeAll(file_path);
-                m_state.renameFile(missing_file_path, file_path);
+                m_state->renameFile(missing_file_path, file_path);
             }
         }
 
         // add the file as new to the collection
-        if (!file_was_renamed) m_state.addFile(unknown_fi);
+        if (!file_was_renamed) m_state->addFile(unknown_fi);
     }
 
     // deleted sweep
-    foreach(file_path, missing_file_paths) m_state.removeFile(file_path);
+    foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
 }
 
-void WorkingFileRepo::addFile(QIODevice *sourceFile, FileInfo fileInfo)
-{
-    // why do i get a fileinfo here?
-    if (sourceFile->isReadable()){
-        // as we store files by their filePath in a working filerepo...
-        // create a new file and copy the bytes into it.
-        sourceFile->
-    }
-}
+//void WorkingFileRepo::addFile(QIODevice *sourceFile, FileInfo fileInfo)
+//{
+//    // why do i get a fileinfo here?
+//    if (sourceFile->isReadable()){
+//        // as we store files by their filePath in a working filerepo...
+//        // create a new file and copy the bytes into it.
+//        sourceFile->
+//    }
+//}
 
-bool WorkingFileRepo::deleteFile(FileInfo fileInfo)
-{
-    return false;
-}
+//bool WorkingFileRepo::deleteFile(FileInfo fileInfo)
+//{
+//    return false;
+//}
+//
+//bool WorkingFileRepo::renameFile(FileInfo fileInfo, QString newFileName)
+//{
+//    return false;
+//}
 
-bool WorkingFileRepo::renameFile(FileInfo fileInfo, QString newFileName)
+bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
 {
-    return false;
-}
-
-bool WorkingFileRepo::hasFile(FileInfo fileInfo)
-{
-    return m_state.containsFileInfo(fileInfo);
+    //need to actually check he disk here..
+    // do we need to check the state at all?
+    // i dont get why?
+    //    return m_state->containsFileInfo(fileInfo);
+    return QFile::exists ( m_path +"/"+ fileInfo.filePath());
 }
 
 // private functions
@@ -156,6 +160,7 @@ QStringList WorkingFileRepo::filesOnDisk()
 void WorkingFileRepo::findAllFiles(QString path, QStringList *found_files)
 {
     // first grab the list of files
+    Output::verbose(path);
     QDir dir(path);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
     dir.setSorting(QDir::Name);
