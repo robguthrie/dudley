@@ -9,6 +9,7 @@
 
 class WorkingFileRepo : public FileRepo
 {
+    Q_OBJECT
 public:
     /*
     FileRepo();
@@ -24,7 +25,7 @@ public:
     virtual QString type() = 0;
     virtual QString path() = 0;
     */
-    WorkingFileRepo(QString path);
+    WorkingFileRepo(QObject *parent, QString path);
     bool isReady();
     void updateState();
     FileRepoState* state();
@@ -47,6 +48,7 @@ private:
 
     QString relativeFilePath(QString filePath);
     QString m_path;
+    QString config_path;
 };
 
 

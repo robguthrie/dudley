@@ -29,18 +29,37 @@ void Server::processReadyRead()
 {
     Output::debug("processReadyRead called");
     QTcpSocket* socket = (QTcpSocket*)sender(); // sender returns the pointer to the SIGNAL emitter
-    if (socket->canReadLine()){
-        Output::debug("can read LINE!!!");
+    while (socket->canReadLine()){
         QStringList tokens = QString(socket->readLine()).split(QRegExp("[ \r\n][ \r\n]*"));
+        Output::debug(tokens.join("\n"));
+
+        /*
+            indexes and file retrival!
+            ok so a request should be formed like
+            http://nodename.dinotech.co.nz
+                or
+            http://elmrow.dudsbabyduds.org:56789/pics/2009-09-09/IMG456.JPG
+            http://elmrow.dudsbabyduds.org:56789/pics/.dudley/logs
+            http://elmrow.dudsbabyduds.org:56789/pics/.dudley/20091230235959999.log
+
+            so first token in the string is reponame
+            some commands:
+            history - return
+            nodes
+
+
+        */
         if (tokens[0] == "GET") {
             QTextStream os(socket);
-//            os.setAutoDetectUnicode(true);
+            os.setAutoDetectUnicode(true);
             os << "HTTP/1.0 200 Ok\r\n"
                 "Content-Type: text/html; charset=\"utf-8\"\r\n"
+                // dudley version
+                // format options?
                 "\r\n"
-                "<h1>Nothing to see here!!! but really!!!!!! WOW</h1>\n" "\n";
-            Output::debug("wrote to textstream for socket");
-            socket->close();
+                "<h1>Dudley Node</h1>\n" "\n";
+
         }
+        socket->close();
     }
 }

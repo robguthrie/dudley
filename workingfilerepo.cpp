@@ -3,12 +3,13 @@
 #include <QDir>
 #include "output.h"
 
-WorkingFileRepo::WorkingFileRepo(QString path)
-    :FileRepo()
+WorkingFileRepo::WorkingFileRepo(QObject *parent, QString path)
+    :FileRepo(parent)
 {
     m_path = path;
+    config_path = m_path + "/.dudley";
     // the m_state now is logging changes into the logger
-    m_state = new FileRepoState(m_path + "/.dudley/logs");
+    m_state = new FileRepoState(this, config_path+"/logs");
 }
 
 FileRepoState* WorkingFileRepo::state()
@@ -24,6 +25,8 @@ bool WorkingFileRepo::isReady()
 bool WorkingFileRepo::initialize()
 {
     if (this->canOpenWorkingDirectory()){
+        // TODO: touch files for ignore_list, repo_id
+        // prehaps leave a little readme to explain what this stuff is
         // initialize the history log
         if (m_state->logger()->initialize()){
             return true;

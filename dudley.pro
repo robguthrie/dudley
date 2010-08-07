@@ -16,7 +16,7 @@ SOURCES += main.cpp \
     storagefilerepo.cpp \
     output.cpp \
     server.cpp \
-    dialog.cpp
+    mainwindow.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -25,7 +25,7 @@ HEADERS += fileinfo.h \
     storagefilerepo.h \
     output.h \
     server.h \
-    dialog.h
+    mainwindow.h
 
 # filerepomanager.h
-FORMS += 
+FORMS += mainwindow.ui

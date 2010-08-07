@@ -1,15 +1,17 @@
-dudley server
-starts http server -
-    need to send list of hitory files back
+dudley http server
+ index dirs and send files , nothing special for history logs
 
+    grabbing files is a simple http get
+    putting files same.. maybe s3 like?
 
-grabbing files is a simple http get
-histories are synced via http get as files.
-no special funciton required for history list? (dumb webserver compatible)
-need to sign the histories with sha1? optional checking of it?
- need to do a sha1 of histories to identify them.
+mainwindows needs to hold
+    repo list tab
+        - list hosted repositories [name, path, num files, type]
+        - each repo needs its own show/edit dialog too
+    server tab - ip, port, registered dns as url, log window, transfers
+    sync tab
 
-so need http server and logic to pull and put histories.
+    users tab - [user:password]
 
 So need to create a list of transfers from a state - state comparison.
 

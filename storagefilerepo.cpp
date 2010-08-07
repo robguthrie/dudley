@@ -1,5 +1,6 @@
 #include "storagefilerepo.h"
 
-StorageFileRepo::StorageFileRepo()
+StorageFileRepo::StorageFileRepo(QObject *parent)
+    :FileRepo(parent)
 {
 }

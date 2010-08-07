@@ -25,7 +25,6 @@ public:
     void rename(QString newFilePath);
 
 private:
-    FileRepoState* m_parent;
     QDateTime m_modifiedAt; // last modification date of file
     qint64 m_sizeInBytes;
     QString m_filePath;

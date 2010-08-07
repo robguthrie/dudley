@@ -21,6 +21,11 @@ void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
     m_sha1 = sha1;
 }
 
+void FileInfo::rename(QString newFilePath)
+{
+    m_filePath = newFilePath;
+}
+
 // are is the file (namelessly) identical to another
 bool FileInfo::isIdenticalTo(FileInfo *fi)
 {
@@ -61,10 +66,6 @@ qint64 FileInfo::size()
     return m_sizeInBytes;
 }
 
-void FileInfo::rename(QString newFilePath)
-{
-    m_filePath = newFilePath;
-}
 
 QString FileInfo::toString()
 {

@@ -6,14 +6,15 @@
 #include "fileinfo.h"
 #include "filerepostate.h"
 
-class FileRepoStateLogger
+class FileRepoStateLogger : public QObject
 {
+    Q_OBJECT
 public:
-    FileRepoStateLogger(QString logsDir);
+    FileRepoStateLogger(QObject *parent, QString logsDir);
     bool initialize();
     bool isReady() const;
     QString logsDir();
-    FileRepoState loadState();
+//    FileRepoState loadState();
     void loadState(FileRepoState* state);
     QString logsDir() const;
     void writeLogFile();

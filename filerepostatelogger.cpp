@@ -5,7 +5,8 @@
 #include <QCryptographicHash>
 
 // logger is a file state history log
-FileRepoStateLogger::FileRepoStateLogger(QString logsDir)
+FileRepoStateLogger::FileRepoStateLogger(QObject* parent, QString logsDir)
+    :QObject(parent)
 {
     m_logsDir = logsDir;
 }
@@ -31,13 +32,13 @@ QString FileRepoStateLogger::logsDir() const
 // across each log file representing the history, (they each represent a commit)
 // so that the state object represents the last
 // known state of the directory we track
-FileRepoState FileRepoStateLogger::loadState()
-{
-    // foreach .log file in the directory play it into the state
-    FileRepoState* state = new FileRepoState();
-    loadState(state);
-    return (*state);
-}
+//FileRepoState* FileRepoStateLogger::loadState()
+//{
+//    // foreach .log file in the directory play it into the state
+//    FileRepoState* state = new FileRepoState(this);
+//    loadState(state);
+//    return state;
+//}
 
 // given a state object.. play the list of file operations stored
 // across each log file representing the history, (they each represent a commit)
@@ -69,7 +70,6 @@ void FileRepoStateLogger::loadState(FileRepoState* state)
 */
 void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
 {
-    QString line;
     QFile file(logFilePath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         Output::info(QString("Reading Logfile: ").append(logFilePath));
@@ -122,13 +122,11 @@ void FileRepoStateLogger::writeLogFile()
             dir.mkdir(m_logsDir);
         }
         // first get the hash of the logfile
-        QByteArray log_data = m_logLines.join("\n").toUtf8();
-        QByteArray hash = QCryptographicHash::hash(log_data, QCryptographicHash::Sha1);
-
-        QFile file(m_logsDir+"/"+QDateTime::currentDateTime().toString(Qt::ISODate)+"_"+QString(hash)+".log");
+        QString timestamp = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
+        QFile file(m_logsDir+"/"+timestamp+".log");
         if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
             QTextStream out(&file);
-            out << log_data;
+            out << m_logLines.join("\n") << endl;
             Output::info(QString::number(m_logLines.size()).append(" lines appended to logfile"));
             file.close();
             m_logLines.empty();

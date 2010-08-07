@@ -3,8 +3,9 @@
 #include "filerepo.h"
 class StorageFileRepo : public FileRepo
 {
+    Q_OBJECT
 public:
-    StorageFileRepo();
+    StorageFileRepo(QObject* parent = 0);
 };
 
 #endif // STORAGEFILEREPO_H

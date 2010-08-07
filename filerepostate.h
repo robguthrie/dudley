@@ -9,12 +9,13 @@
 
 class FileRepoStateLogger;
 
-class FileRepoState
+class FileRepoState : public QObject
 {
+    Q_OBJECT
 public:
-    FileRepoState();
+    FileRepoState(QObject* parent = 0);
     ~FileRepoState();
-    FileRepoState(QString logs_dir);
+    FileRepoState(QObject* parent, QString logs_dir);
     void logChanges(FileRepoStateLogger* logger);
     void stopLoggingChanges();
     FileRepoStateLogger* logger();

@@ -2,12 +2,14 @@
 #define FILEREPO_H
 
 #include "filerepostate.h"
+#include <QObject>
 
-class FileRepo
+class FileRepo : public QObject
 {
+    Q_OBJECT
 public:
 
-    FileRepo();
+    FileRepo(QObject *parent = 0);
 
     // update the given state object to represent the current repo state
     virtual bool isReady() = 0;

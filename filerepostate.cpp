@@ -10,14 +10,16 @@
 #include "filerepostatelogger.h"
 #include "output.h"
 
-FileRepoState::FileRepoState()
+FileRepoState::FileRepoState(QObject* parent)
+    :QObject(parent)
 {
     m_logger = 0;
 }
 
-FileRepoState::FileRepoState(QString logs_dir)
+FileRepoState::FileRepoState(QObject* parent, QString logs_dir)
+    :QObject(parent)
 {
-    m_logger = new FileRepoStateLogger(logs_dir);
+    m_logger = new FileRepoStateLogger(this, logs_dir);
     if (m_logger->isReady()){
         m_logger->loadState(this);
     }else{
