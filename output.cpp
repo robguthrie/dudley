@@ -1,28 +1,32 @@
 #include "output.h"
 
-
 void Output::debug(QString token)
 {
-    if (show_debug)
-    std::cout << "d: " << qPrintable(token) << std::endl;
+    output("debug", token);
 }
 
 void Output::error(QString token)
 {
-    std::cout << "error: " << qPrintable(token) << std::endl;
+    output("error", token);
 }
 void Output::info(QString token)
 {
-    std::cout << "i: " << qPrintable(token) << std::endl;
+    output("i", token);
 }
 
 void Output::warning(QString token)
 {
-    std::cout << "warning: " << qPrintable(token) << std::endl;
+    output("warning", token);
 }
 
 void Output::verbose(QString token)
 {
-    if (show_verbose)
-    std::cout << "v: " << qPrintable(token) << std::endl;
+    if (show_verbose) output("v", token);
+}
+
+void Output::output(QString prefix, QString message)
+{
+    if (outputTextEdit) outputTextEdit->appendPlainText(message.append("\n"));
+    std::cout << qPrintable(prefix) << ": " << qPrintable(message) << std::endl;
+    std::cout.flush();
 }

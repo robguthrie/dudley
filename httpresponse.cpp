@@ -1,0 +1,28 @@
+#include "httpresponse.h"
+
+HttpResponse::HttpResponse()
+: m_contentType("text/html") { }
+
+void HttpResponse::setContentType(QString contentType)
+{
+    m_contentType = QByteArray(contentType.toAscii());
+}
+
+void HttpResponse::setContentLength(quint64 size)
+{
+    m_contentLength = QByteArray::number(size);
+}
+
+QByteArray HttpResponse::header()
+{
+    time_t currentTime = time(0);
+
+    QByteArray text;
+    text += QByteArray("HTTP/1.1 200 OK \r\n");
+    text += QByteArray("Date: ") + QByteArray(asctime(gmtime(&currentTime))) + QByteArray("")
+    + QByteArray("Content-Type: " + m_contentType + " \r\n")
+    + QByteArray("Content-Length: " + m_contentLength  + "\r\n");
+
+    text+= QByteArray("\r\n");
+    return text;
+}

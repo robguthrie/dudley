@@ -25,7 +25,8 @@ public:
     void logModifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void logRemoveFile(QString file_path);
     void logRenameFile(QString file_path, QString new_file_path);
-
+    QStringList commitList();
+    QByteArray commit(QString name);
 private:
 
     QString m_logsDir;

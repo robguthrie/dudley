@@ -2,7 +2,8 @@
 # Project created by QtCreator 2010-03-01T13:29:30
 # -------------------------------------------------
 QT += gui \
-    network
+    network \
+    xml
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle
@@ -16,7 +17,12 @@ SOURCES += main.cpp \
     storagefilerepo.cpp \
     output.cpp \
     server.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    repodialog.cpp \
+    repotablemodel.cpp \
+    httprequest.cpp \
+    httpresponse.cpp \
+    mime/freedesktopmime.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -25,7 +31,17 @@ HEADERS += fileinfo.h \
     storagefilerepo.h \
     output.h \
     server.h \
-    mainwindow.h
+    mainwindow.h \
+    repodialog.h \
+    repotablemodel.h \
+    httprequest.h \
+    httpresponse.h \
+    mime/freedesktopmime.h
 
 # filerepomanager.h
-FORMS += mainwindow.ui
+FORMS += mainwindow.ui \
+    repodialog.ui
+OTHER_FILES += 
+RESOURCES += icon.qrc \
+    mime\freedesktopmime.qrc \
+    mime/freedesktopmime.qrc

@@ -1,3 +1,8 @@
+.dudley dir
+    where we keep config
+    instance.ini - settings to identify this instance
+    repo.ini - global settings, shared amoung all the repos as they sync?
+
 dudley http server
  index dirs and send files , nothing special for history logs
 

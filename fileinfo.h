@@ -21,6 +21,7 @@ public:
     QString fingerPrint();
     QString filePath();
     QString toString();
+    QString mimeType();
     qint64 size();
     void rename(QString newFilePath);
 

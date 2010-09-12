@@ -5,7 +5,7 @@
 #include <QFile>
 #include <QIODevice>
 #include <QDebug>
-
+#include "mime/freedesktopmime.h"
 FileInfo::FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
     m_filePath = filePath;
@@ -72,4 +72,10 @@ QString FileInfo::toString()
     QStringList list;
     list << m_sha1 << QString::number(m_sizeInBytes) << m_filePath;
     return list.join(",");
+}
+
+QString FileInfo::mimeType()
+{
+    QFreeDesktopMime mime;
+    return mime.fromFileName(filePath());
 }

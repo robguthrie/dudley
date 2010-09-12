@@ -22,6 +22,22 @@ bool FileRepoStateLogger::isReady() const
     QDir dir;
     return dir.exists(m_logsDir);
 }
+QStringList FileRepoStateLogger::commitList()
+{
+    QDir dir(m_logsDir);
+    return dir.entryList(QDir::Files | QDir::Readable, QDir::Name);
+}
+QByteArray FileRepoStateLogger::commit(QString name)
+{
+    if (QFile::exists(m_logsDir+"/"+name)){
+        QFile file(m_logsDir+"/"+name);
+        file.open(QIODevice::ReadOnly);
+        return file.readAll();
+    }else{
+        Output::debug("file not found: "+m_logsDir+"/"+name);
+        return QByteArray();
+    }
+}
 
 QString FileRepoStateLogger::logsDir() const
 {

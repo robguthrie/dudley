@@ -2,30 +2,83 @@
 #include "ui_mainwindow.h"
 #include <QtGui>
 #include <QtNetwork>
+#include "output.h"
+#include "workingfilerepo.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-
-    if (!server.listen()){
+    ui->setupUi(this);
+    repoTableModel = new RepoTableModel();
+    server = new Server(repoTableModel, this);
+    if (!server->listen(QHostAddress::Any, 54573)){
         QMessageBox::critical(this, tr("Dudley Server"),
-                              tr("Dudley unable to start server: %1.").arg(server.errorString()));
+                              tr("Dudley unable to start server: %1.").arg(server->errorString()));
         close();
         return;
     }
 
 
-    ui->setupUi(this);
+    addRepo("/home/rob/pics", "pics");
+    addRepo("/home/rob/music", "music");
+    ui->repoTableView->setModel(repoTableModel);
     setWindowTitle(tr("Dudley Server"));
-
-    ui->statusLabel->setText(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
-                         .arg(bestIpAddress()).arg(server.serverPort()));
+    connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
+    Output::outputTextEdit = ui->outputTextEdit;
+    Output::info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
+                         .arg(bestIpAddress()).arg(server->serverPort()));
+    trayIcon = new QSystemTrayIcon(QIcon(":/icons/dino1.png"), this);
+    trayIcon->show();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::addRepoButtonPressed()
+{
+    RepoDialog *repoDialog = new RepoDialog(this);
+
+//    connect(repoDialog, SIGNAL(newSettings(QString)), this, SLOT(addRepo(QString)));
+    if (repoDialog->exec()){
+        Output::debug("hellooo? returned from addRepoDialog");
+        addRepo(repoDialog->path(), repoDialog->name());
+    }
+}
+bool MainWindow::addRepo(QString path, QString name)
+{
+    // opena file repo on this path.. store it in repoList
+//    FileRepo* repo = new WorkingFileRepo(this, path, name);
+
+
+    WorkingFileRepo* repo = new WorkingFileRepo(this, path, name);
+    // check to see if the repo is initialized
+    if (!repo->isReady()){
+        // it is not ready.. try to initialized
+        if (!repo->initialize())
+            return false;
+    }
+    repoTableModel->insertRepo(repo);
+    return true;
+}
+
+void MainWindow::removeRepoButtonPressed()
+{
+
+}
+
+
+
+void MainWindow::removeRepo(FileRepo* repo)
+{
+    //
+//    // opena file repo on this path.. store it in repoList
+//    WorkingFileRepo* repo = new WorkingFileRepo(this, path, name);
+//
+//    if (repo->initialize())
+//        repoTableModel->insertRepo(repo);
 }
 
 QString MainWindow::bestIpAddress()

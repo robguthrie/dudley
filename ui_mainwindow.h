@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Tue Jul 20 13:23:27 2010
+** Created: Tue Sep 7 23:33:24 2010
 **      by: Qt User Interface Compiler version 4.6.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -16,10 +16,14 @@
 #include <QtGui/QButtonGroup>
 #include <QtGui/QHBoxLayout>
 #include <QtGui/QHeaderView>
-#include <QtGui/QLabel>
 #include <QtGui/QMainWindow>
 #include <QtGui/QMenuBar>
+#include <QtGui/QPlainTextEdit>
+#include <QtGui/QPushButton>
 #include <QtGui/QStatusBar>
+#include <QtGui/QTabWidget>
+#include <QtGui/QTableView>
+#include <QtGui/QVBoxLayout>
 #include <QtGui/QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -28,8 +32,17 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralwidget;
+    QVBoxLayout *verticalLayout;
+    QTabWidget *tabWidget;
+    QWidget *tab;
+    QVBoxLayout *verticalLayout_2;
+    QPlainTextEdit *outputTextEdit;
+    QWidget *tab_2;
+    QVBoxLayout *verticalLayout_3;
     QHBoxLayout *horizontalLayout;
-    QLabel *statusLabel;
+    QPushButton *addRepoButton;
+    QPushButton *removeRepoButton;
+    QTableView *repoTableView;
     QMenuBar *menubar;
     QStatusBar *statusbar;
 
@@ -40,17 +53,53 @@ public:
         MainWindow->resize(320, 240);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName(QString::fromUtf8("centralwidget"));
-        horizontalLayout = new QHBoxLayout(centralwidget);
-        horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
-        statusLabel = new QLabel(centralwidget);
-        statusLabel->setObjectName(QString::fromUtf8("statusLabel"));
+        verticalLayout = new QVBoxLayout(centralwidget);
+        verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
+        tabWidget = new QTabWidget(centralwidget);
+        tabWidget->setObjectName(QString::fromUtf8("tabWidget"));
+        tab = new QWidget();
+        tab->setObjectName(QString::fromUtf8("tab"));
+        verticalLayout_2 = new QVBoxLayout(tab);
+        verticalLayout_2->setObjectName(QString::fromUtf8("verticalLayout_2"));
+        outputTextEdit = new QPlainTextEdit(tab);
+        outputTextEdit->setObjectName(QString::fromUtf8("outputTextEdit"));
+        outputTextEdit->setReadOnly(true);
 
-        horizontalLayout->addWidget(statusLabel);
+        verticalLayout_2->addWidget(outputTextEdit);
+
+        tabWidget->addTab(tab, QString());
+        tab_2 = new QWidget();
+        tab_2->setObjectName(QString::fromUtf8("tab_2"));
+        verticalLayout_3 = new QVBoxLayout(tab_2);
+        verticalLayout_3->setObjectName(QString::fromUtf8("verticalLayout_3"));
+        horizontalLayout = new QHBoxLayout();
+        horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
+        addRepoButton = new QPushButton(tab_2);
+        addRepoButton->setObjectName(QString::fromUtf8("addRepoButton"));
+
+        horizontalLayout->addWidget(addRepoButton);
+
+        removeRepoButton = new QPushButton(tab_2);
+        removeRepoButton->setObjectName(QString::fromUtf8("removeRepoButton"));
+
+        horizontalLayout->addWidget(removeRepoButton);
+
+
+        verticalLayout_3->addLayout(horizontalLayout);
+
+        repoTableView = new QTableView(tab_2);
+        repoTableView->setObjectName(QString::fromUtf8("repoTableView"));
+
+        verticalLayout_3->addWidget(repoTableView);
+
+        tabWidget->addTab(tab_2, QString());
+
+        verticalLayout->addWidget(tabWidget);
 
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName(QString::fromUtf8("menubar"));
-        menubar->setGeometry(QRect(0, 0, 320, 23));
+        menubar->setGeometry(QRect(0, 0, 320, 25));
         MainWindow->setMenuBar(menubar);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName(QString::fromUtf8("statusbar"));
@@ -58,13 +107,19 @@ public:
 
         retranslateUi(MainWindow);
 
+        tabWidget->setCurrentIndex(1);
+
+
         QMetaObject::connectSlotsByName(MainWindow);
     } // setupUi
 
     void retranslateUi(QMainWindow *MainWindow)
     {
         MainWindow->setWindowTitle(QApplication::translate("MainWindow", "MainWindow", 0, QApplication::UnicodeUTF8));
-        statusLabel->setText(QApplication::translate("MainWindow", "No status defined", 0, QApplication::UnicodeUTF8));
+        tabWidget->setTabText(tabWidget->indexOf(tab), QApplication::translate("MainWindow", "Log", 0, QApplication::UnicodeUTF8));
+        addRepoButton->setText(QApplication::translate("MainWindow", "Add", 0, QApplication::UnicodeUTF8));
+        removeRepoButton->setText(QApplication::translate("MainWindow", "Remove", 0, QApplication::UnicodeUTF8));
+        tabWidget->setTabText(tabWidget->indexOf(tab_2), QApplication::translate("MainWindow", "Repos", 0, QApplication::UnicodeUTF8));
     } // retranslateUi
 
 };

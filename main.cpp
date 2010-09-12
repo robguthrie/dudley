@@ -15,20 +15,30 @@
 #include "mainwindow.h"
 
 // my master backup is on the internet
-
+QPlainTextEdit *Output::outputTextEdit = 0;
 int main(int argc, char *argv[])
 {
     QStringList params;
     for(int i = 1; i < argc; ++i) params << argv[i];
 
     if (params.size() == 0){
-        // gui mode here
-        Output::error("default action undefined right now");
-        Output::info("try dudley repo");
+        // really gui mode
+        // within the mainwindow..
+        // want to load the user system wide settings
+        // get a list of repos and populate it
+        // enable the server to use the repos and serve indexes and files
+        QApplication app(argc, argv);
+        QApplication::setOrganizationName("Dinotech");
+        QApplication::setOrganizationDomain("dinotech.co.nz");
+        QApplication::setApplicationName("Dudley");
+        MainWindow mainWindow;
+        mainWindow.show();
+        qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+        return app.exec();
     }else if (params[0] == "repo"){
         QString collection_path = QDir::currentPath();
         // open working filerepo at our location
-        WorkingFileRepo *repo = new WorkingFileRepo(0, collection_path);
+        WorkingFileRepo *repo = new WorkingFileRepo(0, collection_path, "commandline");
 
         if ((params.size() > 1) && (params[1] == "init")){
             if (repo->initialize()){
@@ -52,19 +62,7 @@ int main(int argc, char *argv[])
         }
         //print any pending changes to the repo history
     }else if (params[0] == "server"){
-        // really gui mode
-        // within the mainwindow..
-        // want to load the user system wide settings
-        // get a list of repos and populate it
-        // enable the server to use the repos and serve indexes and files
-        QApplication app(argc, argv);
-        QApplication::setOrganizationName("Dinotech");
-        QApplication::setOrganizationDomain("dinotech.co.nz");
-        QApplication::setApplicationName("Dudley");
-        MainWindow mainWindow;
-        mainWindow.show();
-        qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
-        return app.exec();
+
     }
     return 0;
 }

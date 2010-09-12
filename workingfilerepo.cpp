@@ -3,12 +3,13 @@
 #include <QDir>
 #include "output.h"
 
-WorkingFileRepo::WorkingFileRepo(QObject *parent, QString path)
-    :FileRepo(parent)
+WorkingFileRepo::WorkingFileRepo(QObject *parent, QString path, QString name)
+    :FileRepo(parent, name)
 {
     m_path = path;
     config_path = m_path + "/.dudley";
     // the m_state now is logging changes into the logger
+    Output::info("constructed workingfilerepo on path: "+path);
     m_state = new FileRepoState(this, config_path+"/logs");
 }
 
@@ -149,6 +150,11 @@ bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
     // i dont get why?
     //    return m_state->containsFileInfo(fileInfo);
     return QFile::exists ( m_path +"/"+ fileInfo.filePath());
+}
+
+QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo) const
+{
+    return new QFile(m_path +"/"+ fileInfo->filePath());
 }
 
 // private functions
