@@ -35,6 +35,9 @@ public:
     bool renameFile(QString filePath, QString newFilePath);
 
     // query
+    QList<FileInfo*> filesInDir(QString path);
+    QStringList subDirs(QString path);
+//    QHash<QString, FileInfo*> findFiles(QString query = "");
     QHash<QString, FileInfo*> knownFiles(QStringList found_files);
     QHash<QString, FileInfo*> missingFiles(QStringList found_files);
     QStringList missingFilePaths(QStringList found_files);

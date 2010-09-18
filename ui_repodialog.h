@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'repodialog.ui'
 **
-** Created: Tue Sep 7 23:33:24 2010
+** Created: Thu Sep 16 15:56:32 2010
 **      by: Qt User Interface Compiler version 4.6.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -35,7 +35,7 @@ public:
     QLabel *label_3;
     QFormLayout *formLayout;
     QLabel *label_4;
-    QComboBox *comboBox;
+    QComboBox *typeComboBox;
     QLabel *label;
     QHBoxLayout *horizontalLayout;
     QLineEdit *localPathLineEdit;
@@ -64,10 +64,10 @@ public:
 
         formLayout->setWidget(0, QFormLayout::LabelRole, label_4);
 
-        comboBox = new QComboBox(RepoDialog);
-        comboBox->setObjectName(QString::fromUtf8("comboBox"));
+        typeComboBox = new QComboBox(RepoDialog);
+        typeComboBox->setObjectName(QString::fromUtf8("typeComboBox"));
 
-        formLayout->setWidget(0, QFormLayout::FieldRole, comboBox);
+        formLayout->setWidget(0, QFormLayout::FieldRole, typeComboBox);
 
         label = new QLabel(RepoDialog);
         label->setObjectName(QString::fromUtf8("label"));
@@ -126,12 +126,11 @@ public:
         RepoDialog->setWindowTitle(QApplication::translate("RepoDialog", "Dialog", 0, QApplication::UnicodeUTF8));
         label_3->setText(QApplication::translate("RepoDialog", "Add Repo", 0, QApplication::UnicodeUTF8));
         label_4->setText(QApplication::translate("RepoDialog", "Type", 0, QApplication::UnicodeUTF8));
-        comboBox->clear();
-        comboBox->insertItems(0, QStringList()
-         << QApplication::translate("RepoDialog", "LocalFileRepo", 0, QApplication::UnicodeUTF8)
-         << QApplication::translate("RepoDialog", "voidFileRepo", 0, QApplication::UnicodeUTF8)
+        typeComboBox->clear();
+        typeComboBox->insertItems(0, QStringList()
+         << QApplication::translate("RepoDialog", "WorkingFileRepo", 0, QApplication::UnicodeUTF8)
+         << QApplication::translate("RepoDialog", "HttpClientFileRepo", 0, QApplication::UnicodeUTF8)
          << QApplication::translate("RepoDialog", "s3FileRepo", 0, QApplication::UnicodeUTF8)
-         << QApplication::translate("RepoDialog", "httpFileRepo", 0, QApplication::UnicodeUTF8)
         );
         label->setText(QApplication::translate("RepoDialog", "Path", 0, QApplication::UnicodeUTF8));
         selectDirectoryToolButton->setText(QApplication::translate("RepoDialog", "...", 0, QApplication::UnicodeUTF8));

@@ -4,43 +4,14 @@
 #include "output.h"
 
 WorkingFileRepo::WorkingFileRepo(QObject *parent, QString path, QString name)
-    :FileRepo(parent, name)
+    :FileRepo(parent, path, name)
 {
-    m_path = path;
-    config_path = m_path + "/.dudley";
-    // the m_state now is logging changes into the logger
-    Output::info("constructed workingfilerepo on path: "+path);
-    m_state = new FileRepoState(this, config_path+"/logs");
+    m_log_path = m_path + "/.dudley/logs";
+    m_state = new FileRepoState(this, m_log_path);
 }
 
-FileRepoState* WorkingFileRepo::state()
-{
-    return m_state;
-}
 
-bool WorkingFileRepo::isReady()
-{
-    return canOpenWorkingDirectory() && this->m_state->logger()->isReady();
-}
-
-bool WorkingFileRepo::initialize()
-{
-    if (this->canOpenWorkingDirectory()){
-        // TODO: touch files for ignore_list, repo_id
-        // prehaps leave a little readme to explain what this stuff is
-        // initialize the history log
-        if (m_state->logger()->initialize()){
-            return true;
-        }else{
-            Output::error("Cannot initialize history logger");
-        }
-    }else{
-        Output::error(QString("Can't open working directory").append(m_path));
-    }
-    return false;
-}
-
-bool WorkingFileRepo::canOpenWorkingDirectory() const
+bool WorkingFileRepo::canReadData() const
 {
     QDir dir;
     return dir.exists(m_path);
@@ -48,16 +19,11 @@ bool WorkingFileRepo::canOpenWorkingDirectory() const
 
 QString WorkingFileRepo::type()
 {
-    return QString("workingfilerepo");
-}
-
-QString WorkingFileRepo::path()
-{
-    return m_path;
+    return QString("WorkingFileRepo");
 }
 
 /*
-    currentState updates the m_state object to represent the current state
+    updateState updates the m_state object to represent the current state
 
     first, determine missing files
     then split found files (ie: the whole list) into known and unknown files
@@ -122,26 +88,6 @@ void WorkingFileRepo::updateState()
     // deleted sweep
     foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
 }
-
-//void WorkingFileRepo::addFile(QIODevice *sourceFile, FileInfo fileInfo)
-//{
-//    // why do i get a fileinfo here?
-//    if (sourceFile->isReadable()){
-//        // as we store files by their filePath in a working filerepo...
-//        // create a new file and copy the bytes into it.
-//        sourceFile->
-//    }
-//}
-
-//bool WorkingFileRepo::deleteFile(FileInfo fileInfo)
-//{
-//    return false;
-//}
-//
-//bool WorkingFileRepo::renameFile(FileInfo fileInfo, QString newFileName)
-//{
-//    return false;
-//}
 
 bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
 {

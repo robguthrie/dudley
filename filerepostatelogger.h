@@ -27,6 +27,7 @@ public:
     void logRenameFile(QString file_path, QString new_file_path);
     QStringList commitList();
     QByteArray commit(QString name);
+    bool hasCommit(QString name);
 private:
 
     QString m_logsDir;

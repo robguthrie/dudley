@@ -20,8 +20,10 @@ public:
     QDateTime lastModified();
     QString fingerPrint();
     QString filePath();
+    QString fileName();
     QString toString();
     QString mimeType();
+    QString humanSize();
     qint64 size();
     void rename(QString newFilePath);
 

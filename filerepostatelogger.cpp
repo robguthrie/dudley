@@ -14,6 +14,7 @@ FileRepoStateLogger::FileRepoStateLogger(QObject* parent, QString logsDir)
 bool FileRepoStateLogger::initialize()
 {
     QDir dir;
+    Output::debug(QString("creating log dir: %1").arg(m_logsDir));
     return dir.mkpath(m_logsDir);
 }
 
@@ -27,9 +28,14 @@ QStringList FileRepoStateLogger::commitList()
     QDir dir(m_logsDir);
     return dir.entryList(QDir::Files | QDir::Readable, QDir::Name);
 }
+bool FileRepoStateLogger::hasCommit(QString name)
+{
+    return QFile::exists(m_logsDir+"/"+name);
+}
+
 QByteArray FileRepoStateLogger::commit(QString name)
 {
-    if (QFile::exists(m_logsDir+"/"+name)){
+    if (hasCommit(name)){
         QFile file(m_logsDir+"/"+name);
         file.open(QIODevice::ReadOnly);
         return file.readAll();

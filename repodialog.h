@@ -14,6 +14,7 @@ public:
     ~RepoDialog();
     QString path();
     QString name();
+    QString type();
 signals:
     void newSettings(QString path);
 

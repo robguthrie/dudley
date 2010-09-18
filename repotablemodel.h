@@ -18,16 +18,18 @@ public:
                         Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const;
     bool insertRepo(FileRepo* repo);
+    bool addRepo(QString type, QString path, QString name);
     bool hasRepo(QString name);
     FileRepo* repo(QString name);
 
-private:
-//    QStringList repoStringList;
-    static QStringList columns;
+    QStringList repoNames();
+    QList<FileRepo*>* repoList();
+    void writeSettings(QSettings* s);
+    void readSettings(QSettings* s);
 
-    // these should be kept synced
-    QList<FileRepo*> repoList;
-    QHash<QString, FileRepo*> repoHash;
+private:
+    static QStringList columns;
+    QList<FileRepo*> m_repoList;
 
 };
 

@@ -7,7 +7,7 @@
 #include "repodialog.h"
 #include "repotablemodel.h"
 #include "filerepo.h"
-
+#include <QSettings>
 namespace Ui {
     class MainWindow;
 }
@@ -24,15 +24,18 @@ protected:
 private slots:
     void removeRepoButtonPressed();
     void addRepoButtonPressed();
-    bool addRepo(QString path, QString name = "noname existing repo");
+    bool addRepo(QString type, QString path, QString name);
     void removeRepo(FileRepo* repo);
+
 private:
     Ui::MainWindow *ui;
     Server* server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
     RepoTableModel *repoTableModel;
-
+    QSettings m_settings;
+    void writeSettings();
+    void readSettings();
 };
 
 #endif // MAINWINDOW_H

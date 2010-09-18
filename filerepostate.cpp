@@ -210,3 +210,52 @@ QStringList FileRepoState::unknownFilePaths(QStringList found_files)
     }
     return unknown_file_paths;
 }
+
+QStringList FileRepoState::subDirs(QString path)
+{
+    QStringList keys = m_files.keys();
+    QStringList sub_dirs;
+    foreach(QString key, keys){
+        // match any key beginning with path followed by /subdirname/morestuff
+        QString rx_str;
+        if (path.length() == 0){
+            rx_str = QString("([^/?*:;{}\\\\]+)/(.*)");
+        }else{
+            rx_str = QString("%1/([^/?*:;{}\\\\]+)/(.*)").arg(QRegExp::escape(path));
+        }
+        QRegExp subdirs_rx = QRegExp(rx_str);
+        if (subdirs_rx.exactMatch(key)){
+            sub_dirs << subdirs_rx.cap(1);
+            Output::debug(subdirs_rx.capturedTexts().join(","));
+        }
+    }
+    sub_dirs.removeDuplicates();
+    return sub_dirs;
+}
+
+QList<FileInfo*> FileRepoState::filesInDir(QString path)
+{
+    Output::debug("given path:"+path);
+    QHash<QString, FileInfo*>::const_iterator i;
+    QList<FileInfo*> matches;
+    for(i = m_files.begin(); i != m_files.end(); ++i){
+        QRegExp files_in_dir_rx = QRegExp(QString("^%1/([^/?*\\\\]+)").arg(QRegExp::escape(path)));
+        if (files_in_dir_rx.exactMatch(i.key())){
+            matches << i.value();
+        }
+    }
+
+    return matches;
+}
+
+//QHash<QString, FileInfo*> FileRepoState::findFiles(QString query)
+//{
+//    QHash<QString, FileInfo*>::const_iterator i;
+//    QHash<QString, FileInfo*> matches;
+//    for (i = m_files.begin(); i != m_files.end(); ++i){
+//        if (i.key().startsWith(query)){
+//            matches.insert(i.key(), i.value());
+//        }
+//    }
+//    return matches;
+//}

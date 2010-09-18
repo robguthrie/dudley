@@ -1,11 +1,11 @@
 #include "httpresponse.h"
 
 HttpResponse::HttpResponse()
-: m_contentType("text/html") { }
+: m_contentType("text/html; charset=utf-8") { }
 
 void HttpResponse::setContentType(QString contentType)
 {
-    m_contentType = QByteArray(contentType.toAscii());
+    m_contentType = QByteArray(contentType.toUtf8());
 }
 
 void HttpResponse::setContentLength(quint64 size)

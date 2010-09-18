@@ -25,6 +25,11 @@ QString RepoDialog::name()
     return ui->nameLineEdit->text();
 }
 
+QString RepoDialog::type()
+{
+    return ui->typeComboBox->currentText();
+}
+
 //void RepoDialog::emitSettings()
 //{
 //    emit newSettings(ui->localPathLineEdit->text());

@@ -4,6 +4,7 @@
 #include <QtNetwork>
 #include "output.h"
 #include "workingfilerepo.h"
+#include "httpclientfilerepo.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -18,10 +19,9 @@ MainWindow::MainWindow(QWidget *parent) :
         close();
         return;
     }
-
-
-    addRepo("/home/rob/pics", "pics");
-    addRepo("/home/rob/music", "music");
+//    addRepo("/home/rob/pics", "pics");
+//    addRepo("/home/rob/music", "music");
+    readSettings();
     ui->repoTableView->setModel(repoTableModel);
     setWindowTitle(tr("Dudley Server"));
     connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
@@ -30,11 +30,42 @@ MainWindow::MainWindow(QWidget *parent) :
                          .arg(bestIpAddress()).arg(server->serverPort()));
     trayIcon = new QSystemTrayIcon(QIcon(":/icons/dino1.png"), this);
     trayIcon->show();
+
+}
+
+void MainWindow::writeSettings()
+{
+    m_settings.beginGroup("repos");
+    foreach(FileRepo* repo, *repoTableModel->repoList()){
+        m_settings.beginGroup(repo->name());
+        m_settings.setValue("type", repo->type());
+        m_settings.setValue("path", repo->path());
+        m_settings.setValue("log_path", repo->log_path());
+        m_settings.endGroup();
+    }
+    m_settings.endGroup();
+}
+
+void MainWindow::readSettings()
+{
+    m_settings.beginGroup("repos");
+    foreach(QString repo_name, m_settings.childGroups()){
+        m_settings.beginGroup(repo_name);
+        QString type = m_settings.value("type").toString();
+        QString path = m_settings.value("path").toString();
+        QString log_path = m_settings.value("log_path").toString();
+        this->addRepo(type, path, repo_name);
+        m_settings.endGroup();
+    }
+    m_settings.endGroup();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete server;
+    writeSettings();
+    delete trayIcon;
 }
 
 void MainWindow::addRepoButtonPressed()
@@ -44,24 +75,29 @@ void MainWindow::addRepoButtonPressed()
 //    connect(repoDialog, SIGNAL(newSettings(QString)), this, SLOT(addRepo(QString)));
     if (repoDialog->exec()){
         Output::debug("hellooo? returned from addRepoDialog");
-        addRepo(repoDialog->path(), repoDialog->name());
+        addRepo(repoDialog->type(), repoDialog->path(), repoDialog->name());
     }
 }
-bool MainWindow::addRepo(QString path, QString name)
+
+bool MainWindow::addRepo(QString type, QString path, QString name)
 {
-    // opena file repo on this path.. store it in repoList
-//    FileRepo* repo = new WorkingFileRepo(this, path, name);
-
-
-    WorkingFileRepo* repo = new WorkingFileRepo(this, path, name);
-    // check to see if the repo is initialized
-    if (!repo->isReady()){
-        // it is not ready.. try to initialized
-        if (!repo->initialize())
-            return false;
+    FileRepo* repo;
+    Output::info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
+    if (type == "HttpClientFileRepo"){
+        Output::debug("opening httpclientfilerepo");
+        repo = new HttpClientFileRepo(this, path, name);
+    }else if(type == "WorkingFileRepo"){
+        Output::debug("opening workingfilerepo");
+        repo = new WorkingFileRepo(this, path, name);
     }
+
     repoTableModel->insertRepo(repo);
-    return true;
+
+    if (repo->isReady()){
+        return true;
+    }else{
+        return repo->initialize();
+    }
 }
 
 void MainWindow::removeRepoButtonPressed()

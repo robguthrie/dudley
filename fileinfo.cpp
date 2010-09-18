@@ -61,6 +61,29 @@ QString FileInfo::filePath()
     return m_filePath;
 }
 
+QString FileInfo::fileName()
+{
+    QFileInfo fi(m_filePath);
+    return fi.fileName();
+}
+
+QString FileInfo::humanSize()
+{
+    float num = (float)this->size();
+    QStringList list;
+    list << "KB" << "MB" << "GB" << "TB";
+
+    QStringListIterator i(list);
+    QString unit("bytes");
+
+    while(num >= 1024.0 && i.hasNext())
+     {
+        unit = i.next();
+        num /= 1024.0;
+    }
+    return QString().setNum(num,'f',2)+" "+unit;
+}
+
 qint64 FileInfo::size()
 {
     return m_sizeInBytes;

@@ -1,22 +1,19 @@
 #include "repotablemodel.h"
 #include <QStringList>
 #include "output.h"
-#include "workingfilerepo.h"
 
 QStringList RepoTableModel::columns = QString("Name Path Items Size").split(' ');
 
 RepoTableModel::RepoTableModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
-////    QList<FileRepo*> repoList;
-////    std::cout << "repolist size: " << repoList.size();
-//    repoStringList = QString("heloo you").split(" ");
-//    std::cout << "repostringlist size: " << repoStringList.size();
+
 }
+
 int RepoTableModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return repoList.size();
+    return m_repoList.size();
 }
 
 int RepoTableModel::columnCount(const QModelIndex &parent) const
@@ -30,7 +27,7 @@ QVariant RepoTableModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    if (FileRepo *repo = repoList.at(index.row())){
+    if (FileRepo *repo = m_repoList.at(index.row())){
         if (role == Qt::DisplayRole){
             switch(index.column()){
             case 0:
@@ -77,28 +74,39 @@ QVariant RepoTableModel::headerData(int section, Qt::Orientation orientation, in
 
 bool RepoTableModel::insertRepo(FileRepo* repo)
 {
-    Output::info("start of insertRepo");
-    std::cout << "repolist size: " << rowCount();
-
-    Output::info("start of insertRepo2");
     beginInsertRows(QModelIndex(), 0, 0);
-    repoList.append(repo);
-    repoHash.insert(repo->name(), repo);
+    m_repoList.append(repo);
     endInsertRows();
-
-    Output::info("got herereere33333");
-//    Output::info("added repo: "+repo->name());
-//    Output::info(QString("repoList.size(): ").append(QString::number(repoList.size())));
     return true;
 }
 
 bool RepoTableModel::hasRepo(QString name)
 {
-    return repoHash.contains(name);
+    return repoNames().contains(name);
 }
 
 FileRepo* RepoTableModel::repo(QString name)
 {
-     return repoHash.value(name);
+    for (int i =0; i < m_repoList.size(); i++){
+        if (m_repoList.at(i)->name() == name){
+            Output::debug("RepoTableModel loading reponame: "+name);
+            return m_repoList.at(i);
+        }
+    }
+    return 0;
+}
+
+QStringList RepoTableModel::repoNames()
+{
+    QStringList names;
+    for (int i =0; i < m_repoList.size(); i++){
+        names << m_repoList.at(i)->name();
+    }
+    return names;
+}
+
+QList<FileRepo*>* RepoTableModel::repoList()
+{
+    return &m_repoList;
 }
 
