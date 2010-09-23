@@ -23,7 +23,8 @@ SOURCES += main.cpp \
     httprequest.cpp \
     httpresponse.cpp \
     mime/freedesktopmime.cpp \
-    httpclientfilerepo.cpp
+    httpclientfilerepo.cpp \
+    filetransfer.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -38,7 +39,8 @@ HEADERS += fileinfo.h \
     httprequest.h \
     httpresponse.h \
     mime/freedesktopmime.h \
-    httpclientfilerepo.h
+    httpclientfilerepo.h \
+    filetransfer.h
 
 # filerepomanager.h
 FORMS += mainwindow.ui \

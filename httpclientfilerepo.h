@@ -3,6 +3,9 @@
 
 #include "filerepostate.h"
 #include "filerepo.h"
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 class HttpClientFileRepo : public FileRepo
 {
 public:
@@ -17,6 +20,7 @@ private:
     QString relativeFilePath(QString filePath);
     QString m_path;
     QString config_path;
+    QNetworkAccessManager m_manager;
 };
 
 #endif // HTTPCLIENTFILEREPO_H

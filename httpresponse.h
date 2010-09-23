@@ -6,13 +6,17 @@ class HttpResponse
 {
 public:
     HttpResponse();
-    void setContentType(QString contentType);
+    void setErrorMessage(QString message);
+    void setResponseCode(QByteArray code);
+    void setContentType(QByteArray contentType);
     void setContentLength(quint64 size);
     QByteArray header();
 
 private:
+    QByteArray m_responseCode;
     QByteArray m_contentType;
     QByteArray m_contentLength;
+    QByteArray m_errorMessage;
 };
 
 #endif // HTTPRESPONSE_H

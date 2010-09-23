@@ -14,8 +14,6 @@ public:
     FileRepo(QObject *parent = 0, QString path = "nopath", QString name = "noname");
     virtual QString type() = 0;
     virtual void updateState() = 0;
-    virtual bool hasFile(FileInfo fileInfo) const = 0;
-    virtual QIODevice* getFile(FileInfo* fileInfo) const = 0;
     virtual bool canReadData() const = 0;
     virtual QString path();
     virtual QString log_path();
@@ -29,6 +27,8 @@ public:
     virtual bool hasFileInfoByFingerPrint(QString finger_print) const;
     virtual FileInfo* fileInfoByFilePath(QString file_name) const;
     virtual FileInfo* fileInfoByFingerPrint(QString finger_print) const;
+    virtual bool hasFile(FileInfo fileInfo) const = 0;
+    virtual QIODevice* getFile(FileInfo* fileInfo) const = 0;
 
 protected:
     FileRepoState *m_state;

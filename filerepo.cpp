@@ -30,7 +30,6 @@ QString FileRepo::name()
 bool FileRepo::hasFileInfoByFilePath(QString file_name) const
 {
     return m_state->containsFilePath(file_name);
-
 }
 
 bool FileRepo::hasFileInfoByFingerPrint(QString finger_print) const
@@ -79,7 +78,7 @@ bool FileRepo::initialize()
             Output::error("Cannot initialize history logger");
         }
     }else{
-        Output::error(QString("Can't open working directory").append(m_path));
+        Output::error(QString("Can't read data: ").append(m_path));
     }
     return false;
 }

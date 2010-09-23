@@ -33,7 +33,7 @@ bool FileRepoStateLogger::hasCommit(QString name)
     return QFile::exists(m_logsDir+"/"+name);
 }
 
-QByteArray FileRepoStateLogger::commit(QString name)
+QByteArray FileRepoStateLogger::readCommit(QString name)
 {
     if (hasCommit(name)){
         QFile file(m_logsDir+"/"+name);
@@ -134,27 +134,37 @@ void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
     }
 }
 
+bool FileRepoStateLogger::commitChanges(){
+    if (m_logLines.size() > 0){
+        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
+        QString body = m_logLines.join("\n");
+        if (writeLogFile(commit_name, body)){
+            m_logLines.empty();
+            return true;
+        }
+    }
+    return false;
+}
+
 // flush the staged operations to a commit log file
 // should probably do the operation, fileInfo* to log line here..
-void FileRepoStateLogger::writeLogFile()
+bool FileRepoStateLogger::writeLogFile(QString commit_name, QString body)
 {
-    if (m_logLines.size() > 0){
-        if (!QFile::exists(m_logsDir)){
-            QDir dir;
-            dir.mkdir(m_logsDir);
-        }
-        // first get the hash of the logfile
-        QString timestamp = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
-        QFile file(m_logsDir+"/"+timestamp+".log");
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
-            QTextStream out(&file);
-            out << m_logLines.join("\n") << endl;
-            Output::info(QString::number(m_logLines.size()).append(" lines appended to logfile"));
-            file.close();
-            m_logLines.empty();
-        }else{
-            Output::error("could not open history.log for writing");
-        }
+    if (!QFile::exists(m_logsDir)){
+        Output::error("could not open log dir");
+        return false;
+    }
+    QString filename(m_logsDir+"/"+commit_name+".log");
+    QFile file(filename);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
+        QTextStream out(&file);
+        out << body;
+        Output::debug(QString::number(m_logLines.size()).append(" lines appended to logfile"));
+        file.close();
+        return true;
+    }else{
+        Output::error("could not write log: "+filename);
+        return false;
     }
 }
 

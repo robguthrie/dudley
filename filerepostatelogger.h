@@ -17,7 +17,8 @@ public:
 //    FileRepoState loadState();
     void loadState(FileRepoState* state);
     QString logsDir() const;
-    void writeLogFile();
+    bool commitChanges();
+    bool writeLogFile(QString commit_name, QByteArray body);
     void printLogFile();
     void logAddFile(FileInfo* fi);
     void logAddFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
@@ -26,7 +27,7 @@ public:
     void logRemoveFile(QString file_path);
     void logRenameFile(QString file_path, QString new_file_path);
     QStringList commitList();
-    QByteArray commit(QString name);
+    QByteArray readCommit(QString name);
     bool hasCommit(QString name);
 private:
 
