@@ -55,6 +55,7 @@ void Server::processReadyRead()
     QList<QRegExp> routes;
     routes << file_rx << history_rx << commit_rx << browse_rx << ping_rx;
     bool routed_request = false;
+    bool completed_request = true;
     foreach(QRegExp route, routes){
         if (route.exactMatch(uri_path)){
             QStringList tokens = route.capturedTexts();
@@ -68,27 +69,46 @@ void Server::processReadyRead()
                     Output::debug(repo_name+": file request: "+file_name);
                     if (repo->hasFileInfoByFingerPrint(fingerprint)){
                         FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
-                        QIODevice *file = repo->getFile(file_info);
-                        if (file->isOpen()){
-                            Output::debug(repo_name+": file is already open"+file_info->fileName());
+                        if (repo->trasnferMode() == "asyncronous"){
+                            // move the data as it comes in.
+                            QIODevice *file = repo->getFile(file_info);
+                            Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
+                            Output::debug("bytes total: "+QString::number(file_info->size()));
+                            if (file->bytesAvailable() < file_info->size()){
+                                completed_request = false;
+                                connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
+                            }else{
+                                body = file->readAll();
+                            }
                         }else{
-                            Output::debug(repo_name+": opening file: "+file_info->fileName());
-                            file->open(QIODevice::ReadOnly);
-                        }
-                        if (file->isReadable()){
-                            Output::debug("server: file is readable");
-                        }
+                            // syncronous.. just move the data very quickly.
+                            QIODevice *file = repo->getFile(file_info);
+                            if (file->isOpen()){
+                                Output::debug(repo_name+": file is already open"+file_info->fileName());
+                            }else{
+                                Output::debug(repo_name+": opening file: "+file_info->fileName());
+                                file->open(QIODevice::ReadOnly);
+                            }
+                            if (file->isReadable()){
+                                Output::debug("server: file is readable");
+                            }
 
-                        if (file->atEnd()){
-                            Output::debug("server: file is at end");
+                            if (file->atEnd()){
+                                Output::debug("server: file is at end");
+                            }
+                            if (!file->isOpen()){
+                                Output::debug(repo_name+" cant open response file:"+file_name);
+                                response.setResponseCode("503 Service Unavailable");
+                            }
+                            Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
+                            Output::debug("bytes total: "+QString::number(file_info->size()));
+                            if (file->bytesAvailable() < file_info->size()){
+                                completed_request = false;
+                                connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
+                            }else{
+                                body = file->readAll();
+                            }
                         }
-                        if (!file->isOpen()){
-                            Output::debug(repo_name+" cant open response file:"+file_name);
-                            response.setResponseCode("503 Service Unavailable");
-                        }
-                        Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
-                        file->waitForReadyRead(30*1000);
-                        body = file->readAll();
                     }else{
                         Output::debug(repo_name+" file not found:"+file_name);
                         response.setResponseCode("404 Not Found");
@@ -146,6 +166,13 @@ void Server::processReadyRead()
         response.setResponseCode("400 Bad Request");
     }
 
+    if (completed_request){
+        finishRequest(socket, response, body);
+    }
+}
+
+void Server::finishRequest(QTcpSocket* socket, HttpResponse response, QByteArray body)
+{
     QDataStream os(socket);
     response.setContentLength(body.size());
     QByteArray header = response.header();
