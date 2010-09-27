@@ -8,7 +8,7 @@ public:
     HttpResponse();
     void setErrorMessage(QString message);
     void setResponseCode(QByteArray code);
-    void setContentType(QByteArray contentType);
+    void setContentType(QString contentType);
     void setContentLength(quint64 size);
     QByteArray header();
 

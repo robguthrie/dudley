@@ -1,5 +1,5 @@
 #include "filetransfer.h"
 
-FileTransfer::FileTransfer()
+FileTransfer::FileTransfer(FileRepo* source_repo, FileRepo* dest_repo, FileInfo* fi)
 {
 }

@@ -98,7 +98,7 @@ bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
     return QFile::exists ( m_path +"/"+ fileInfo.filePath());
 }
 
-QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo) const
+QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo)
 {
     return new QFile(m_path +"/"+ fileInfo->filePath());
 }

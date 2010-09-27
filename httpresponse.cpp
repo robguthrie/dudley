@@ -1,7 +1,7 @@
 #include "httpresponse.h"
 
 HttpResponse::HttpResponse()
-: m_contentType("text/html; charset=utf-8"), m_responseCode("200 OK") { }
+: m_responseCode("200 OK"),m_contentType("text/html; charset=utf-8") { }
 
 void HttpResponse::setErrorMessage(QString message)
 {
@@ -12,9 +12,9 @@ void HttpResponse::setResponseCode(QByteArray code){
     m_responseCode = code;
 }
 
-void HttpResponse::setContentType(QByteArray contentType)
+void HttpResponse::setContentType(QString contentType)
 {
-    m_contentType = contentType;
+    m_contentType = QByteArray(contentType.toUtf8());
 }
 
 void HttpResponse::setContentLength(quint64 size)

@@ -19,10 +19,9 @@ MainWindow::MainWindow(QWidget *parent) :
         close();
         return;
     }
-//    addRepo("/home/rob/pics", "pics");
-//    addRepo("/home/rob/music", "music");
-    readSettings();
+
     ui->repoTableView->setModel(repoTableModel);
+    readSettings();
     setWindowTitle(tr("Dudley Server"));
     connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
     Output::outputTextEdit = ui->outputTextEdit;

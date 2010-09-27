@@ -5,11 +5,8 @@
 #include <QCryptographicHash>
 
 // logger is a file state history log
-FileRepoStateLogger::FileRepoStateLogger(QObject* parent, QString logsDir)
-    :QObject(parent)
-{
-    m_logsDir = logsDir;
-}
+FileRepoStateLogger::FileRepoStateLogger(QString logsDir)
+    :m_logsDir(logsDir) {}
 
 bool FileRepoStateLogger::initialize()
 {
@@ -23,64 +20,51 @@ bool FileRepoStateLogger::isReady() const
     QDir dir;
     return dir.exists(m_logsDir);
 }
-QStringList FileRepoStateLogger::commitList()
-{
-    QDir dir(m_logsDir);
-    return dir.entryList(QDir::Files | QDir::Readable, QDir::Name);
-}
-bool FileRepoStateLogger::hasCommit(QString name)
-{
-    return QFile::exists(m_logsDir+"/"+name);
-}
-
-QByteArray FileRepoStateLogger::readCommit(QString name)
-{
-    if (hasCommit(name)){
-        QFile file(m_logsDir+"/"+name);
-        file.open(QIODevice::ReadOnly);
-        return file.readAll();
-    }else{
-        Output::debug("file not found: "+m_logsDir+"/"+name);
-        return QByteArray();
-    }
-}
 
 QString FileRepoStateLogger::logsDir() const
 {
     return m_logsDir;
 }
 
-// given a state object.. play the list of file operations stored
-// across each log file representing the history, (they each represent a commit)
-// so that the state object represents the last
-// known state of the directory we track
-//FileRepoState* FileRepoStateLogger::loadState()
-//{
-//    // foreach .log file in the directory play it into the state
-//    FileRepoState* state = new FileRepoState(this);
-//    loadState(state);
-//    return state;
-//}
+QStringList FileRepoStateLogger::logNames()
+{
+    QDir dir(m_logsDir);
+    dir.setFilter(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
+    dir.setSorting(QDir::Name);
+    return dir.entryList();
+}
+
+bool FileRepoStateLogger::hasLogFile(QString name)
+{
+    return QFile::exists(logFilePath(name));
+}
 
 // given a state object.. play the list of file operations stored
 // across each log file representing the history, (they each represent a commit)
 // so that the state object represents the last
 // known state of the directory we track
-void FileRepoStateLogger::loadState(FileRepoState* state)
+void FileRepoStateLogger::playAllLogs(FileRepoState* state)
 {
-    // foreach .log file in the directory play it into the state
-    state->stopLoggingChanges();
-    QDir dir(m_logsDir);
-    dir.setFilter(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
-    dir.setSorting(QDir::Name);
-    QStringList list = dir.entryList();
-    for (int i = 0; i < list.size(); ++i) {
-        QString filename = list.at(i);
-        if (filename.endsWith(".log")) {
-            readLogFile(m_logsDir+"/"+filename, state);
-        }
+    QStringList log_names = logNames();
+    foreach(QString name, log_names){
+        playLogFile(name, state);
     }
-    state->logChanges(this);
+}
+
+QByteArray FileRepoStateLogger::openLog(QString name)
+{
+    if (hasLogFile(name)){
+        QFile file(logFilePath(name));
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            Output::debug("opening log file:"+logFilePath(name));
+           return file.readAll();
+        }else{
+            Output::error("could not open file:"+logFilePath(name));
+        }
+    }else{
+        Output::error("file not found: "+logFilePath(name));
+    }
+    return QByteArray();
 }
 
 /* open a logfile and read it. line by line. thus startign the process of
@@ -90,54 +74,74 @@ void FileRepoStateLogger::loadState(FileRepoState* state)
    the silent is to prevent this state building process to be the same as
    recording new state
 */
-void FileRepoStateLogger::readLogFile(QString logFilePath, FileRepoState* state)
+void FileRepoStateLogger::playLogFile(QString name, FileRepoState* state)
 {
-    QFile file(logFilePath);
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        Output::info(QString("Reading Logfile: ").append(logFilePath));
+    QTextStream in(openLog(name));
+    while (!in.atEnd()){
+        //  operation, filepath
+        //  add_file, filepath, mtime(ISO), size, sha1
+        //  remove_file, filepath
+        //  move_file, filepath, newfilepath
 
-        QTextStream in(&file);
-        while (!in.atEnd()){
-
-            //  operation, filepath
-            //  add_file, filepath, mtime(ISO), size, sha1
-            //  remove_file, filepath
-            //  move_file, filepath, newfilepath
-            QString line = in.readLine();
-            QStringList parts = line.split(',');
-            // we ignore the line timestamp.. it will be used later..
-            QString operation(parts[0].trimmed());
-            QString filePath = parts[1].trimmed().replace("DUDLEYCOMMA", ",");
-
-            if ((operation == "add_file") || (operation == "modify_file")){
-                QDateTime modifiedAt = QDateTime::fromString(parts[2].trimmed(), Qt::ISODate);
-                qint64 sizeInBytes = parts[3].trimmed().toULongLong();
-                QString sha1 = parts[4].trimmed();
-                if (operation == "add_file"){
-                    state->addFile(filePath, modifiedAt, sizeInBytes, sha1);
-                }
-                if (operation == "modify_file"){
-                    state->modifyFile(filePath, modifiedAt, sizeInBytes, sha1);
-                }
+        QStringList parts = splitLogLine(in.readLine());
+        QString operation = parts[0];
+        QString filePath = parts[1];
+        if ((operation == "add_file") || (operation == "modify_file")){
+            QDateTime modifiedAt = QDateTime::fromString(parts[2], Qt::ISODate);
+            qint64 sizeInBytes = parts[3].toULongLong();
+            QString sha1 = parts[4];
+            if (operation == "add_file"){
+                state->addFile(filePath, modifiedAt, sizeInBytes, sha1);
             }
-            if (operation == "remove_file") {
-                state->removeFile(filePath);
-            }
-            if (operation == "rename_file"){
-                QString newFilePath = parts[2].trimmed().replace("DUDLEYCOMMA", ",");
-                state->renameFile(filePath, newFilePath);
+            if (operation == "modify_file"){
+                state->modifyFile(filePath, modifiedAt, sizeInBytes, sha1);
             }
         }
-        file.close();
-    }else{
-        Output::error(QString("Could not read Logfile: ").append(logFilePath));
+        if (operation == "remove_file") {
+            state->removeFile(filePath);
+        }
+        if (operation == "rename_file"){
+            QString newFilePath = parts[2];
+            state->renameFile(filePath, newFilePath);
+        }
     }
+}
+
+
+
+// show the operations staged to be written to a history commit file.
+void FileRepoStateLogger::printChanges()
+{
+    if (m_logLines.size() > 0){
+        Output::info("Changes waiting to be written to log:"+pendingLogLines().join("\n"));
+    }
+}
+
+QStringList FileRepoStateLogger::pendingLogLines(){
+    QStringList log_lines;
+    foreach(QStringList tokens, m_logLines){
+        log_lines << joinLogLine(tokens);
+    }
+    return log_lines;
+}
+
+QString FileRepoStateLogger::joinLogLine(QStringList tokens)
+{
+   tokens.replaceInStrings(",", "DUDLEYCOMMA");
+   return tokens.join(",");
+}
+
+QStringList FileRepoStateLogger::splitLogLine(QString line)
+{
+    QStringList parts = line.split(',');
+    parts.replaceInStrings("DUDLEYCOMMA", ",");
+    return parts;
 }
 
 bool FileRepoStateLogger::commitChanges(){
     if (m_logLines.size() > 0){
         QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
-        QString body = m_logLines.join("\n");
+        QString body = pendingLogLines().join("\n");
         if (writeLogFile(commit_name, body)){
             m_logLines.empty();
             return true;
@@ -148,14 +152,14 @@ bool FileRepoStateLogger::commitChanges(){
 
 // flush the staged operations to a commit log file
 // should probably do the operation, fileInfo* to log line here..
-bool FileRepoStateLogger::writeLogFile(QString commit_name, QString body)
+bool FileRepoStateLogger::writeLogFile(QString name, QString body)
 {
     if (!QFile::exists(m_logsDir)){
         Output::error("could not open log dir");
         return false;
     }
-    QString filename(m_logsDir+"/"+commit_name+".log");
-    QFile file(filename);
+
+    QFile file(logFilePath(name));
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
         QTextStream out(&file);
         out << body;
@@ -163,17 +167,14 @@ bool FileRepoStateLogger::writeLogFile(QString commit_name, QString body)
         file.close();
         return true;
     }else{
-        Output::error("could not write log: "+filename);
+        Output::error("could not write log: "+logFilePath(name));
         return false;
     }
 }
 
-// show the operations staged to be written to a history commit file.
-void FileRepoStateLogger::printLogFile()
+QString FileRepoStateLogger::logFilePath(QString name)
 {
-    if (m_logLines.size() > 0){
-        std::cout << qPrintable(m_logLines.join("\n")) << std::endl;
-    }
+    return QString(m_logsDir+"/"+name);
 }
 
 void FileRepoStateLogger::logAddFile(FileInfo* fi)
@@ -211,26 +212,21 @@ void FileRepoStateLogger::logAddOrModifyFile(QString operation,
     QStringList tokens;
     tokens << operation << filePath << modifiedAt.toString(Qt::ISODate)
            << QString::number(sizeInBytes) << sha1;
-    addLogLine(tokens);
+    m_logLines << tokens;
 }
 
 void FileRepoStateLogger::logRemoveFile(QString file_path)
 {
     QStringList tokens;
     tokens << "remove_file" << file_path;
-    addLogLine(tokens);
+    m_logLines << tokens;
 }
-
 
 void FileRepoStateLogger::logRenameFile(QString file_path, QString new_file_path)
 {
     QStringList tokens;
     tokens << "rename_file" << file_path << new_file_path;
-    addLogLine(tokens);
+    m_logLines << tokens;
 }
 
-void FileRepoStateLogger::addLogLine(QStringList tokens)
-{
-   tokens.replaceInStrings(",", "DUDLEYCOMMA");
-   m_logLines << tokens.join(",");
-}
+

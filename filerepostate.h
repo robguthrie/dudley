@@ -14,12 +14,13 @@ class FileRepoState : public QObject
     Q_OBJECT
 public:
     FileRepoState(QObject* parent = 0);
-    ~FileRepoState();
     FileRepoState(QObject* parent, QString logs_dir);
-    void logChanges(FileRepoStateLogger* logger);
-    void stopLoggingChanges();
+    ~FileRepoState();
+    void reload();
     FileRepoStateLogger* logger();
-    bool saveChanges();
+    void setLogger(FileRepoStateLogger* logger);
+    void importLog(QString name, QString body);
+    bool commitChanges();
     bool containsFileInfo(FileInfo file_info);
     bool containsFilePath(QString file_path);
     bool containsFingerPrint(QString finger_print);
@@ -48,6 +49,7 @@ private:
     FileRepoStateLogger* m_logger;
     QHash<QString, FileInfo*> m_files;
     QHash<QString, FileInfo*> m_fingerprints;
+    bool m_logChanges;
 };
 
 #endif // FILEREPOSTATE_H

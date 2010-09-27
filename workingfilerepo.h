@@ -15,7 +15,7 @@ public:
     bool canReadData() const;
     void updateState();
     bool hasFile(FileInfo fileInfo) const;
-    QIODevice* getFile(FileInfo* fileInfo) const;
+    QIODevice* getFile(FileInfo* fileInfo);
 
 private:
     QStringList filesOnDisk();

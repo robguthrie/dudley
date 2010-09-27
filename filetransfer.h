@@ -28,7 +28,7 @@ private:
     QIODevice* m_dest;
     FileRepo* m_sourceRepo;
     FileRepo* m_destRepo;
-    bool m_go = false;
+    bool m_go;
 };
 
 #endif // FILETRANSFER_H

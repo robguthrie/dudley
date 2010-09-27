@@ -11,17 +11,15 @@
 #include "output.h"
 
 FileRepoState::FileRepoState(QObject* parent)
-    :QObject(parent)
-{
-    m_logger = 0;
-}
+    :QObject(parent), m_logger(0), m_logChanges(false)
+{}
 
 FileRepoState::FileRepoState(QObject* parent, QString logs_dir)
-    :QObject(parent)
+    :QObject(parent), m_logChanges(false)
 {
-    m_logger = new FileRepoStateLogger(this, logs_dir);
+    m_logger = new FileRepoStateLogger(logs_dir);
     if (m_logger->isReady()){
-        m_logger->loadState(this);
+        reload();
     }else{
         // warn of unready logger..
         Output::warning("FileRepoState cant open history. need to initialize logger");
@@ -31,6 +29,15 @@ FileRepoState::FileRepoState(QObject* parent, QString logs_dir)
 FileRepoState::~FileRepoState()
 {
     if (m_logger != 0) delete m_logger;
+}
+
+void FileRepoState::reload()
+{
+    m_files.clear();
+    m_fingerprints.clear();
+    m_logChanges = false;
+    m_logger->playAllLogs(this); // the logger calls the file manipulation functions upon this state
+    m_logChanges = true;
 }
 
 //QStringList FileRepoState::difference(FileRepoState *state)
@@ -50,21 +57,23 @@ FileRepoStateLogger* FileRepoState::logger()
     return m_logger;
 }
 
-void FileRepoState::logChanges(FileRepoStateLogger* logger)
+void FileRepoState::importLog(QString name, QString body)
+{
+    m_logChanges = false;
+    m_logger->writeLogFile(name, body);
+    m_logger->playLogFile(name, this);
+    m_logChanges = true;
+}
+
+void FileRepoState::setLogger(FileRepoStateLogger* logger)
 {
     m_logger = logger;
 }
 
-void FileRepoState::stopLoggingChanges()
-{
-    m_logger = 0;
-}
-
 // should support a commit message or label eventually
-bool FileRepoState::saveChanges()
+bool FileRepoState::commitChanges()
 {
-    m_logger->writeLogFile();
-    return true;
+    return m_logger->commitChanges();
 }
 
 bool FileRepoState::containsFileInfo(FileInfo file_info)
@@ -226,7 +235,6 @@ QStringList FileRepoState::subDirs(QString path)
         QRegExp subdirs_rx = QRegExp(rx_str);
         if (subdirs_rx.exactMatch(key)){
             sub_dirs << subdirs_rx.cap(1);
-            Output::debug(subdirs_rx.capturedTexts().join(","));
         }
     }
     sub_dirs.removeDuplicates();
@@ -235,9 +243,10 @@ QStringList FileRepoState::subDirs(QString path)
 
 QList<FileInfo*> FileRepoState::filesInDir(QString path)
 {
-    Output::debug("given path:"+path);
+    Output::debug("filesInDir path:"+path);
     QHash<QString, FileInfo*>::const_iterator i;
     QList<FileInfo*> matches;
+    Output::debug(QString("size of m_files: %1").arg(m_files.size()));
     for(i = m_files.begin(); i != m_files.end(); ++i){
         QRegExp files_in_dir_rx = QRegExp(QString("^%1/([^/?*\\\\]+)").arg(QRegExp::escape(path)));
         if (files_in_dir_rx.exactMatch(i.key())){
