@@ -70,9 +70,17 @@ void Server::processReadyRead()
                     Output::debug(repo_name+": file request: "+file_name);
                     if (repo->hasFileInfoByFingerPrint(fingerprint)){
                         FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
-                        QIODevice *file = repo->getFile(file_info);
-                        if (file->isOpen()){
-                            Output::debug(repo_name+": file is already open"+file_info->fileName());
+                        if (repo->trasnferMode() == "asyncronous"){
+                            // move the data as it comes in.
+                            QIODevice *file = repo->getFile(file_info);
+                            Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
+                            Output::debug("bytes total: "+QString::number(file_info->size()));
+                            if (file->bytesAvailable() < file_info->size()){
+                                completed_request = false;
+                                connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
+                            }else{
+                                body = file->readAll();
+                            }
                         }else{
                             Output::debug(repo_name+": opening file: "+file_info->fileName());
                             file->open(QIODevice::ReadOnly);
@@ -92,6 +100,33 @@ void Server::processReadyRead()
                             connect(file, SIGNAL(readyRead()), response, SLOT(bodyBytesAvailable()));
                         }else{
                             response->body = file->readAll();
+//                             // syncronous.. just move the data very quickly.
+//                             QIODevice *file = repo->getFile(file_info);
+//                             if (file->isOpen()){
+//                                 Output::debug(repo_name+": file is already open"+file_info->fileName());
+//                             }else{
+//                                 Output::debug(repo_name+": opening file: "+file_info->fileName());
+//                                 file->open(QIODevice::ReadOnly);
+//                             }
+//                             if (file->isReadable()){
+//                                 Output::debug("server: file is readable");
+//                             }
+// 
+//                             if (file->atEnd()){
+//                                 Output::debug("server: file is at end");
+//                             }
+//                             if (!file->isOpen()){
+//                                 Output::debug(repo_name+" cant open response file:"+file_name);
+//                                 response.setResponseCode("503 Service Unavailable");
+//                             }
+//                             Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
+//                             Output::debug("bytes total: "+QString::number(file_info->size()));
+//                             if (file->bytesAvailable() < file_info->size()){
+//                                 completed_request = false;
+//                                 connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
+//                             }else{
+//                                 body = file->readAll();
+//                             }
                         }
                     }else{
                         Output::debug(repo_name+" file not found:"+file_name);
