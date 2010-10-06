@@ -1,7 +1,19 @@
 #include "httpresponse.h"
 
-HttpResponse::HttpResponse()
-: m_responseCode("200 OK"),m_contentType("text/html; charset=utf-8") { }
+HttpResponse::HttpResponse(QObject* parent, QTcpSocket* socket)
+: QObject(parent), m_responseCode("200 OK"),
+  m_contentType("text/html; charset=utf-8"), m_socket(socket){ }
+
+void HttpResponse::send()
+{
+    QDataStream os(m_socket);
+    setContentLength(body.size());
+    QByteArray header = header();
+    os.writeRawData(header, header.length());
+    os.writeRawData(body, body.length());
+    m_socket->waitForBytesWritten();
+    m_socket->close();
+}
 
 void HttpResponse::setErrorMessage(QString message)
 {
