@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent) :
     repoTableModel = new RepoTableModel();
     server = new Server(repoTableModel, this);
     if (!server->listen(QHostAddress::Any, 54573)){
+//    if (!server->listen(QHostAddress::Any)){
         QMessageBox::critical(this, tr("Dudley Server"),
                               tr("Dudley unable to start server: %1.").arg(server->errorString()));
         close();
@@ -39,7 +40,7 @@ void MainWindow::writeSettings()
         m_settings.beginGroup(repo->name());
         m_settings.setValue("type", repo->type());
         m_settings.setValue("path", repo->path());
-        m_settings.setValue("log_path", repo->log_path());
+        m_settings.setValue("log_path", repo->logPath());
         m_settings.endGroup();
     }
     m_settings.endGroup();
@@ -103,8 +104,6 @@ void MainWindow::removeRepoButtonPressed()
 {
 
 }
-
-
 
 void MainWindow::removeRepo(FileRepo* repo)
 {

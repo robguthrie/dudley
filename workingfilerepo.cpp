@@ -100,7 +100,9 @@ bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
 
 QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo)
 {
-    return new QFile(m_path +"/"+ fileInfo->filePath());
+    QFile *f = new QFile(m_path +"/"+ fileInfo->filePath());
+    f->open(QIODevice::ReadOnly);
+    return f;
 }
 
 // private functions

@@ -32,9 +32,22 @@ void Server::acceptConnection()
 
 void Server::processReadyRead()
 {
-    QTcpSocket* socket = (QTcpSocket*)sender(); // sender returns the pointer to the SIGNAL emitter
-    HttpRequest request = HttpRequest::fromStream(socket);
-    HttpResponse* response = new HttpResponse(socket);
+    QTcpSocket* socket = (QTcpSocket*) sender();
+    // if we have not seen this socket before..start a new request
+    if (!m_sockets.contains(socket)){
+        m_sockets << socket;
+        HttpRequest request = HttpRequest::fromStream(socket);
+        respondToRequest(request, socket);
+    }else{
+    // why are we getting more data (readRead signals) from the browser/client?
+    // some kind of http1.1 or websockets thing prehaps?
+        Output::debug("readyRead singaled from socket which has already been responded to");
+    }
+}
+
+void Server::respondToRequest(HttpRequest request, QTcpSocket* socket)
+{
+    HttpResponse* response = new HttpResponse(this, socket);
 
     // simple routing
     /*
@@ -46,6 +59,12 @@ void Server::processReadyRead()
 
     QUrl uri(request.uri());
     QString uri_path = uri.path();
+    if (uri_path == "/favicon.ico"){
+        response->setResponseCode("404 Not Found");
+        response->send();
+        return;
+    }
+
     Output::debug("HTTP REQUEST for: "+uri_path);
     QRegExp file_rx("/(\\w+)/(file)/(\\w{40})/([^?*:;{}\\\\]+)");
     QRegExp history_rx("/(\\w+)/(history)/?");
@@ -56,7 +75,7 @@ void Server::processReadyRead()
     QList<QRegExp> routes;
     routes << file_rx << history_rx << commit_rx << browse_rx << ping_rx;
     bool routed_request = false;
-    bool response_ready = true;
+
     foreach(QRegExp route, routes){
         if (route.exactMatch(uri_path)){
             routed_request = true;
@@ -70,63 +89,14 @@ void Server::processReadyRead()
                     Output::debug(repo_name+": file request: "+file_name);
                     if (repo->hasFileInfoByFingerPrint(fingerprint)){
                         FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
-                        if (repo->trasnferMode() == "asyncronous"){
-                            // move the data as it comes in.
-                            QIODevice *file = repo->getFile(file_info);
-                            Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
-                            Output::debug("bytes total: "+QString::number(file_info->size()));
-                            if (file->bytesAvailable() < file_info->size()){
-                                completed_request = false;
-                                connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
-                            }else{
-                                body = file->readAll();
-                            }
+                        QIODevice *file = repo->getFile(file_info);
+                        if (file->isOpen()){
+                            response->setContentType(file_info->mimeType());
+                            response->setContentLength(file_info->size());
+                            response->setBodyIODevice(file);
                         }else{
-                            Output::debug(repo_name+": opening file: "+file_info->fileName());
-                            file->open(QIODevice::ReadOnly);
-                            if (!file->isOpen()){
-                                Output::debug(repo_name+" cant open response file:"+file_name);
-                                response->setResponseCode("503 Service Unavailable");
-                            }
-                        }
-
-                        if (file->isReadable()) Output::debug("server: file is readable");
-                        if (file->atEnd()) Output::debug("server: file is at end");
-                        Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
-
-                        if (response->body.size() < file_info->size()){
-                            // still more bytes to come according to the file_info
-                            response_ready = false;
-                            connect(file, SIGNAL(readyRead()), response, SLOT(bodyBytesAvailable()));
-                        }else{
-                            response->body = file->readAll();
-//                             // syncronous.. just move the data very quickly.
-//                             QIODevice *file = repo->getFile(file_info);
-//                             if (file->isOpen()){
-//                                 Output::debug(repo_name+": file is already open"+file_info->fileName());
-//                             }else{
-//                                 Output::debug(repo_name+": opening file: "+file_info->fileName());
-//                                 file->open(QIODevice::ReadOnly);
-//                             }
-//                             if (file->isReadable()){
-//                                 Output::debug("server: file is readable");
-//                             }
-// 
-//                             if (file->atEnd()){
-//                                 Output::debug("server: file is at end");
-//                             }
-//                             if (!file->isOpen()){
-//                                 Output::debug(repo_name+" cant open response file:"+file_name);
-//                                 response.setResponseCode("503 Service Unavailable");
-//                             }
-//                             Output::debug("bytes available: "+QString::number(file->bytesAvailable()));
-//                             Output::debug("bytes total: "+QString::number(file_info->size()));
-//                             if (file->bytesAvailable() < file_info->size()){
-//                                 completed_request = false;
-//                                 connect(file, SIGNAL(readyRead()), this, SLOT(fileReadyRead()));
-//                             }else{
-//                                 body = file->readAll();
-//                             }
+                            Output::debug(repo_name+" cant open response file:"+file_name);
+                            response->setResponseCode("503 Service Unavailable");
                         }
                     }else{
                         Output::debug(repo_name+" file not found:"+file_name);
@@ -134,11 +104,11 @@ void Server::processReadyRead()
                     }
                 }else if (action == "history"){
                     // url looks like repo_name/history return the list of log files
-                    response->body = repo->state()->logger()->logNames().join("\n").toUtf8();
+                    response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
                 }else if (action == "commit"){
                     QString commit_name = tokens.at(3);
                     if (repo->state()->logger()->hasLogFile(commit_name)){
-                        response->body = repo->state()->logger()->openLog(commit_name);
+                        response->setBody(repo->state()->logger()->openLog(commit_name));
                     }else{
                         response->setResponseCode("404 Not Found");
                     }
@@ -152,38 +122,33 @@ void Server::processReadyRead()
                     path_tokens << repo_name;
                     if (dir_tokens.at(0).length() != 0) path_tokens << dir_tokens;
                     // add the title (with nav breadcrumb)
-                    Output::debug("got here2 path_tokens:"+ path_tokens.join(","));
-                    response->body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
+                    QByteArray body;
+                    body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
                     // add the list of subdirs
                     QStringList sub_dirs = repo->state()->subDirs(dir_name);
-                    response->body.append(browseDirIndex(path_tokens, sub_dirs));
+                    body.append(browseDirIndex(path_tokens, sub_dirs));
                     // list the files in the directory
-                    Output::debug("files in dir, dir_name:"+dir_name);
                     QList<FileInfo*> matches = repo->state()->filesInDir(dir_name);
-                    response->body.append(browseFileIndex(repo_name, matches));
+                    body.append(browseFileIndex(repo_name, matches));
+                    response->setBody(body);
                 }else if (action == "ping"){
                     // return list of other active nodes for this repo?
                     repo->updateState();
-                    response->body.append("pong");
+                    response->setBody("pong");
                 }else{
-                    response->setResponseCode("500 Internal Server Error");
-                    response->setErrorMessage("action is not being handled but route was matched");
+                    response->setResponseCode("500 Internal Server Error", "action is not being handled but route was matched");
                 }
             }else{
-                response->setResponseCode("404 Not Found");
-                response->setErrorMessage("No repo found by name: "+repo_name);
+                response->setResponseCode("404 Not Found", QByteArray("No repo found by name: ").append(repo_name));
             }
-
             break;
         }
     }
     if (!routed_request){
         // The request cannot be fulfilled due to bad syntax
-        response->setResponseCode("400 Bad Request");
+        response->setResponseCode("400 Bad Request", "Could not route your request");
     }
-
-    //send response here
-    if (response_ready) response->send();
+    response->send();
 }
 
 QString Server::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
@@ -203,7 +168,7 @@ QString Server::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
     QString table;
     foreach(FileInfo* f, fileInfos){
         QString link = linkToFile(repo_name, f);
-        QString row = QString("<tr><td>%1</td><td>%2</td></tr>\n").arg(link, f->humanSize());
+        QString row = QString("<tr><td>%1</td><td>%2</td><td>%3</td></tr>\n").arg(link, f->humanSize(), f->mimeType());
         table.append(row);
     }
     return QString("<table>%1</table>").arg(table);
@@ -222,7 +187,6 @@ QString Server::browseBreadCrumb(QStringList dirs) const
 
 QString Server::linkToBrowse(QStringList tokens) const
 {
-    Output::debug("linkToBrowse:"+tokens.join(","));
     QString repo_name = tokens.takeFirst();
     QString name;
     if (tokens.isEmpty()){

@@ -27,6 +27,6 @@ void Output::verbose(QString token)
 void Output::output(QString prefix, QString message)
 {
     if (outputTextEdit) outputTextEdit->appendPlainText(message.append("\n"));
-    std::cout << qPrintable(prefix) << ": " << qPrintable(message) << std::endl;
+    std::cout << qPrintable(prefix) << ": " << qPrintable(message);
     std::cout.flush();
 }

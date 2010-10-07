@@ -3,6 +3,7 @@
 
 #include <QTcpServer>
 #include "fileinfo.h"
+#include "httprequest.h"
 class RepoTableModel;
 
 class Server : public QTcpServer
@@ -16,12 +17,15 @@ public:
     QString linkToBrowse(QStringList tokens) const;
     QString linkToFile(QString repo_name, FileInfo* f);
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
+
 protected slots:
     void acceptConnection();
     void processReadyRead();
+    void respondToRequest(HttpRequest request, QTcpSocket *socket);
 
 private:
     RepoTableModel* repoTableModel;
+    QSet<QTcpSocket*> m_sockets;
 };
 
 #endif // SERVER_H

@@ -17,7 +17,7 @@ QString FileRepo::path()
     return m_path;
 }
 
-QString FileRepo::log_path()
+QString FileRepo::logPath()
 {
     return m_log_path;
 }

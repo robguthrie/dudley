@@ -22,8 +22,8 @@ SOURCES += main.cpp \
     repotablemodel.cpp \
     httprequest.cpp \
     httpresponse.cpp \
-    mime/freedesktopmime.cpp \
-    httpclientfilerepo.cpp
+    httpclientfilerepo.cpp \
+    mimetypefinder.cpp
 #    filetransfer.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
@@ -38,14 +38,12 @@ HEADERS += fileinfo.h \
     repotablemodel.h \
     httprequest.h \
     httpresponse.h \
-    mime/freedesktopmime.h \
-    httpclientfilerepo.h
+    httpclientfilerepo.h \
+    mimetypefinder.h
     #filetransfer.h
 
 # filerepomanager.h
 FORMS += mainwindow.ui \
     repodialog.ui
 OTHER_FILES += 
-RESOURCES += icon.qrc \
-    mime\freedesktopmime.qrc \
-    mime/freedesktopmime.qrc
+RESOURCES += icon.qrc

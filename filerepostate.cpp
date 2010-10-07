@@ -243,10 +243,10 @@ QStringList FileRepoState::subDirs(QString path)
 
 QList<FileInfo*> FileRepoState::filesInDir(QString path)
 {
-    Output::debug("filesInDir path:"+path);
+//    Output::debug("filesInDir path:"+path);
     QHash<QString, FileInfo*>::const_iterator i;
     QList<FileInfo*> matches;
-    Output::debug(QString("size of m_files: %1").arg(m_files.size()));
+//    Output::debug(QString("size of m_files: %1").arg(m_files.size()));
     for(i = m_files.begin(); i != m_files.end(); ++i){
         QRegExp files_in_dir_rx = QRegExp(QString("^%1/([^/?*\\\\]+)").arg(QRegExp::escape(path)));
         if (files_in_dir_rx.exactMatch(i.key())){

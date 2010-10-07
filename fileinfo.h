@@ -4,13 +4,15 @@
 #include <QDateTime>
 #include <QString>
 #include <QFileInfo>
+#include "mimetypefinder.h"
+
 
 class FileRepoState;
 
 class FileInfo
 {
 
-
+    static MimeTypeFinder mimeTypeFinder;
 public:
     FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);

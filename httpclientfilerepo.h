@@ -19,12 +19,12 @@ public:
 
 private slots:
     void requestFinished(QNetworkReply* reply);
+    void alertReadyRead();
+    void alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     void ping();
     QIODevice* get(QUrl url);
-
-    QUrl hasFileUrl(FileInfo* fileInfo);
     QUrl fileUrl(FileInfo* fileInfo);
     QUrl urlFor(QString a, QString b = "", QString c = "", QString d = "");
     QString relativeFilePath(QString filePath);

@@ -46,18 +46,48 @@ void HttpClientFileRepo::updateState()
 
 QIODevice* HttpClientFileRepo::getFile(FileInfo* fileInfo)
 {
-    Output::debug("httpclientfilerepo getFile: "+fileInfo->fileName());
+    Output::debug("HttpClientFileRepo::getFile("+fileInfo->fileName()+")");
     QNetworkReply* reply = m_manager->get(QNetworkRequest(fileUrl(fileInfo)));
-    if (reply->error()){
-        Output::debug("replyerror:"+reply->errorString());
+    connect(reply, SIGNAL(readyRead()), this, SLOT(alertReadyRead()));
+    connect(reply, SIGNAL(downloadProgress(qint64,qint64)), this, SLOT(alertDownloadProgress(qint64, qint64)));
+    if (reply->isOpen()){
+        Output::debug("HttpClientFileRepo::getFile reply is open");
+    }else{
+        Output::debug("HttpClientFileRepo::getFile reply is not open");
     }
+
+    if (reply->error()){
+        Output::debug("ffff replyerror: "+QString::number(reply->error())+" "+reply->errorString());
+    }
+
     if (reply->isReadable()){
         Output::debug("hcfr: reply is readable");
+    }else{
+        Output::debug("hcfr: reply is not readable");
+    }
+
+    if (reply->isRunning()){
+        Output::debug("hcfr: reply is running");
+    }
+    if (reply->isFinished()){
+        Output::debug("hcfr: reply is finished");
     }
     return reply;
 }
 
 
+
+void HttpClientFileRepo::alertReadyRead()
+{
+    QNetworkReply* reply = (QNetworkReply*) sender();
+    Output::debug("HttpClientFileRepo::alertReadyRead() url:"+reply->url().toString()+" bytes:"+reply->bytesAvailable());
+}
+void HttpClientFileRepo::alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
+{
+    QNetworkReply* reply = (QNetworkReply*) sender();
+    Output::debug("HttpClientFileRepo::alertDownloadProgress() url:"+reply->url().toString());
+    Output::debug(QString("HttpClientFileRepo::alertDownloadProgress() bytes received: %1 bytes total: %2 ").arg(QString::number(bytesReceived), QString::number(bytesTotal)));
+}
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
 QIODevice* HttpClientFileRepo::get(QUrl url)
 {
@@ -73,17 +103,22 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
     QString regexstr = "("+QRegExp::escape(m_path)+")/(\\w+)/?(.*)";
     QRegExp rx(regexstr);
 
-    if (reply->error())
-        Output::error("reply error:"+reply->errorString());
-
+    if (reply->error()){
+        Output::error("requestFinised reply error: "+QString::number(reply->error())+" "+reply->errorString());
+        QList<QByteArray> headers = reply->rawHeaderList();
+        foreach(QByteArray h, headers){
+            Output::error(QTextStream(h).readAll());
+        }
+        // is it readable?
+        // what teh fuckkk?
+    }
     // need to check the response code.. 200?
     if (rx.exactMatch(request_url)){
         QStringList tokens = rx.capturedTexts();
         QString repo_url = tokens.at(1);
         QString action = tokens.at(2);
-        QTextStream stream(reply);
-        QString body;
-        body = stream.readAll();
+        QByteArray body = reply->readAll();
+        QString bodystr = QTextStream(body).readAll();
         if (action == "ping"){
             // check body says pong
             // add the pong and its time to a limited length queue
@@ -91,17 +126,19 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
                 m_lastPingTime = QDateTime::currentDateTime();
             }
         }else if (action == "file"){
-
-            Output::debug(QString("file request finsihed. size: %1 path: %2 ").arg(QString::number(reply->size()),tokens.join(",")));
+            QString filename = tokens.at(3);
+            Output::debug(QString("HttpClientFileRepo::requestFinsihed()  reply->bytesAvailable: %1").arg(reply->bytesAvailable()));
+            Output::debug(QString("HttpClientFileRepo::requestFinished() file %1 size: %2").arg(filename, QString::number(reply->size())));
             // files will be written as bytes are available..
             // might not need to handle anything here
             // maybe update the filetransfer object by emitting a signal?
+
+            reply->close();
         }else if (action == "history"){
-            QStringList commit_list = body.split("\n");
+            QStringList commit_list = bodystr.split("\n");
             foreach(QString commit_name, commit_list){
                 if (!m_state->logger()->hasLogFile(commit_name)){
                     this->get(urlFor(QString("commit"), commit_name));
-
                 }else{
                     Output::debug("dont need logfile:"+commit_name);
                 }
@@ -116,10 +153,6 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
     }else{
         Output::error("could not parse request url: "+request_url);
     }
-}
-
-QUrl HttpClientFileRepo::hasFileUrl(FileInfo* fileInfo){
-    return urlFor(QString("hasfile"), fileInfo->fingerPrint(), fileInfo->filePath());
 }
 
 QUrl HttpClientFileRepo::fileUrl(FileInfo* fileInfo){

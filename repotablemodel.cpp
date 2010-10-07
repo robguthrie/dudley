@@ -89,7 +89,7 @@ FileRepo* RepoTableModel::repo(QString name)
 {
     for (int i =0; i < m_repoList.size(); i++){
         if (m_repoList.at(i)->name() == name){
-            Output::debug("RepoTableModel loading reponame: "+name);
+//            Output::debug("RepoTableModel loading reponame: "+name);
             return m_repoList.at(i);
         }
     }

@@ -15,7 +15,7 @@ public:
     virtual QString type() = 0;
     virtual QString name();
     virtual QString path();
-    virtual QString log_path();
+    virtual QString logPath();
     virtual bool isReady() const;
     virtual bool initialize();
     virtual bool canReadData() const = 0;
@@ -27,6 +27,7 @@ public:
     virtual FileInfo* fileInfoByFilePath(QString file_name) const;
     virtual FileInfo* fileInfoByFingerPrint(QString finger_print) const;
 //    virtual bool hasFile(FileInfo fileInfo) const = 0;
+    // the returned file should be open
     virtual QIODevice* getFile(FileInfo* fileInfo) = 0;
 //    virtual void putFile(FileInfo* fileInfo, QIODevice* file) = 0;
 
