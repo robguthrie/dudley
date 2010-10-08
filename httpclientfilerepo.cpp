@@ -47,52 +47,20 @@ void HttpClientFileRepo::updateState()
 QIODevice* HttpClientFileRepo::getFile(FileInfo* fileInfo)
 {
     Output::debug("HttpClientFileRepo::getFile("+fileInfo->fileName()+")");
-    QNetworkReply* reply = m_manager->get(QNetworkRequest(fileUrl(fileInfo)));
-    connect(reply, SIGNAL(readyRead()), this, SLOT(alertReadyRead()));
-    connect(reply, SIGNAL(downloadProgress(qint64,qint64)), this, SLOT(alertDownloadProgress(qint64, qint64)));
-    if (reply->isOpen()){
-        Output::debug("HttpClientFileRepo::getFile reply is open");
-    }else{
-        Output::debug("HttpClientFileRepo::getFile reply is not open");
-    }
-
-    if (reply->error()){
-        Output::debug("ffff replyerror: "+QString::number(reply->error())+" "+reply->errorString());
-    }
-
-    if (reply->isReadable()){
-        Output::debug("hcfr: reply is readable");
-    }else{
-        Output::debug("hcfr: reply is not readable");
-    }
-
-    if (reply->isRunning()){
-        Output::debug("hcfr: reply is running");
-    }
-    if (reply->isFinished()){
-        Output::debug("hcfr: reply is finished");
-    }
-    return reply;
+    return this->get(fileUrl(fileInfo));
 }
 
-
-
-void HttpClientFileRepo::alertReadyRead()
-{
-    QNetworkReply* reply = (QNetworkReply*) sender();
-    Output::debug("HttpClientFileRepo::alertReadyRead() url:"+reply->url().toString()+" bytes:"+reply->bytesAvailable());
-}
-void HttpClientFileRepo::alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
-{
-    QNetworkReply* reply = (QNetworkReply*) sender();
-    Output::debug("HttpClientFileRepo::alertDownloadProgress() url:"+reply->url().toString());
-    Output::debug(QString("HttpClientFileRepo::alertDownloadProgress() bytes received: %1 bytes total: %2 ").arg(QString::number(bytesReceived), QString::number(bytesTotal)));
-}
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
 QIODevice* HttpClientFileRepo::get(QUrl url)
 {
     Output::debug("httpclientfilerepo get:"+url.toString());
-    return m_manager->get(QNetworkRequest(url));
+    QString url_str = url.toString();
+    QNetworkReply* reply = m_manager->get(QNetworkRequest(url));
+    if (!reply->isOpen()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is not open");
+    if (reply->error()) Output::debug("HttpClientFileRepo::get("+url_str+") reply error: "+QString::number(reply->error())+" "+reply->errorString());
+    if (!reply->isReadable()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is not readable");
+    if (reply->isFinished()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is finished already!");
+    return reply;
 }
 
 void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
@@ -178,5 +146,3 @@ QString HttpClientFileRepo::relativeFilePath(QString filePath){
         return filePath;
     }
 }
-
-

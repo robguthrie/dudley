@@ -13,8 +13,14 @@ HttpResponse::HttpResponse(QObject* parent, QTcpSocket* socket)
 
 HttpResponse::~HttpResponse()
 {
-    delete m_outStream;
+
+    if (m_socket->isOpen()) m_socket->close();
     m_socket->deleteLater();
+    if (m_bodyIODevice){
+        m_bodyIODevice->close();
+        m_bodyIODevice->deleteLater();
+    }
+    delete m_outStream;
 }
 
 void HttpResponse::setResponseCode(QByteArray code, QByteArray error_message){
@@ -37,7 +43,6 @@ void HttpResponse::setContentLength(quint64 size)
 void HttpResponse::sendHeader()
 {
     QByteArray b = header();
-    Output::debug("sending header:\n"+b);
     m_outStream->writeRawData(b, b.length());
     m_headerSent = true;
 }
@@ -49,9 +54,9 @@ QByteArray HttpResponse::header()
     QByteArray text;
     text += QByteArray("HTTP/1.1 "+m_responseCode+"\r\n");
     text += QByteArray("Date: ") + QByteArray(asctime(gmtime(&currentTime)))
+    + QByteArray("Keep-Alive: timeout=50")
     + QByteArray("Content-Type: " + m_contentType + "\r\n")
     + QByteArray("Content-Length: " + QByteArray::number(m_contentLength)  + "\r\n");
-
     text+= QByteArray("\r\n");
     return text;
 }
@@ -59,7 +64,6 @@ QByteArray HttpResponse::header()
 // set the QIODevice from which to read (it shoud be open already)
 void HttpResponse::setBodyIODevice(QIODevice *file)
 {
-
     m_bodyIODevice = file;
     if (!m_bodyIODevice->isOpen())
         Output::error("m_bodyIODevice is not open");
@@ -72,15 +76,9 @@ void HttpResponse::setBodyIODevice(QIODevice *file)
 
 void HttpResponse::setBody(QByteArray body)
 {
-    // this look horrible..
-    // copy body passed in to new memory on the heap
-    // before using the pointer for the buffer
-    Output::debug(QString("HttpResponse::setBody setting body bytearray size: %1").arg(body.size()));
     QByteArray* nb = new QByteArray(body);
-    Output::debug(QString("HttpResponse::setBody final body bytearray size: %1").arg(nb->size()));
     QIODevice* d = (QIODevice*) new QBuffer(nb);
     d->open(QIODevice::ReadOnly);
-    Output::debug(QString("HttpResponse::setBody buffer bytes available: %1").arg(d->bytesAvailable()));
     setBodyIODevice(d);
     setContentLength(body.size());
 }
@@ -91,19 +89,28 @@ void HttpResponse::send()
     if (!m_headerSent) sendHeader();
     if (m_bodyIODevice != 0){
         if (m_bodyIODevice->bytesAvailable()){
-            Output::debug(QString("HttpResponse::send() bytes available in m_bodyIODevice: %1").arg(m_bodyIODevice->bytesAvailable()));
-            if (m_socket->isWritable()){
+            if ((m_socket->isWritable()) && (m_bodyIODevice->isReadable())){
                 QByteArray bytes = m_bodyIODevice->readAll();
-                m_bodyBytesSent += m_socket->write(bytes);
-                Output::debug(QString("HttpResponse::send() m_bodyIODevice->readAll() got %1 bytes").arg(bytes.length()));
-                Output::debug(QString("HttpResponse::send() %1 bytes written total").arg(m_bodyBytesSent));
+                int bytes_written = m_socket->write(bytes);
+                if (bytes_written == -1){
+                    Output::debug("HttpResponse::send() failed to write "+QString::number(bytes.length()));
+                    m_socket->close();
+                }
+                m_bodyBytesSent += bytes_written;
+//                Output::debug(QString("HttpResponse::send() %1 bytes available. %2 bytes written ").arg(QString::number(bytes.length()), QString::number(bytes_written)));
                 if (m_bodyBytesSent >= m_contentLength){
                     Output::debug("sent all "+QByteArray::number(m_contentLength)+" bytes, closing connection");
                     m_socket->waitForBytesWritten();
                     m_socket->close();
                 }
             }else{
-                Output::debug("socket is not writable anymmore - fuck knows why");
+                if (!m_socket->isWritable()){
+                    Output::debug("socket is not writable anymore - fuck knows why - closing");
+                }
+                if (!m_bodyIODevice->isReadable()){
+                    Output::debug("source file is not readable anymore - fuck knows why - closing");
+                }
+                m_socket->close();
             }
         }
     }else{

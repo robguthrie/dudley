@@ -21,6 +21,9 @@ public:
 protected slots:
     void acceptConnection();
     void processReadyRead();
+    void processDisconnected();
+    void processAboutToClose();
+    void processError();
     void respondToRequest(HttpRequest request, QTcpSocket *socket);
 
 private:

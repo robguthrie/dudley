@@ -241,10 +241,3 @@ HttpRequest HttpRequest::fromStream (QIODevice *device) {
 
     return(request);
 }
-//qDebug() << "Method:" << request.method() << request.methodName();
-//qDebug() << "URI:" << request.uri();
-//qDebug() << "PROTOCOL:" << request.protocol();
-//qDebug() << "Headers:" << request.headers();
-//qDebug() << "Content Length:" << request.header(HttpRequest::ContentLengthHeader).toUInt();
-//qDebug() << "Connection:" << request.header("connection");
-//qDebug() << "Content:" << request.content();

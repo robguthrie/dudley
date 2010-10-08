@@ -2,8 +2,7 @@
 # Project created by QtCreator 2010-03-01T13:29:30
 # -------------------------------------------------
 QT += gui \
-    network \
-    xml
+    network
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle

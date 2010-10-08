@@ -19,8 +19,8 @@ public:
 
 private slots:
     void requestFinished(QNetworkReply* reply);
-    void alertReadyRead();
-    void alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+//    void alertReadyRead();
+//    void alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     void ping();

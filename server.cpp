@@ -27,21 +27,55 @@ void Server::acceptConnection()
         QTcpSocket* socket = this->nextPendingConnection();
         connect(socket, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
         connect(socket, SIGNAL(disconnected()), socket, SLOT(deleteLater()));
+        connect(socket, SIGNAL(aboutToClose()), this, SLOT(processAboutToClose()));
+        connect(socket, SIGNAL(disconnected()), this, SLOT(processDisconnected()));
+        connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(processError()));
     }
+}
+void Server::processDisconnected()
+{
+    Output::debug("Server::processDisconnected - socket es gone!");
+}
+
+void Server::processAboutToClose()
+{
+    Output::debug("Server::processAboutToClose");
+}
+
+void Server::processError()
+{
+    QTcpSocket* socket = (QTcpSocket*) sender();
+    Output::debug("Server::processError: "+socket->errorString());
 }
 
 void Server::processReadyRead()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
+
+//    if (!m_sockets.contains(socket)){
+//        m_sockets << socket;
+//        HttpRequest* request = new HttpRequest();
+//    }
+    // if the socket is new
+    //  start a new httprequest object
+    //  connect request SIGNAL(requestReady()), this, SLOT(processRequestReady())
+    //  let it read the data
+    //
     // if we have not seen this socket before..start a new request
     if (!m_sockets.contains(socket)){
+        Output::debug("new socket connection");
         m_sockets << socket;
-        HttpRequest request = HttpRequest::fromStream(socket);
+    }else{
+        // why are we getting more data (readRead signals) from the browser/client?
+        // some kind of http1.1 or websockets thing prehaps?
+        Output::debug("readyRead singaled from socket which has already been responded to");
+    }
+    HttpRequest request = HttpRequest::fromStream(socket);
+    if (request.isValid()){
         respondToRequest(request, socket);
     }else{
-    // why are we getting more data (readRead signals) from the browser/client?
-    // some kind of http1.1 or websockets thing prehaps?
-        Output::debug("readyRead singaled from socket which has already been responded to");
+        socket->close();
+        m_sockets.remove(socket);
     }
 }
 
