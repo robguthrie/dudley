@@ -2,3 +2,5 @@
 .dudley/
 dudley
 moc_*
+Makefile*
+debug/

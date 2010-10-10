@@ -2,72 +2,35 @@
 #define _HTTP_REQUEST_H_
 
 #include <QByteArray>
+#include <QObject>
+#include <QIODevice>
+#include <QHash>
 
-class HttpRequestPrivate;
-class HttpRequest {
-    public:
-        enum MethodType {
-            MethodInvalid,
-            MethodOptions,
-            MethodGet,
-            MethodHead,
-            MethodPost,
-            MethodPut,
-            MethodDelete,
-            MethodTrace,
-            MethodConnect,
-            MethodExtension,
-        };
-
-        enum KnownHeaders {
-            AcceptHeader,
-            AcceptCharsetHeader,
-            AcceptEncodingHeader,
-            AcceptLanguageHeader,
-            ContentEncodingHeader,
-            ContentLanguageHeader,
-            ContentLengthHeader,
-            ContentLocationHeader,
-            ContentTypeHeader,
-            HostHeader,
-            KeepAliveHeader,
-        };
-
-    public:
-        HttpRequest();
-        HttpRequest (const HttpRequest& request);
-        ~HttpRequest();
-
-        bool isNull (void) const;
-
-        QByteArray uri (void) const;
-        void setUri (const QByteArray& uri);
-
-        QByteArray protocol (void) const;
-        void setProtocol (const QByteArray& protocol);
-
-        MethodType method (void) const;
-        void setMethod (MethodType method);
-
-        const QByteArray methodName (void) const;
-        void setMethodName (const QByteArray& method);
-
-        QByteArray header (KnownHeaders header) const;
-        QByteArray header (const QByteArray& header) const;
-        bool containsHeader (KnownHeaders header) const;
-        bool containsHeader (const QByteArray& header) const;
-        QList<QByteArray> headers (void) const;
-        void setHeader (const QByteArray& key, const QByteArray& value);
-
-        QByteArray content (void) const;
-        void setContent (const QByteArray& content);
-
-    public:
-        static HttpRequest fromData (const QByteArray& data);
-        static HttpRequest fromStream (QIODevice *buffer);
-
-    private:
-        HttpRequestPrivate *d;
+class HttpRequest : public QObject {
+Q_OBJECT
+public:
+    HttpRequest(QObject* parent, QIODevice* sockets);
+    bool isValid() const;
+    QByteArray uri() const;
+    QByteArray protocol() const;
+    QByteArray method() const;
+    bool       hasHeader(QByteArray key) const;
+    QByteArray header(QByteArray key) const;
+    QIODevice *device() const;
+signals:
+    void ready(); // this fires when we have parsed the http request
+    void readyRead(); // this fires when there is content to read
+public slots:
+    void processReadyRead();
+private:
+    QByteArray m_method;
+    QByteArray m_uri;
+    QByteArray m_protocol;
+    qint64 m_contentLength;
+    bool m_validRequest;
+    bool m_headersFinished;
+    QHash<QByteArray, QByteArray> m_headers;
+    QIODevice* m_device;
 };
 
 #endif /* !_HTTP_REQUEST_ */

@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'repodialog.ui'
 **
-** Created: Mon Sep 27 15:46:24 2010
+** Created: Sat Oct 9 23:19:02 2010
 **      by: Qt User Interface Compiler version 4.6.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
