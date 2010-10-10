@@ -17,7 +17,7 @@ bool WorkingFileRepo::canReadData() const
     return dir.exists(m_path);
 }
 
-QString WorkingFileRepo::type()
+QString WorkingFileRepo::type() const
 {
     return QString("WorkingFileRepo");
 }
@@ -101,8 +101,11 @@ bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
 QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo)
 {
     QFile *f = new QFile(m_path +"/"+ fileInfo->filePath());
-    f->open(QIODevice::ReadOnly);
-    return f;
+    if (f->open(QIODevice::ReadOnly)){
+        return f;
+    }else{
+        return 0;
+    }
 }
 
 // private functions

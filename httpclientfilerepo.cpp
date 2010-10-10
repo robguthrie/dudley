@@ -21,7 +21,7 @@ HttpClientFileRepo::HttpClientFileRepo(QObject *parent, QString path, QString na
     connect(m_manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
 }
 
-QString HttpClientFileRepo::type()
+QString HttpClientFileRepo::type() const
 {
     return QString("HttpClientFileRepo");
 }
@@ -41,12 +41,11 @@ void HttpClientFileRepo::ping()
 
 void HttpClientFileRepo::updateState()
 {
-    this->get(urlFor(QString("history")));
+    this->get(urlFor(QString("history"), name()));
 }
 
 QIODevice* HttpClientFileRepo::getFile(FileInfo* fileInfo)
 {
-    Output::debug("HttpClientFileRepo::getFile("+fileInfo->fileName()+")");
     return this->get(fileUrl(fileInfo));
 }
 
@@ -77,9 +76,8 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
         foreach(QByteArray h, headers){
             Output::error(QTextStream(h).readAll());
         }
-        // is it readable?
-        // what teh fuckkk?
     }
+
     // need to check the response code.. 200?
     if (rx.exactMatch(request_url)){
         QStringList tokens = rx.capturedTexts();
@@ -95,20 +93,15 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
             }
         }else if (action == "file"){
             QString filename = tokens.at(3);
-            Output::debug(QString("HttpClientFileRepo::requestFinsihed()  reply->bytesAvailable: %1").arg(reply->bytesAvailable()));
             Output::debug(QString("HttpClientFileRepo::requestFinished() file %1 size: %2").arg(filename, QString::number(reply->size())));
             // files will be written as bytes are available..
             // might not need to handle anything here
             // maybe update the filetransfer object by emitting a signal?
-
-            reply->close();
         }else if (action == "history"){
             QStringList commit_list = bodystr.split("\n");
             foreach(QString commit_name, commit_list){
                 if (!m_state->logger()->hasLogFile(commit_name)){
-                    this->get(urlFor(QString("commit"), commit_name));
-                }else{
-                    Output::debug("dont need logfile:"+commit_name);
+                    this->get(urlFor(QString("commit"), this->name(), commit_name));
                 }
             }
         }else if (action == "commit"){
@@ -124,7 +117,7 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
 }
 
 QUrl HttpClientFileRepo::fileUrl(FileInfo* fileInfo){
-    return urlFor(QString("file"), fileInfo->fingerPrint(), fileInfo->filePath());
+    return urlFor(QString("file"), name(), fileInfo->fingerPrint(), fileInfo->filePath());
 }
 
 QUrl HttpClientFileRepo::urlFor(QString a, QString b, QString c, QString d)

@@ -2,14 +2,20 @@
 #include "httprequest.h"
 #include "output.h"
 
+QString HttpResponse::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
+
 HttpResponse::HttpResponse(QObject* parent, HttpRequest* request, QIODevice* destDevice)
-: QObject(parent), m_responseCode("200 OK"), m_errorMessage(""),
-  m_contentType("text/html; charset=utf-8"), m_destDevice(destDevice),
-  m_headerSent(false), m_failed(false), m_finished(false), m_request(request)
+: QObject(parent), m_request(request), m_destDevice(destDevice)
 {
+    m_responseCode = "200 OK";
+    m_contentType = "text/html; charset=utf-8";
+    m_headerSent = false;
+    m_failed = false;
+    m_finished = false;
     m_contentDevice = 0;
     m_bodyBytesSent = 0;
     m_protocol = request->protocol();
+    m_maxAge = 30; // things get stale quick
 }
 
 QByteArray HttpResponse::protocol() const
@@ -47,17 +53,36 @@ void HttpResponse::setContentLength(quint64 size)
     m_contentLength = size;
 }
 
+void HttpResponse::setLastModified(QDateTime d)
+{
+    m_lastModified = d;
+}
+
+void HttpResponse::setCacheNeverExpires()
+{
+    m_maxAge = 60*60*24*365*3; // expires in 3 years ~ never
+}
+
+void HttpResponse::setMaxAge(qint64 m)
+{
+    m_maxAge = m;
+}
+
 QByteArray HttpResponse::header()
 {
-    m_headers.clear();
-    m_headers.insert("Content-Length", QByteArray::number(m_contentLength));
-    m_headers.insert("Keep-Alive", QByteArray("timeout=25"));
-    m_headers.insert("Content-Type", m_contentType);
-    m_headers.insert("Date", QDateTime::currentDateTime().toString().toAscii());
+    QMap<QByteArray, QByteArray> h; // holds the headers
+    h["Content-Length"] = QByteArray::number(m_contentLength);
+    h["Keep-Alive"] = QByteArray("timeout=300");
+    h["Content-Type"] = m_contentType;
+    h["Date"] = QDateTime::currentDateTime().toString(dateFormat).toAscii();
+    if(!m_lastModified.isNull())
+        h["Last-Modified"] = m_lastModified.toString(dateFormat).toAscii();
+    h["Cache-Control"] = "max-age="+QByteArray::number(m_maxAge);
     QByteArray text;
+    // first line, usually : HTTP/1.1 200 OK
     text += m_request->protocol()+" "+m_responseCode+"\r\n";
     QMap<QByteArray, QByteArray>::iterator i;
-    for(i = m_headers.begin(); i != m_headers.end(); ++i){
+    for(i = h.begin(); i != h.end(); ++i){
         text += i.key().trimmed()+": "+i.value().trimmed()+"\r\n";
     }
     text += "\r\n";

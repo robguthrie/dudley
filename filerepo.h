@@ -12,9 +12,9 @@ class FileRepo : public QObject
     Q_OBJECT
 public:
     FileRepo(QObject *parent = 0, QString path = "nopath", QString name = "noname");
-    virtual QString type() = 0;
-    virtual QString name();
-    virtual QString path();
+    virtual QString type() const = 0;
+    virtual QString name() const;
+    virtual QString path() const;
     virtual QString logPath();
     virtual bool isReady() const;
     virtual bool initialize();

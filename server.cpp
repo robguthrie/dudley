@@ -17,7 +17,7 @@ Server::Server(RepoTableModel* model, QObject *parent)
     // it will read the connection
     // if it gets a GET request we will return a bit of fake html
     // later we will return files and indexes
-    Output::debug("constructing a tcp server");
+    //    Output::debug("constructing a tcp server");
     m_socketsOpened = 0;
     m_socketsClosed = 0;
     m_requestsStarted = 0;
@@ -65,7 +65,7 @@ void Server::processDisconnected()
     }else{
         Output::debug("socket disconnected and was not in m_handledSockets");
     }
-    printStatus("socket disconnected");
+//    printStatus("socket disconnected");
 }
 
 void Server::processAboutToClose()
@@ -89,7 +89,7 @@ void Server::processReadyRead()
     // the last line needs to be crlf ..else its not valid
 
     if (m_handledSockets.contains(socket)){
-        printStatus("processReadyRead - from socket which is being handled ");
+//        printStatus("processReadyRead - from socket which is being handled ");
     }else{
         // this is new socket connection
         m_handledSockets << (QIODevice*) socket;
@@ -106,7 +106,7 @@ void Server::respondToRequest()
     HttpRequest* request = (HttpRequest*) sender();
     // create the HttpResponse object, and deal with it, and click send.
     m_responsesStarted++;
-    printStatus("respondToRequest - new response started");
+//    printStatus("respondToRequest - new response started");
     HttpResponse* response = new HttpResponse(this, request, request->device());
     if (!request->isValid()){
         response->setResponseCode("400 Bad Request", "HTTP Request is invalid");
@@ -115,8 +115,7 @@ void Server::respondToRequest()
     }
     m_requestsFinished++;
     m_handledSockets.remove(request->device());
-//    delete request;
-    printStatus("respondToRequest - request finished and deleted");
+//    printStatus("respondToRequest - request finished and deleted");
     connect(response, SIGNAL(finished()), this, SLOT(responseFinished()));
     response->send();
 }
@@ -127,7 +126,7 @@ void Server::responseFinished()
     if (response->failed()){
         Output::debug("Server::responseFinished() with failure");
     }else{
-        Output::debug("Server::responseFinished() successfully ");
+//        Output::debug("Server::responseFinished() successfully ");
     }
     // this socket may now be used to receive another request.
     if (response->protocol() == "HTTP/1.0"){
@@ -136,130 +135,184 @@ void Server::responseFinished()
     m_responsesFinished++;
     response->deleteLater();
 //    delete response;
-    printStatus("responseFinished - response finished and deleted");
+    printStatus("Server::responseFinished");
 }
 
 
 void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
-    // simple routing
-    /*
-      GET       /reponame/file/fingerprint/reponame/filename             return file
-      GET       /reponame/history/                       list commits alphabetically
-      GET       /reponame/commit/commitname             return commit file content
-      GET       /reponame/browse/dirname
-      */
-
     QUrl uri(request->uri());
     QString uri_path = uri.path();
-    if (uri_path == "/favicon.ico"){
-        response->setResponseCode("404 Not Found");
-        return;
-    }
 
-    QRegExp file_rx("/(\\w+)/(file)/(\\w{40})/([^?*:;{}\\\\]+)");
-    QRegExp history_rx("/(\\w+)/(history)/?");
-    QRegExp commit_rx("/(\\w+)/(commit)/?([^/?*;{}\\\\]*)");
-    QRegExp browse_rx("/(\\w+)/(browse)/(.*)");
-    QRegExp ping_rx("/(\\w+)/(ping)/(.*)");
+    QMap<QString, QRegExp> routes;
+    routes["favicon"] = QRegExp("/favicon.ico");
+    routes["file"] = QRegExp("/(file)/(\\w+)/(\\w{40})/([^?*:;{}\\\\]+)");
+    routes["history"] = QRegExp("/(history)/(\\w+)/?");
+    routes["commit"] = QRegExp("/(commit)/(\\w+)/([^/?*;{}\\\\]*)");
+    routes["browse"] = QRegExp ("/(browse)/(\\w+)(/.*)?");
+    routes["ping"] = QRegExp ("/(ping)/(\\w+)(/.*)?");
+    // naked is an overloaded actionless route for each repo
+    // it should give the most normal looking urls for your files
+    QStringList repo_names = repoTableModel->repoNames();
+    routes["naked"] = QRegExp("/("+(repo_names.join("|"))+")(/.*)?");
     // dont forget to create a torrent action to return a bittorrent info file
-    QList<QRegExp> routes;
-    routes << file_rx << history_rx << commit_rx << browse_rx << ping_rx;
+    QMap<QString, QRegExp>::const_iterator i;
+    QString key;
+    QRegExp regex;
     bool routed_request = false;
-
-    foreach(QRegExp route, routes){
-        if (route.exactMatch(uri_path)){
+    for (i = routes.begin(); i != routes.end(); ++i){
+        key = i.key();
+        regex = i.value();
+        if(regex.exactMatch(uri_path)){
             routed_request = true;
-            QStringList tokens = route.capturedTexts();
-            QString action = tokens.at(2);
-            QString repo_name = tokens.at(1);
-            if (FileRepo* repo = repoTableModel->repo(repo_name)){
-                if (action == "file"){
-                    QString fingerprint = tokens.at(3);
-                    QString file_name = tokens.at(4);
-                    actionFileRequest(response, repo, fingerprint, file_name);
-                }else if (action == "history"){
-                    actionHistoryRequest(response, repo);
-                }else if (action == "commit"){
-                    QString commit_name = tokens.at(3);
-                    actionCommitRequest(response, repo, commit_name);
-                }else if (action == "browse"){
-                    QString dir_name("");
-                    if (tokens.size() > 3) dir_name = tokens.at(3);
-                    actionBrowseRequest(response, repo, dir_name);
-                }else if (action == "ping"){
-                    // return list of other active nodes for this repo?
-                    repo->updateState();
-                    response->setBody("pong");
+            Output::debug("matched "+key+" route");
+            if (key == "favicon"){
+                actionFaviconRequest(response);
+            }else if (key == "file"){
+                QString repo_name = regex.cap(2);
+                QString fingerprint = regex.cap(3);
+                actionFileRequestByFingerprint(response, repo_name, fingerprint);
+            }else if (key == "history"){
+                QString repo_name = regex.cap(2);
+                actionHistoryRequest(response, repo_name);
+            }else if (key == "commit"){
+                QString repo_name = regex.cap(2);
+                QString commit_name = regex.cap(3);
+                actionCommitRequest(response, repo_name, commit_name);
+            }else if (key == "browse"){
+                QString repo_name = regex.cap(2);
+                QString dir_name("");
+                if (regex.captureCount() == 3) dir_name = regex.cap(3);
+                actionBrowseRequest(response, repo_name, dir_name);
+            }else if (key == "naked"){
+                QString repo_name = regex.cap(1);
+                QString dir_name("");
+                if (regex.captureCount() == 2) dir_name = regex.cap(2);
+                if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
+                if (actionFileRequestByFileName(response, repo_name, dir_name)){
+                    // blank
                 }else{
-                    response->setResponseCode("500 Internal Server Error",
-                                              "action is not being handled but route was matched");
+                    actionBrowseRequest(response, repo_name, dir_name);
                 }
+            }else if (key == "ping"){
+                response->setBody("pong");
             }else{
-                response->setResponseCode("404 Not Found",
-                                          QByteArray("No repo found by name: ").append(repo_name));
+                response->setResponseCode("500 Internal Server Error",
+                                          "action is not being handled but route was matched");
             }
             // break the for loop.. we should only ever match one route
             break;
-        }
-    }
+        } // end if matched route
+    }// end for each in routes
+
     if (!routed_request){
         // The request cannot be fulfilled due to bad syntax
         response->setResponseCode("400 Bad Request", "Could not route your request");
     }
 }
 
-void Server::actionFileRequest(HttpResponse* response, FileRepo* repo, QString fingerprint, QString file_name)
+void Server::actionFaviconRequest(HttpResponse* response)
 {
-    QString repo_name = repo->name();
-    if (repo->hasFileInfoByFingerPrint(fingerprint)){
-        FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
-        Output::debug("Server::actionFileRequest() "+repo->name()+"/"+file_name);
-        QIODevice *file = repo->getFile(file_info);
-        if (file->isOpen()){
-            response->setContentType(file_info->mimeType());
-            response->setContentLength(file_info->size());
-            response->setContentDevice(file);
+    QFile *f  = new QFile(":/icons/dino1.png");
+    if(f->open(QIODevice::ReadOnly)){
+        response->setMaxAge(60*60*24);
+        response->setContentType("image/png");
+        response->setContentLength(f->size());
+        response->setContentDevice(f);
+    }else{
+        response->setResponseCode("404 Not Found", "could not open the favicon file");
+    }
+}
+
+bool Server::actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path)
+{
+    Output::debug("actionfilerequestbyfilename:"+repo_name+" "+file_path);
+    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        if (repo->hasFileInfoByFilePath(file_path)){
+            FileInfo* file_info = repo->fileInfoByFilePath(file_path);
+            setFileResponse(response, repo, file_info);
+            return true;
         }else{
-            Output::debug(repo_name+" cant open response file:"+file_name);
-            response->setResponseCode("503 Service Unavailable");
+            response->setResponseCode("404 Not Found");
         }
     }else{
-        Output::debug(repo_name+" file not found:"+file_name);
-        response->setResponseCode("404 Not Found");
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
+    return false;
 }
 
-void Server::actionHistoryRequest(HttpResponse* response, FileRepo* repo)
-{
-    response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
-}
 
-void Server::actionCommitRequest(HttpResponse* response, FileRepo* repo, QString commit_name)
+bool Server::actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint)
 {
-    if (repo->state()->logger()->hasLogFile(commit_name)){
-        response->setBody(repo->state()->logger()->openLog(commit_name));
+    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        if (repo->hasFileInfoByFingerPrint(fingerprint)){
+            FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
+            setFileResponse(response, repo, file_info);
+            return true;
+        }else{
+            response->setResponseCode("404 Not Found");
+        }
     }else{
-        response->setResponseCode("404 Not Found");
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
+    }
+    return false;
+}
+
+void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* file_info)
+{
+    QIODevice *file = repo->getFile(file_info);
+    response->setLastModified(file_info->lastModified());
+    response->setCacheNeverExpires();
+    response->setContentType(file_info->mimeType());
+    response->setContentLength(file_info->size());
+    response->setContentDevice(file);
+}
+
+void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)
+{
+    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
+    }else{
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
 }
 
-void Server::actionBrowseRequest(HttpResponse* response, FileRepo* repo, QString dir_name)
+void Server::actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name)
 {
-    QString repo_name = repo->name();
-    QStringList dir_tokens = dir_name.split("/");
-    QStringList path_tokens;
-    path_tokens << repo_name;
-    if (dir_tokens.at(0).length() != 0) path_tokens << dir_tokens;
-    // add the title (with nav breadcrumb)
-    QByteArray body;
-    body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
-    // add the list of subdirs
-    QStringList sub_dirs = repo->state()->subDirs(dir_name);
-    body.append(browseDirIndex(path_tokens, sub_dirs));
-    // list the files in the directory
-    QList<FileInfo*> matches = repo->state()->filesInDir(dir_name);
-    body.append(browseFileIndex(repo_name, matches));
-    response->setBody(body);
+    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        if (repo->state()->logger()->hasLogFile(commit_name)){
+            response->setBody(repo->state()->logger()->openLog(commit_name));
+        }else{
+            response->setResponseCode("404 Not Found");
+        }
+    }else{
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
+    }
+}
+
+void Server::actionBrowseRequest(HttpResponse* response, QString repo_name, QString dir_name)
+{
+    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
+        Output::debug("browse repo_name:"+repo_name+" dir_name: "+dir_name);
+        QStringList dir_tokens = dir_name.split("/");
+        QStringList path_tokens;
+        path_tokens << repo_name;
+        if (dir_tokens.at(0).length() != 0) path_tokens << dir_tokens;
+        // add the title (with nav breadcrumb)
+        QByteArray body;
+        body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
+        // add the list of subdirs
+        QStringList sub_dirs = repo->state()->subDirs(dir_name);
+        body.append(browseDirIndex(path_tokens, sub_dirs));
+        // list the files in the directory
+        QList<FileInfo*> matches = repo->state()->filesInDir(dir_name);
+        body.append(browseFileIndex(repo_name, matches));
+        response->setBody(body);
+        response->setMaxAge(60*15);
+    }else{
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
+    }
+
 }
 
 QString Server::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
@@ -306,12 +359,12 @@ QString Server::linkToBrowse(QStringList tokens) const
         name = tokens.last();
     }
     QString file_path = tokens.join("/");
-    QString str("<a href=\"/%1/browse/%2\">%3</a>");
+    QString str("<a href=\"/%1/%2\">%3</a>");
     return str.arg(repo_name, file_path, name);
 }
 
 QString Server::linkToFile(QString repo_name, FileInfo* f)
 {
-    QString str("<a href=\"/%1/file/%2/%3\">%4</a>");
-    return str.arg(repo_name, f->fingerPrint(), f->filePath(), f->fileName());
+    QString str("<a href=\"/%1/%2\">%4</a>");
+    return str.arg(repo_name, f->filePath(), f->fileName());
 }

@@ -4,6 +4,7 @@
 #include <QIODevice>
 #include <QTcpSocket>
 #include <QFile>
+#include <QDateTime>
 class HttpRequest;
 
 class HttpResponse : public QObject
@@ -14,8 +15,11 @@ public:
     ~HttpResponse();
     void setResponseCode(QByteArray code, QByteArray error_message = "");
     void setContentType(QString contentType);
+    void setLastModified(QDateTime d);
     void setContentLength(quint64 size);
     void setContentDevice(QIODevice* file);
+    void setCacheNeverExpires();
+    void setMaxAge(qint64 m);
     void setBody(QByteArray body);
     bool failed();
     QByteArray protocol() const;
@@ -28,24 +32,25 @@ public slots:
     void send();
 
 private:
+    HttpRequest* m_request;
+    QIODevice   *m_destDevice;
+    QIODevice   *m_contentDevice;
 
-    QMap<QByteArray, QByteArray> m_headers;
     QByteArray   header();
+    QDateTime    m_lastModified;
     QByteArray   m_responseCode;
     QByteArray   m_contentType;
-    QByteArray   m_errorMessage;
     qint64       m_contentLength;
     qint64       m_bodyBytesSent;
-
-    QIODevice   *m_contentDevice;
-    QIODevice   *m_destDevice;
 
     bool         m_headerSent;
     bool         m_failed;
     bool         m_finished;
 
-    HttpRequest* m_request;
+
     QByteArray   m_protocol;
+    qint64       m_maxAge;
+    static QString dateFormat;
 };
 
 #endif // HTTPRESPONSE_H

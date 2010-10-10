@@ -12,7 +12,7 @@ FileRepoState* FileRepo::state()
     return m_state;
 }
 
-QString FileRepo::path()
+QString FileRepo::path() const
 {
     return m_path;
 }
@@ -22,7 +22,7 @@ QString FileRepo::logPath()
     return m_log_path;
 }
 
-QString FileRepo::name()
+QString FileRepo::name() const
 {
     return m_name;
 }

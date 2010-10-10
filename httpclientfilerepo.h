@@ -11,7 +11,7 @@ class HttpClientFileRepo : public FileRepo
     Q_OBJECT
 public:
     HttpClientFileRepo(QObject *parent, QString path, QString name);
-    QString type();
+    QString type() const;
     bool canReadData() const;
     void updateState();
 //    bool hasFile(FileInfo fileInfo) const;
