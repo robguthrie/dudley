@@ -137,7 +137,7 @@ void FileRepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 si
             m_logger->logModifyFile(filePath, modifiedAt, sizeInBytes, sha1);
         }
     }else{
-        Output::error("trying to modify state for fileinfo which does not exist");
+        Output::error("modify state for fileinfo which does not exist: "+filePath+", "+sha1);
     }
 }
 
