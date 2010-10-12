@@ -1,2 +1,3 @@
 use QUUID to give node a uid.
-build nodewide table of unique file ids, with frequency count
+consider the table holding all f
+build nodewide table of unique file ids, with frequency count,

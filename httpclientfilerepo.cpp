@@ -53,6 +53,7 @@ QIODevice* HttpClientFileRepo::getFile(FileInfo* fileInfo)
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
 QIODevice* HttpClientFileRepo::get(QUrl url)
 {
+    m_tickets
     Output::debug("httpclientfilerepo get:"+url.toString());
     QString url_str = url.toString();
     QNetworkReply* reply = m_manager->get(QNetworkRequest(url));
