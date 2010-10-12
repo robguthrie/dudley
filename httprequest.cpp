@@ -125,7 +125,7 @@ void HttpRequest::processReadyRead()
     }
 }
 
-bool HttpRequest::accept()
+void HttpRequest::accept()
 {
     if ((hasHeader("expect") &&
         (header("expect") == "100-continue"))){

@@ -1,16 +1,16 @@
 #ifndef REPOLISTMODEL_H
 #define REPOLISTMODEL_H
 
-#include <QAbstractTableModel>
+#include <QAbstractListModel>
 #include <QList>
 
 #include "filerepo.h"
 /* a readonly model to display info about the locally mounted repos */
-class RepoTableModel : public QAbstractTableModel
+class RepoModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    RepoTableModel(QObject *parent = 0);
+    RepoModel(QObject *parent = 0);
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role) const;

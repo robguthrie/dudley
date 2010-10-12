@@ -33,7 +33,7 @@ private:
     Server* server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
-    RepoTableModel *m_repoTableModel;
+    RepoModel *m_repoModel;
     QSettings m_settings;
     void writeSettings();
     void readSettings();

@@ -143,7 +143,8 @@ bool FileRepoStateLogger::commitChanges(){
         QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
         QString body = pendingLogLines().join("\n");
         if (writeLogFile(commit_name, body)){
-            m_logLines.empty();
+            Output::debug("writeLogFile returned true");
+            m_logLines.clear();
             return true;
         }
     }

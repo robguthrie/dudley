@@ -11,8 +11,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    m_repoTableModel = new RepoTableModel();
-    server = new Server(m_repoTableModel, this);
+    m_repoModel = new RepoModel();
+    server = new Server(m_repoModel, this);
     if (!server->listen(QHostAddress::Any, 54573)){
 //    if (!server->listen(QHostAddress::Any)){
         QMessageBox::critical(this, tr("Dudley Server"),
@@ -20,8 +20,7 @@ MainWindow::MainWindow(QWidget *parent) :
         close();
         return;
     }
-
-    ui->repoTableView->setModel(m_repoTableModel);
+    ui->repoTreeView->setModel(m_repoModel);
     readSettings();
     setWindowTitle(tr("Dudley Server"));
     connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
@@ -39,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::writeSettings()
 {
     m_settings.beginGroup("repos");
-    foreach(FileRepo* repo, m_repoTableModel->repoList()){
+    foreach(FileRepo* repo, m_repoModel->repoList()){
         m_settings.beginGroup(repo->name());
         m_settings.setValue("type", repo->type());
         m_settings.setValue("path", repo->path());
@@ -74,9 +73,9 @@ MainWindow::~MainWindow()
 void MainWindow::refreshRepoButtonPressed()
 {
     // get currently selected repo
-    QModelIndex i = ui->repoTableView->currentIndex();
+    QModelIndex i = ui->repoTreeView->currentIndex();
     if (i.isValid()){
-        m_repoTableModel->repo(i)->updateState();
+        m_repoModel->repo(i)->updateState();
     }
 }
 
@@ -97,9 +96,9 @@ void MainWindow::editRepoButtonPressed()
 
 void MainWindow::removeRepoButtonPressed()
 {
-    QModelIndex i = ui->repoTableView->currentIndex();
+    QModelIndex i = ui->repoTreeView->currentIndex();
     if (i.isValid()){
-        m_repoTableModel->removeRepo(i);
+        m_repoModel->removeRepo(i);
     }
 }
 
@@ -115,7 +114,7 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
         repo = new WorkingFileRepo(this, path, name);
     }
 
-    m_repoTableModel->insertRepo(repo);
+    m_repoModel->insertRepo(repo);
 
     if (repo->isReady()){
         return true;

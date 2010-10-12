@@ -90,9 +90,10 @@ void WorkingFileRepo::updateState(bool commit_changes)
     // deleted sweep
     foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
 
-    if (commit_changes) m_state->commitChanges();
+    if (commit_changes){
+        m_state->commitChanges();
+    }
 }
-
 bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
 {
     //need to actually check he disk here..
@@ -167,7 +168,7 @@ QString WorkingFileRepo::readFingerPrint(QString filePath)
     if (file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
         while (!file.atEnd()){
             QCoreApplication::processEvents();
-            hash.addData(file.read(64*1024));
+            hash.addData(file.read(128*1024));
         }
         return hash.result().toHex();
     }else{

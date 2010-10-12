@@ -114,12 +114,12 @@ void FileRepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeI
         FileInfo *fileInfo = new FileInfo(filePath, modifiedAt, sizeInBytes, sha1);
         m_files.insert(filePath, fileInfo);
         m_fingerprints.insert(sha1, fileInfo);
-        if (m_logger){
+        if (m_logChanges){
             m_logger->logAddFile(filePath, modifiedAt, sizeInBytes, sha1);
         }
     }else{
         // insert new
-        std::cout << "adding file in error. its already indexed";
+        Output::error("adding file "+filePath+". it's already indexed");
     }
 }
 
@@ -133,11 +133,11 @@ void FileRepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 si
         m_fingerprints.remove(old_sha1);
         fileInfo->update(modifiedAt, sizeInBytes, sha1);
         m_fingerprints.insert(sha1, fileInfo);
-        if (m_logger){
+        if (m_logChanges){
             m_logger->logModifyFile(filePath, modifiedAt, sizeInBytes, sha1);
         }
     }else{
-        std::cout << "trying to modify state for fileinfo which does not exist";
+        Output::error("trying to modify state for fileinfo which does not exist");
     }
 }
 
@@ -146,7 +146,7 @@ bool FileRepoState::removeFile(QString filePath)
     FileInfo *fileInfo = m_files.value(filePath);
     if (m_files.remove(filePath)){
         m_fingerprints.remove(fileInfo->fingerPrint());
-        if (m_logger) m_logger->logRemoveFile(filePath);
+        if (m_logChanges) m_logger->logRemoveFile(filePath);
         return true;
     }else return false;
 }
@@ -158,7 +158,7 @@ bool FileRepoState::renameFile(QString filePath, QString newFilePath)
         m_files.remove(filePath);
         fileInfo->rename(newFilePath);
         m_files.insert(newFilePath, fileInfo);
-        if (m_logger) m_logger->logRenameFile(filePath, newFilePath);
+        if (m_logChanges) m_logger->logRenameFile(filePath, newFilePath);
         return true;
     }else return false;
 }

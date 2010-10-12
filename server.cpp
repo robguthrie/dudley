@@ -10,7 +10,7 @@
 #include "repotablemodel.h"
 #include "filerepostatelogger.h"
 
-Server::Server(RepoTableModel* model, QObject *parent)
+Server::Server(RepoModel* model, QObject *parent)
     :QTcpServer(parent), repoTableModel(model)
 {
     // need a function to be called on newConnection
@@ -264,12 +264,15 @@ bool Server::actionFileRequestByFingerprint(HttpResponse* response, QString repo
 
 void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* file_info)
 {
+    Output::debug("about to call getFile("+file_info->fileName()+") on repo:"+repo->name());
     QIODevice *file = repo->getFile(file_info);
+    Output::debug("called getFile("+file_info->fileName()+") on repo:"+repo->name());
     response->setLastModified(file_info->lastModified());
     response->setCacheNeverExpires();
     response->setContentType(file_info->mimeType());
     response->setContentLength(file_info->size());
     response->setContentDevice(file);
+    Output::debug("set content device on the response");
 }
 
 void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)

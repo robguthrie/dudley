@@ -4,7 +4,7 @@
 #include <QTcpServer>
 #include "fileinfo.h"
 #include "httprequest.h"
-class RepoTableModel;
+class RepoModel;
 class HttpResponse;
 class FileRepo;
 
@@ -12,7 +12,7 @@ class Server : public QTcpServer
 {
     Q_OBJECT
 public:
-    Server(RepoTableModel* repoTableModel, QObject *parent = 0);
+    Server(RepoModel* repoTableModel, QObject *parent = 0);
 
 public slots:
     void printStatus(QString a = "");
@@ -40,7 +40,7 @@ private:
     QString linkToFile(QString repo_name, FileInfo* f);
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
 
-    RepoTableModel* repoTableModel;
+    RepoModel* repoTableModel;
     QSet<QIODevice*> m_handledSockets;
     QSet<HttpRequest*> m_activeRequests;
     QSet<HttpResponse*> m_activeResponses;

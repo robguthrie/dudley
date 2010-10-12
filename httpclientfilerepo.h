@@ -31,7 +31,8 @@ private:
     QNetworkAccessManager* m_manager;
     QDateTime m_lastPingTime;
     bool m_commitChanges;
-    QSet<QString> m_tickets;
+    QString m_host_url;
+    QString m_host_repo_name;
 };
 
 #endif // HTTPCLIENTFILEREPO_H
