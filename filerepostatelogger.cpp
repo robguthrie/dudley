@@ -164,7 +164,7 @@ bool FileRepoStateLogger::writeLogFile(QString name, QString body)
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
         QTextStream out(&file);
         out << body;
-        Output::debug(QString::number(m_logLines.size()).append(" lines appended to logfile"));
+        Output::debug(QString::number(body.size()).append(" bytes written to logfile"));
         file.close();
         return true;
     }else{

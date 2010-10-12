@@ -119,7 +119,6 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
         }else if (action == "commit"){
             // this is a commit log..
             this->state()->importLog(file_path, body);
-            if (m_commitChanges) this->state()->commitChanges();
         }else{
             Output::error("action not recognised: "+action);
         }
