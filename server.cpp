@@ -272,7 +272,7 @@ void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* f
     response->setContentType(file_info->mimeType());
     response->setContentLength(file_info->size());
     response->setContentDevice(file);
-    Output::debug("set content device on the response");
+    Output::debug("set content device on the response for: "+response->request()->uri());
 }
 
 void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)

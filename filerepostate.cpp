@@ -59,10 +59,10 @@ FileRepoStateLogger* FileRepoState::logger()
 
 void FileRepoState::importLog(QString name, QString body)
 {
-    m_logChanges = false;
+//    m_logChanges = false;
     m_logger->writeLogFile(name, body);
-    m_logger->playLogFile(name, this);
-    m_logChanges = true;
+//    m_logger->playLogFile(name, this);
+//    m_logChanges = true;
 }
 
 void FileRepoState::setLogger(FileRepoStateLogger* logger)

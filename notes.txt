@@ -1,3 +1,7 @@
 use QUUID to give node a uid.
 consider the table holding all f
 build nodewide table of unique file ids, with frequency count,
+
+
+ensure that httpclientfilerepo sorts the commitnames before loading them
+and ensure that filrepologger sorts them before loading them too

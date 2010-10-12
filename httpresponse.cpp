@@ -38,6 +38,11 @@ bool HttpResponse::failed()
     return m_failed;
 }
 
+HttpRequest* HttpResponse::request()
+{
+    return m_request;
+}
+
 void HttpResponse::setResponseCode(QByteArray code, QByteArray error_message){
     m_responseCode = code.trimmed();
     if (error_message.length() != 0){
@@ -153,35 +158,34 @@ void HttpResponse::send()
         }
     }
 
-    // send the content if there is any to send
-    if (m_bodyBytesSent < m_contentLength){
-        if (m_contentDevice == 0){
-            m_failed = true;
-            Output::error("HttpResponse::send() no device to read content from");
-        }
-        if (!m_contentDevice->isReadable()){
-            m_failed = true;
-            Output::error("m_bodyIODevice is not readable anymore");
-        }
-        if (!m_destDevice->isWritable()){
-            m_failed = true;
-            Output::error("m_socket is not writable anymore - finished");
-        }
+    if (m_contentDevice == 0){
+        m_failed = true;
+        Output::error("HttpResponse::send() no device to read content from");
+    }
 
-        if (!m_failed){
-            if (m_contentDevice->bytesAvailable()){
-                QByteArray bytes = m_contentDevice->readAll();
-                int bytes_written = m_destDevice->write(bytes);
-                if (bytes_written == -1){
-                    m_failed = true;
-                    Output::error("HttpResponse::send() failed to write "+QString::number(bytes.length()));
-                }else{
-                    m_bodyBytesSent += bytes_written;
-                    // wait to send more data? avoid finished
-                    if (m_bodyBytesSent < m_contentLength) return;
-                }
+    if (!m_contentDevice->isReadable()){
+        m_failed = true;
+        Output::error("m_bodyIODevice is not readable anymore");
+    }
+
+    if (!m_destDevice->isWritable()){
+        m_failed = true;
+        Output::error("m_socket is not writable anymore - finished");
+    }
+    // send the content if there is any to send
+    if ((!m_failed) && (m_bodyBytesSent < m_contentLength)){
+        if (m_contentDevice->bytesAvailable()){
+            QByteArray bytes = m_contentDevice->readAll();
+            int bytes_written = m_destDevice->write(bytes);
+            if (bytes_written == -1){
+                m_failed = true;
+                Output::error("HttpResponse::send() "+QString(m_request->uri())+"failed to write "+QString::number(bytes.length()));
+            }else{
+                m_bodyBytesSent += bytes_written;
             }
         }
+        // wait to send more data? avoid finished
+        if ((!m_failed) && (m_bodyBytesSent < m_contentLength)) return;
     }
 
     if (m_bodyBytesSent > m_contentLength){

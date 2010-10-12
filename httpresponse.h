@@ -13,6 +13,7 @@ class HttpResponse : public QObject
 public:
     HttpResponse(QObject* parent, HttpRequest* request, QIODevice* destDevice);
     ~HttpResponse();
+
     void setResponseCode(QByteArray code, QByteArray error_message = "");
     void setContentType(QString contentType);
     void setLastModified(QDateTime d);
@@ -23,6 +24,7 @@ public:
     void setBody(QByteArray body);
     bool failed();
     QByteArray protocol() const;
+    HttpRequest* request();
     QIODevice* destDevice();
     QIODevice* contentDevice();
 signals:

@@ -33,6 +33,7 @@ private:
     bool m_commitChanges;
     QString m_host_url;
     QString m_host_repo_name;
+    int m_pendingLogDownloads;
 };
 
 #endif // HTTPCLIENTFILEREPO_H

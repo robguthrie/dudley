@@ -9,6 +9,7 @@ HttpClientFileRepo::HttpClientFileRepo(QObject *parent, QString path, QString na
     :FileRepo(parent, path, name)
 {
     Output::debug("constructed HttpClientFileRepo on path: "+path);
+    m_pendingLogDownloads = 0;
     // path is something like http://localhost:54573/music
     // where the node is serving the repo "music" at http://localhost:54573
     QRegExp valid_repo_url("^(http://[^/]+)/(\\w+)/?$");
@@ -100,6 +101,7 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
         if (tokens.size() > 1) action = tokens.at(1);
         if (tokens.size() > 2) repo_name = tokens.at(2);
         if (tokens.size() > 3) file_path = tokens.at(3);
+        if (file_path.startsWith("/")) file_path.remove(0, 1);
         QByteArray body = reply->readAll();
         QString bodystr = QTextStream(body).readAll();
         if ((action == "ping") && (body == "pong")){
@@ -109,16 +111,27 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
             Output::debug(QString("HttpClientFileRepo::requestFinished() file %1 size: %2").arg(file_path, QString::number(reply->size())));
             // files will be written as bytes are received.. so file should be written by now
         }else if (action == "history"){
-            QStringList commit_list = bodystr.split("\n");
+            QStringList commit_list = bodystr.trimmed().split("\n");
+            // http requests could be returned might arrive out of order
+            // and log files must be played in order
+            // so we wait until all the commits have been downloaded until we
+            // reload the state
             Output::debug(bodystr);
+            m_pendingLogDownloads = 0;
             foreach(QString commit_name, commit_list){
                 if (!m_state->logger()->hasLogFile(commit_name)){
+                    m_pendingLogDownloads++;
                     this->get(urlFor("commit", m_host_repo_name, commit_name));
                 }
             }
         }else if (action == "commit"){
             // this is a commit log..
             this->state()->importLog(file_path, body);
+            m_pendingLogDownloads--;
+            if (m_pendingLogDownloads == 0){
+                // we can reload the state now..
+                m_state->reload();
+            }
         }else{
             Output::error("action not recognised: "+action);
         }

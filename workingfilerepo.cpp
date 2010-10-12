@@ -55,7 +55,7 @@ void WorkingFileRepo::updateState(bool commit_changes)
     foreach(file_path, known_found_file_paths){
         QCoreApplication::processEvents();
         // check if that file has been modified
-        // to save overhead.. we dont call newFileInfo as that reads the sha1
+        // to save effort we dont call newFileInfo as that reads the sha1
         // and we only want to read the sha1 if the mtime has changed
         FileInfo *stored_fi = m_state->fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
@@ -168,7 +168,7 @@ QString WorkingFileRepo::readFingerPrint(QString filePath)
     if (file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
         while (!file.atEnd()){
             QCoreApplication::processEvents();
-            hash.addData(file.read(128*1024));
+            hash.addData(file.read(256*1024));
         }
         return hash.result().toHex();
     }else{

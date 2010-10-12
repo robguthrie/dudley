@@ -31,7 +31,13 @@ QStringList FileRepoStateLogger::logNames()
     QDir dir(m_logsDir);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
     dir.setSorting(QDir::Name);
-    return dir.entryList();
+    QStringList filenames = dir.entryList();
+    QStringList lognames;
+    QRegExp valid_rx("(\\d+)\\.log");
+    foreach(QString name, filenames){
+        if (valid_rx.exactMatch(name)) lognames << valid_rx.cap(1);
+    }
+    return lognames;
 }
 
 bool FileRepoStateLogger::hasLogFile(QString name)
@@ -160,6 +166,13 @@ bool FileRepoStateLogger::writeLogFile(QString name, QString body)
         return false;
     }
 
+    // refuse to save a log with a funny name
+    QRegExp name_rx("\\d+");
+    if (!name_rx.exactMatch(name)){
+        Output::error("log filename is not just digits: "+name);
+        return false;
+    }
+
     QFile file(logFilePath(name));
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
         QTextStream out(&file);
@@ -175,7 +188,7 @@ bool FileRepoStateLogger::writeLogFile(QString name, QString body)
 
 QString FileRepoStateLogger::logFilePath(QString name)
 {
-    return QString(m_logsDir+"/"+name);
+    return QString(m_logsDir+"/"+name+".log");
 }
 
 void FileRepoStateLogger::logAddFile(FileInfo* fi)
@@ -213,21 +226,25 @@ void FileRepoStateLogger::logAddOrModifyFile(QString operation,
     QStringList tokens;
     tokens << operation << filePath << modifiedAt.toString(Qt::ISODate)
            << QString::number(sizeInBytes) << sha1;
-    m_logLines << tokens;
+    addLogLine(tokens);
 }
 
 void FileRepoStateLogger::logRemoveFile(QString file_path)
 {
     QStringList tokens;
     tokens << "remove_file" << file_path;
-    m_logLines << tokens;
+    addLogLine(tokens);
 }
 
 void FileRepoStateLogger::logRenameFile(QString file_path, QString new_file_path)
 {
     QStringList tokens;
     tokens << "rename_file" << file_path << new_file_path;
-    m_logLines << tokens;
+    addLogLine(tokens);
 }
 
 
+void FileRepoStateLogger::addLogLine(QStringList tokens)
+{
+    m_logLines << tokens;
+}
