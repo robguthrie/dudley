@@ -39,8 +39,9 @@ void HttpClientFileRepo::ping()
     this->get(urlFor(QString("ping")));
 }
 
-void HttpClientFileRepo::updateState()
+void HttpClientFileRepo::updateState(bool commit_changes)
 {
+    m_commitChanges = true;
     this->get(urlFor(QString("history"), name()));
 }
 
@@ -71,6 +72,7 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
     QRegExp rx(regexstr);
 
     if (reply->error()){
+
         Output::error("requestFinised reply error: "+QString::number(reply->error())+" "+reply->errorString());
         QList<QByteArray> headers = reply->rawHeaderList();
         foreach(QByteArray h, headers){
@@ -101,13 +103,14 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
             QStringList commit_list = bodystr.split("\n");
             foreach(QString commit_name, commit_list){
                 if (!m_state->logger()->hasLogFile(commit_name)){
-                    this->get(urlFor(QString("commit"), this->name(), commit_name));
+                    this->get(urlFor("commit", this->name(), commit_name));
                 }
             }
         }else if (action == "commit"){
             // this is a commit log..
             QString name = tokens.at(3);
             this->state()->importLog(name, body);
+            if (m_commitChanges) this->state()->commitChanges();
         }else{
             Output::error("action not recognised: "+action);
         }

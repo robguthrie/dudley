@@ -19,7 +19,7 @@ public:
     virtual bool isReady() const;
     virtual bool initialize();
     virtual bool canReadData() const = 0;
-    virtual void updateState() = 0;
+    virtual void updateState(bool commit_changes = true) = 0;
     virtual FileRepoState* state();
     virtual QMap<QString, QVariant> settings();
     virtual bool hasFileInfoByFilePath(QString file_name) const;

@@ -22,6 +22,7 @@ int RepoTableModel::columnCount(const QModelIndex &parent) const
     return columns.size();
 }
 
+
 QVariant RepoTableModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid())
@@ -72,12 +73,21 @@ QVariant RepoTableModel::headerData(int section, Qt::Orientation orientation, in
         return QString("Row %1").arg(section);
 }
 
-bool RepoTableModel::insertRepo(FileRepo* repo)
+void RepoTableModel::insertRepo(FileRepo* repo)
 {
-    beginInsertRows(QModelIndex(), 0, 0);
+    beginInsertRows(QModelIndex(), m_repoList.size(), m_repoList.size());
     m_repoList.append(repo);
     endInsertRows();
-    return true;
+}
+
+void RepoTableModel::removeRepo(QModelIndex i)
+{
+    FileRepo* repo;
+    beginRemoveRows(QModelIndex(), i.row(), i.row());
+    repo = m_repoList.at(i.row());
+    repo->deleteLater();
+    m_repoList.removeAt(i.row());
+    endRemoveRows();
 }
 
 bool RepoTableModel::hasRepo(QString name)
@@ -85,7 +95,7 @@ bool RepoTableModel::hasRepo(QString name)
     return repoNames().contains(name);
 }
 
-FileRepo* RepoTableModel::repo(QString name)
+FileRepo* RepoTableModel::repo(QString name) const
 {
     for (int i =0; i < m_repoList.size(); i++){
         if (m_repoList.at(i)->name() == name){
@@ -96,17 +106,20 @@ FileRepo* RepoTableModel::repo(QString name)
     return 0;
 }
 
+FileRepo* RepoTableModel::repo(QModelIndex i) const
+{
+    return m_repoList.at(i.row());
+}
 QStringList RepoTableModel::repoNames()
 {
     QStringList names;
-    for (int i =0; i < m_repoList.size(); i++){
-        names << m_repoList.at(i)->name();
+    foreach(FileRepo* r, m_repoList){
+        names << r->name();
     }
     return names;
 }
 
-QList<FileRepo*>* RepoTableModel::repoList()
+QList<FileRepo*> RepoTableModel::repoList()
 {
-    return &m_repoList;
+    return m_repoList;
 }
-

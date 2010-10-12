@@ -13,7 +13,7 @@ public:
     HttpClientFileRepo(QObject *parent, QString path, QString name);
     QString type() const;
     bool canReadData() const;
-    void updateState();
+    void updateState(bool commit_changes = true);
 //    bool hasFile(FileInfo fileInfo) const;
     QIODevice* getFile(FileInfo* fileInfo);
 
@@ -30,6 +30,8 @@ private:
     QString relativeFilePath(QString filePath);
     QNetworkAccessManager* m_manager;
     QDateTime m_lastPingTime;
+    bool m_commitChanges;
+    QSet<QString> m_tickets;
 };
 
 #endif // HTTPCLIENTFILEREPO_H

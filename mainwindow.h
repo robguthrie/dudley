@@ -22,17 +22,18 @@ protected:
     void changeEvent(QEvent *e);
 
 private slots:
+    void refreshRepoButtonPressed();
     void removeRepoButtonPressed();
     void addRepoButtonPressed();
+    void editRepoButtonPressed();
     bool addRepo(QString type, QString path, QString name);
-    void removeRepo(FileRepo* repo);
 
 private:
     Ui::MainWindow *ui;
     Server* server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
-    RepoTableModel *repoTableModel;
+    RepoTableModel *m_repoTableModel;
     QSettings m_settings;
     void writeSettings();
     void readSettings();

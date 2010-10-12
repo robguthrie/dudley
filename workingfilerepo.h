@@ -13,7 +13,7 @@ public:
     WorkingFileRepo(QObject *parent, QString path, QString name);
     QString type() const;
     bool canReadData() const;
-    void updateState();
+    void updateState(bool commit_changes = true);
     bool hasFile(FileInfo fileInfo) const;
     QIODevice* getFile(FileInfo* fileInfo);
 

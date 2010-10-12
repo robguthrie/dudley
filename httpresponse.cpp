@@ -13,6 +13,7 @@ HttpResponse::HttpResponse(QObject* parent, HttpRequest* request, QIODevice* des
     m_failed = false;
     m_finished = false;
     m_contentDevice = 0;
+    m_contentLength = 0;
     m_bodyBytesSent = 0;
     m_protocol = request->protocol();
     m_maxAge = 30; // things get stale quick
@@ -39,10 +40,10 @@ bool HttpResponse::failed()
 
 void HttpResponse::setResponseCode(QByteArray code, QByteArray error_message){
     m_responseCode = code.trimmed();
-    if (error_message.length() == 0) error_message = code;
-    setBody(error_message);
+    if (error_message.length() != 0){
+        setBody(code+": "+error_message);
+    }
 }
-
 void HttpResponse::setContentType(QString contentType)
 {
     m_contentType = QByteArray(contentType.toAscii()).trimmed();
@@ -113,6 +114,14 @@ void HttpResponse::setContentDevice(QIODevice *file)
 
 void HttpResponse::setBody(QByteArray body)
 {
+
+//    if (m_request->acceptsEncoding("deflate")){
+//        QByteArray comp_data = qCompress(body, 9);
+//        uint32_t comp_size_no = htonl(nb.size());
+//        nb.prepend(comp_size_no, 4);
+//    }else{
+//
+//    }
     QByteArray* nb = new QByteArray(body);
     QIODevice* d = (QIODevice*) new QBuffer(nb);
     d->open(QIODevice::ReadOnly);

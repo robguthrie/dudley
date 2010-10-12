@@ -11,8 +11,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    repoTableModel = new RepoTableModel();
-    server = new Server(repoTableModel, this);
+    m_repoTableModel = new RepoTableModel();
+    server = new Server(m_repoTableModel, this);
     if (!server->listen(QHostAddress::Any, 54573)){
 //    if (!server->listen(QHostAddress::Any)){
         QMessageBox::critical(this, tr("Dudley Server"),
@@ -21,10 +21,13 @@ MainWindow::MainWindow(QWidget *parent) :
         return;
     }
 
-    ui->repoTableView->setModel(repoTableModel);
+    ui->repoTableView->setModel(m_repoTableModel);
     readSettings();
     setWindowTitle(tr("Dudley Server"));
     connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
+    connect(ui->editRepoButton, SIGNAL(clicked()), this, SLOT(editRepoButtonPressed()));
+    connect(ui->removeRepoButton, SIGNAL(clicked()), this, SLOT(removeRepoButtonPressed()));
+    connect(ui->refreshRepoButton, SIGNAL(clicked()), this, SLOT(refreshRepoButtonPressed()));
     Output::outputTextEdit = ui->outputTextEdit;
     Output::info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
                          .arg(bestIpAddress()).arg(server->serverPort()));
@@ -36,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::writeSettings()
 {
     m_settings.beginGroup("repos");
-    foreach(FileRepo* repo, *repoTableModel->repoList()){
+    foreach(FileRepo* repo, m_repoTableModel->repoList()){
         m_settings.beginGroup(repo->name());
         m_settings.setValue("type", repo->type());
         m_settings.setValue("path", repo->path());
@@ -68,6 +71,15 @@ MainWindow::~MainWindow()
     delete trayIcon;
 }
 
+void MainWindow::refreshRepoButtonPressed()
+{
+    // get currently selected repo
+    QModelIndex i = ui->repoTableView->currentIndex();
+    if (i.isValid()){
+        m_repoTableModel->repo(i)->updateState();
+    }
+}
+
 void MainWindow::addRepoButtonPressed()
 {
     RepoDialog *repoDialog = new RepoDialog(this);
@@ -76,6 +88,18 @@ void MainWindow::addRepoButtonPressed()
     if (repoDialog->exec()){
         Output::debug("hellooo? returned from addRepoDialog");
         addRepo(repoDialog->type(), repoDialog->path(), repoDialog->name());
+    }
+}
+void MainWindow::editRepoButtonPressed()
+{
+    // nothing yet..
+}
+
+void MainWindow::removeRepoButtonPressed()
+{
+    QModelIndex i = ui->repoTableView->currentIndex();
+    if (i.isValid()){
+        m_repoTableModel->removeRepo(i);
     }
 }
 
@@ -91,28 +115,13 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
         repo = new WorkingFileRepo(this, path, name);
     }
 
-    repoTableModel->insertRepo(repo);
+    m_repoTableModel->insertRepo(repo);
 
     if (repo->isReady()){
         return true;
     }else{
         return repo->initialize();
     }
-}
-
-void MainWindow::removeRepoButtonPressed()
-{
-
-}
-
-void MainWindow::removeRepo(FileRepo* repo)
-{
-    //
-//    // opena file repo on this path.. store it in repoList
-//    WorkingFileRepo* repo = new WorkingFileRepo(this, path, name);
-//
-//    if (repo->initialize())
-//        repoTableModel->insertRepo(repo);
 }
 
 QString MainWindow::bestIpAddress()

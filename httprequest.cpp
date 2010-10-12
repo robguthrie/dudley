@@ -49,6 +49,12 @@ QByteArray HttpRequest::protocol() const
     return m_protocol;
 }
 
+bool HttpRequest::acceptsEncoding(QByteArray type)
+{
+    return ( hasHeader("Accept-Encoding") &&
+             header("Accept-Encoding").contains(type));
+}
+
 void HttpRequest::processReadyRead()
 {
     // on construction m_validRequest == true and m_headersFinished == false
@@ -67,8 +73,8 @@ void HttpRequest::processReadyRead()
                 m_uri = request_rx.cap(2).toAscii().trimmed();
                 m_protocol = request_rx.cap(3).toAscii().trimmed();
                 QRegExp protocol_rx("HTTP/1.[01]");
-                if (!protocol_rx.exactMatch(m_protocol)) m_validRequest = false;
-                if (m_protocol == "HTTP/1.1") m_device->write("HTTP/1.1 100 Continue\r\n\r\n");
+                if (!protocol_rx.exactMatch(m_protocol))
+                    m_validRequest = false;
             }else{
                 // invalid first line. terminate loop
                 m_validRequest = false;
@@ -92,15 +98,37 @@ void HttpRequest::processReadyRead()
         }
     }
 
+    // this needs to move to some point after we have authorized
+    // but its ok here. we just accept all the data and look at it if we need.
+    // will be a welcome improvement when we can reject a client before they send
+    // the request body
+
+
     if (!m_validRequest){
         Output::debug("invalid http request");
     }else if (m_headersFinished){
         if (hasHeader("content-length")){
             m_contentLength = header("content-length").toLongLong();
         }
+
+        //  Requirements for HTTP/1.1 clients:
+        //  If a client will wait for a 100 (Continue) response before
+        //  sending the request body, it MUST send an Expect request-header
+        //  field (section 14.20) with the "100-continue" expectation.
+
+
+        // this should not emit readyread until the 100 continue has been sent
         if ((m_contentLength > 0) && (m_device->bytesAvailable() > 0)){
             // there is content for someone to read, waiting in the socket
             emit readyRead();
         }
+    }
+}
+
+bool HttpRequest::accept()
+{
+    if ((hasHeader("expect") &&
+        (header("expect") == "100-continue"))){
+        m_device->write("HTTP/1.1 100 Continue\r\n\r\n");
     }
 }

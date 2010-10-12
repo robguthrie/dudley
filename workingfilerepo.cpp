@@ -33,7 +33,7 @@ QString WorkingFileRepo::type() const
     then turn remaining missing files into deleted
 
 */
-void WorkingFileRepo::updateState()
+void WorkingFileRepo::updateState(bool commit_changes)
 {
     Output::verbose(QString("building list of files"));
 
@@ -53,6 +53,7 @@ void WorkingFileRepo::updateState()
     // scanning known files for modifications
     QString file_path;
     foreach(file_path, known_found_file_paths){
+        QCoreApplication::processEvents();
         // check if that file has been modified
         // to save overhead.. we dont call newFileInfo as that reads the sha1
         // and we only want to read the sha1 if the mtime has changed
@@ -71,6 +72,7 @@ void WorkingFileRepo::updateState()
         bool file_was_renamed = false;
         FileInfo *unknown_fi = newFileInfo(file_path);
         foreach(QString missing_file_path, missing_file_paths){
+            QCoreApplication::processEvents();
             FileInfo *missing_fi = m_state->fileInfoByFilePath(missing_file_path);
             if (missing_fi->isIdenticalTo(unknown_fi)){
                 // this unknown file is actually a missing file renamed
@@ -87,6 +89,8 @@ void WorkingFileRepo::updateState()
 
     // deleted sweep
     foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
+
+    if (commit_changes) m_state->commitChanges();
 }
 
 bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
@@ -119,6 +123,7 @@ QStringList WorkingFileRepo::filesOnDisk()
 
 void WorkingFileRepo::findAllFiles(QString path, QStringList *found_files)
 {
+    QCoreApplication::processEvents();
     // first grab the list of files
     Output::verbose(path);
     QDir dir(path);
@@ -160,9 +165,11 @@ QString WorkingFileRepo::readFingerPrint(QString filePath)
     Output::info(QString("reading fingerprint of ").append(filePath));
     QCryptographicHash hash(QCryptographicHash::Sha1);
     if (file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-            while (!file.atEnd())
-                hash.addData(file.read(10485760));
-            return hash.result().toHex();
+        while (!file.atEnd()){
+            QCoreApplication::processEvents();
+            hash.addData(file.read(64*1024));
+        }
+        return hash.result().toHex();
     }else{
         return "failed to open file for fingerprint";
     }

@@ -14,8 +14,10 @@ public:
     QByteArray uri() const;
     QByteArray protocol() const;
     QByteArray method() const;
+    bool       accept();
     bool       hasHeader(QByteArray key) const;
     QByteArray header(QByteArray key) const;
+    bool       acceptsEncoding(QByteArray type);
     QIODevice *device() const;
 signals:
     void ready(); // this fires when we have parsed the http request

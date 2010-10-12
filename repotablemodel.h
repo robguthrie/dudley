@@ -17,13 +17,15 @@ public:
     QVariant headerData(int section,
                         Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const;
-    bool insertRepo(FileRepo* repo);
+    void insertRepo(FileRepo* repo);
     bool addRepo(QString type, QString path, QString name);
+    void removeRepo(QModelIndex i);
     bool hasRepo(QString name);
-    FileRepo* repo(QString name);
+    FileRepo* repo(QString name) const;
+    FileRepo* repo(QModelIndex i) const;
 
     QStringList repoNames();
-    QList<FileRepo*>* repoList();
+    QList<FileRepo*> repoList();
     void writeSettings(QSettings* s);
     void readSettings(QSettings* s);
 

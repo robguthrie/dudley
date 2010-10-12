@@ -23,7 +23,8 @@ SOURCES += main.cpp \
     httpresponse.cpp \
     httpclientfilerepo.cpp \
     mimetypefinder.cpp
-#    filetransfer.cpp
+
+# filetransfer.cpp
 HEADERS += fileinfo.h \
     filerepostate.h \
     filerepostatelogger.h \
@@ -39,10 +40,10 @@ HEADERS += fileinfo.h \
     httpresponse.h \
     httpclientfilerepo.h \
     mimetypefinder.h
-    #filetransfer.h
 
+# filetransfer.h
 # filerepomanager.h
 FORMS += mainwindow.ui \
     repodialog.ui
-OTHER_FILES += 
+OTHER_FILES += notes.txt
 RESOURCES += icon.qrc

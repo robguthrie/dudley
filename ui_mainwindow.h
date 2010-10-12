@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Sat Oct 9 23:19:02 2010
+** Created: Mon Oct 11 22:52:40 2010
 **      by: Qt User Interface Compiler version 4.6.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -40,7 +40,9 @@ public:
     QWidget *tab_2;
     QVBoxLayout *verticalLayout_3;
     QHBoxLayout *horizontalLayout;
+    QPushButton *refreshRepoButton;
     QPushButton *addRepoButton;
+    QPushButton *editRepoButton;
     QPushButton *removeRepoButton;
     QTableView *repoTableView;
     QMenuBar *menubar;
@@ -74,10 +76,20 @@ public:
         verticalLayout_3->setObjectName(QString::fromUtf8("verticalLayout_3"));
         horizontalLayout = new QHBoxLayout();
         horizontalLayout->setObjectName(QString::fromUtf8("horizontalLayout"));
+        refreshRepoButton = new QPushButton(tab_2);
+        refreshRepoButton->setObjectName(QString::fromUtf8("refreshRepoButton"));
+
+        horizontalLayout->addWidget(refreshRepoButton);
+
         addRepoButton = new QPushButton(tab_2);
         addRepoButton->setObjectName(QString::fromUtf8("addRepoButton"));
 
         horizontalLayout->addWidget(addRepoButton);
+
+        editRepoButton = new QPushButton(tab_2);
+        editRepoButton->setObjectName(QString::fromUtf8("editRepoButton"));
+
+        horizontalLayout->addWidget(editRepoButton);
 
         removeRepoButton = new QPushButton(tab_2);
         removeRepoButton->setObjectName(QString::fromUtf8("removeRepoButton"));
@@ -89,6 +101,9 @@ public:
 
         repoTableView = new QTableView(tab_2);
         repoTableView->setObjectName(QString::fromUtf8("repoTableView"));
+        repoTableView->setAlternatingRowColors(true);
+        repoTableView->setShowGrid(false);
+        repoTableView->setSortingEnabled(true);
 
         verticalLayout_3->addWidget(repoTableView);
 
@@ -99,7 +114,7 @@ public:
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName(QString::fromUtf8("menubar"));
-        menubar->setGeometry(QRect(0, 0, 320, 25));
+        menubar->setGeometry(QRect(0, 0, 320, 23));
         MainWindow->setMenuBar(menubar);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName(QString::fromUtf8("statusbar"));
@@ -117,7 +132,9 @@ public:
     {
         MainWindow->setWindowTitle(QApplication::translate("MainWindow", "MainWindow", 0, QApplication::UnicodeUTF8));
         tabWidget->setTabText(tabWidget->indexOf(tab), QApplication::translate("MainWindow", "Log", 0, QApplication::UnicodeUTF8));
+        refreshRepoButton->setText(QApplication::translate("MainWindow", "Refresh", 0, QApplication::UnicodeUTF8));
         addRepoButton->setText(QApplication::translate("MainWindow", "Add", 0, QApplication::UnicodeUTF8));
+        editRepoButton->setText(QApplication::translate("MainWindow", "Edit", 0, QApplication::UnicodeUTF8));
         removeRepoButton->setText(QApplication::translate("MainWindow", "Remove", 0, QApplication::UnicodeUTF8));
         tabWidget->setTabText(tabWidget->indexOf(tab_2), QApplication::translate("MainWindow", "Repos", 0, QApplication::UnicodeUTF8));
     } // retranslateUi

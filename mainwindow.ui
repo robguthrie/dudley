@@ -42,9 +42,23 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
+           <widget class="QPushButton" name="refreshRepoButton">
+            <property name="text">
+             <string>Refresh</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="addRepoButton">
             <property name="text">
              <string>Add</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="editRepoButton">
+            <property name="text">
+             <string>Edit</string>
             </property>
            </widget>
           </item>
@@ -58,7 +72,17 @@
          </layout>
         </item>
         <item>
-         <widget class="QTableView" name="repoTableView"/>
+         <widget class="QTableView" name="repoTableView">
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="showGrid">
+           <bool>false</bool>
+          </property>
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -72,7 +96,7 @@
      <x>0</x>
      <y>0</y>
      <width>320</width>
-     <height>25</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

@@ -111,6 +111,9 @@ void Server::respondToRequest()
     if (!request->isValid()){
         response->setResponseCode("400 Bad Request", "HTTP Request is invalid");
     }else{
+        // at this point we should authorize them
+        // then send the 100-continue
+        request->accept();
         routeRequestToAction(request, response);
     }
     m_requestsFinished++;
@@ -189,8 +192,9 @@ void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
                 if (regex.captureCount() == 2) dir_name = regex.cap(2);
                 if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
                 if (actionFileRequestByFileName(response, repo_name, dir_name)){
-                    // blank
+                    // supposed to be blank (it's in the condition)
                 }else{
+                    // repo_name cant be wrong due to way i create the regex
                     actionBrowseRequest(response, repo_name, dir_name);
                 }
             }else if (key == "ping"){
@@ -215,6 +219,7 @@ void Server::actionFaviconRequest(HttpResponse* response)
     QFile *f  = new QFile(":/icons/dino1.png");
     if(f->open(QIODevice::ReadOnly)){
         response->setMaxAge(60*60*24);
+        response->setResponseCode("200 OK");
         response->setContentType("image/png");
         response->setContentLength(f->size());
         response->setContentDevice(f);
@@ -270,6 +275,7 @@ void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* f
 void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)
 {
     if (FileRepo* repo = repoTableModel->repo(repo_name)){
+        response->setResponseCode("200 OK");
         response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
@@ -280,6 +286,7 @@ void Server::actionCommitRequest(HttpResponse* response, QString repo_name, QStr
 {
     if (FileRepo* repo = repoTableModel->repo(repo_name)){
         if (repo->state()->logger()->hasLogFile(commit_name)){
+            response->setResponseCode("200 OK");
             response->setBody(repo->state()->logger()->openLog(commit_name));
         }else{
             response->setResponseCode("404 Not Found");
@@ -307,6 +314,7 @@ void Server::actionBrowseRequest(HttpResponse* response, QString repo_name, QStr
         // list the files in the directory
         QList<FileInfo*> matches = repo->state()->filesInDir(dir_name);
         body.append(browseFileIndex(repo_name, matches));
+        response->setResponseCode("200 OK");
         response->setBody(body);
         response->setMaxAge(60*15);
     }else{
