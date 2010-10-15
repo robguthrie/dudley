@@ -6,13 +6,13 @@
 #include "httprequest.h"
 class RepoModel;
 class HttpResponse;
-class FileRepo;
+class Repo;
 
-class Server : public QTcpServer
+class HttpServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    Server(RepoModel* repoTableModel, QObject *parent = 0);
+    HttpServer(RepoModel* repoTableModel, QObject *parent = 0);
 
 public slots:
     void printStatus(QString a = "");
@@ -23,16 +23,17 @@ public slots:
     void processError();
     void respondToRequest();
     void responseFinished();
-
+    void requestFinished();
 private:
     void routeRequestToAction(HttpRequest* request, HttpResponse* response);
     void actionFaviconRequest(HttpResponse* response);
+    void actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name);
     void actionHistoryRequest(HttpResponse* response, QString repo_name);
     void actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name);
     void actionBrowseRequest(HttpResponse* response, QString repo_name, QString dir_name);
     bool actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path);
     bool actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint);
-    void setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* file_info);
+    void setFileResponse(HttpResponse* response, Repo* repo, FileInfo* file_info);
 
     QString browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos);
     QString browseBreadCrumb(QStringList dirs) const;
@@ -40,7 +41,7 @@ private:
     QString linkToFile(QString repo_name, FileInfo* f);
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
 
-    RepoModel* repoTableModel;
+    RepoModel* repoModel;
     QSet<QIODevice*> m_handledSockets;
     QSet<HttpRequest*> m_activeRequests;
     QSet<HttpResponse*> m_activeResponses;

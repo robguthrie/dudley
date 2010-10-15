@@ -4,23 +4,23 @@
 #include <QFile>
 #include <QTextStream>
 #include "fileinfo.h"
-#include "filerepostate.h"
+#include "repostate.h"
 
-class FileRepoStateLogger
+class RepoStateLogger
 {
 
 public:
-    FileRepoStateLogger(QString logsDir);
+    RepoStateLogger(QString logsDir);
     bool initialize();
     bool isReady() const;
     QString logsDir();
 //    FileRepoState loadState();
-    void loadState(FileRepoState* state);
+    void loadState(RepoState* state);
     QString logsDir() const;
     bool commitChanges();
-    void playAllLogs(FileRepoState* state);
+    void playAllLogs(RepoState* state);
     QByteArray openLog(QString name);
-    void playLogFile(QString name, FileRepoState* state);
+    void playLogFile(QString name, RepoState* state);
     bool writeLogFile(QString commit_name, QString body);
     void printChanges();
     void logAddFile(FileInfo* fi);

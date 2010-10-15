@@ -8,6 +8,7 @@
 #include "mimetypefinder.h"
 
 MimeTypeFinder FileInfo::mimeTypeFinder = MimeTypeFinder();
+FileInfo::FileInfo() {}
 
 FileInfo::FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
@@ -15,6 +16,13 @@ FileInfo::FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, Q
     update(modifiedAt, sizeInBytes, sha1);
 }
 
+FileInfo::FileInfo(const FileInfo &f)
+{
+    m_filePath = f.m_filePath;
+    m_modifiedAt = f.m_modifiedAt;
+    m_sizeInBytes = f.m_sizeInBytes;
+    m_sha1 = f.m_sha1;
+}
 
 // we call this when updating collection from log file
 void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
@@ -49,30 +57,30 @@ bool FileInfo::seemsIdenticalTo(QFileInfo q){
            (this->size() == q.size());
 }
 
-QDateTime FileInfo::lastModified()
+QDateTime FileInfo::lastModified() const
 {
     return m_modifiedAt;
 }
 
-QString FileInfo::fingerPrint()
+QString FileInfo::fingerPrint() const
 {
     return m_sha1;
 }
 
-QString FileInfo::filePath()
+QString FileInfo::filePath() const
 {
     return m_filePath;
 }
 
-QString FileInfo::fileName()
+QString FileInfo::fileName() const
 {
     QFileInfo fi(m_filePath);
     return fi.fileName();
 }
 
-QString FileInfo::humanSize()
+QString FileInfo::humanSize() const
 {
-    float num = (float)this->size();
+    float num = (float) m_sizeInBytes;
     QStringList list;
     list << "KB" << "MB" << "GB" << "TB";
 
@@ -87,20 +95,20 @@ QString FileInfo::humanSize()
     return QString().setNum(num,'f',2)+" "+unit;
 }
 
-qint64 FileInfo::size()
+qint64 FileInfo::size() const
 {
     return m_sizeInBytes;
 }
 
 
-QString FileInfo::toString()
+QString FileInfo::toString() const
 {
     QStringList list;
     list << m_sha1 << QString::number(m_sizeInBytes) << m_filePath;
     return list.join(",");
 }
 
-QString FileInfo::mimeType()
+QString FileInfo::mimeType() const
 {
     return mimeTypeFinder.lookup(QFileInfo(filePath()).suffix().toLower());
 }

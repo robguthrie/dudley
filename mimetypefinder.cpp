@@ -14,10 +14,14 @@ MimeTypeFinder::MimeTypeFinder()
         QTextStream in(&file);
         QStringList tokens;
         while(!in.atEnd()){
-            tokens = in.readLine().split(" ");
-            QString ext = tokens.at(0);
-            QString mimetype = tokens.at(1);
-            m_mimes[ext] = mimetype;
+            QString line = in.readLine().trimmed();
+            if (line.length() > 0){
+                tokens = line.split(" ");
+                QString ext = tokens.at(0);
+                QString mimetype = tokens.at(1);
+                if ((ext.length() > 0) && (mimetype.length() > 0))
+                    m_mimes[ext] = mimetype;
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-#include "repotablemodel.h"
+#include "repomodel.h"
 #include <QStringList>
 #include "output.h"
 
@@ -31,7 +31,7 @@ QVariant RepoModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    if (FileRepo *repo = m_repoList.at(index.row())){
+    if (Repo *repo = m_repoList.at(index.row())){
         if (role == Qt::DisplayRole){
             switch(index.column()){
             case 0:
@@ -76,7 +76,7 @@ QVariant RepoModel::headerData(int section, Qt::Orientation orientation, int rol
         return QString("Row %1").arg(section);
 }
 
-void RepoModel::insertRepo(FileRepo* repo)
+void RepoModel::insertRepo(Repo* repo)
 {
     beginInsertRows(QModelIndex(), m_repoList.size(), m_repoList.size());
     m_repoList.append(repo);
@@ -85,7 +85,7 @@ void RepoModel::insertRepo(FileRepo* repo)
 
 void RepoModel::removeRepo(QModelIndex i)
 {
-    FileRepo* repo;
+    Repo* repo;
     beginRemoveRows(QModelIndex(), i.row(), i.row());
     repo = m_repoList.at(i.row());
     repo->deleteLater();
@@ -98,7 +98,7 @@ bool RepoModel::hasRepo(QString name)
     return repoNames().contains(name);
 }
 
-FileRepo* RepoModel::repo(QString name) const
+Repo* RepoModel::repo(QString name) const
 {
     for (int i =0; i < m_repoList.size(); i++){
         if (m_repoList.at(i)->name() == name){
@@ -109,20 +109,20 @@ FileRepo* RepoModel::repo(QString name) const
     return 0;
 }
 
-FileRepo* RepoModel::repo(QModelIndex i) const
+Repo* RepoModel::repo(QModelIndex i) const
 {
     return m_repoList.at(i.row());
 }
 QStringList RepoModel::repoNames()
 {
     QStringList names;
-    foreach(FileRepo* r, m_repoList){
+    foreach(Repo* r, m_repoList){
         names << r->name();
     }
     return names;
 }
 
-QList<FileRepo*> RepoModel::repoList()
+QList<Repo*> RepoModel::repoList()
 {
     return m_repoList;
 }

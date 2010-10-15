@@ -7,10 +7,10 @@
 #include <QDebug>
 #include <QSettings>
 
-#include "filerepo.h"
-#include "filerepostate.h"
-#include "filerepostatelogger.h"
-#include "workingfilerepo.h"
+#include "repo.h"
+#include "repostate.h"
+#include "repostatelogger.h"
+#include "localdiskrepo.h"
 #include "output.h"
 #include "mainwindow.h"
 

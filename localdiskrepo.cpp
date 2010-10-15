@@ -1,23 +1,24 @@
-#include "workingfilerepo.h"
+#include "localdiskrepo.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include "output.h"
+#include "filetransfer.h"
 
-WorkingFileRepo::WorkingFileRepo(QObject *parent, QString path, QString name)
-    :FileRepo(parent, path, name)
+LocalDiskRepo::LocalDiskRepo(QObject *parent, QString path, QString name)
+    :Repo(parent, path, name)
 {
     m_log_path = m_path + "/.dudley/logs";
-    m_state = new FileRepoState(this, m_log_path);
+    m_state = new RepoState(this, m_log_path);
 }
 
 
-bool WorkingFileRepo::canReadData() const
+bool LocalDiskRepo::canReadData() const
 {
     QDir dir;
     return dir.exists(m_path);
 }
 
-QString WorkingFileRepo::type() const
+QString LocalDiskRepo::type() const
 {
     return QString("WorkingFileRepo");
 }
@@ -33,7 +34,7 @@ QString WorkingFileRepo::type() const
     then turn remaining missing files into deleted
 
 */
-void WorkingFileRepo::updateState(bool commit_changes)
+void LocalDiskRepo::updateState(bool commit_changes)
 {
     Output::verbose(QString("building list of files"));
 
@@ -94,16 +95,14 @@ void WorkingFileRepo::updateState(bool commit_changes)
         m_state->commitChanges();
     }
 }
-bool WorkingFileRepo::hasFile(FileInfo fileInfo) const
+
+bool LocalDiskRepo::hasFile(const FileInfo &file_info) const
 {
-    //need to actually check he disk here..
-    // do we need to check the state at all?
-    // i dont get why?
-    //    return m_state->containsFileInfo(fileInfo);
-    return QFile::exists ( m_path +"/"+ fileInfo.filePath());
+    // need to actually check the disk here..
+    return QFile::exists( m_path +"/"+ file_info.filePath());
 }
 
-QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo)
+QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
 {
     QFile *f = new QFile(m_path +"/"+ fileInfo->filePath());
     if (f->open(QIODevice::ReadOnly)){
@@ -113,16 +112,61 @@ QIODevice* WorkingFileRepo::getFile(FileInfo* fileInfo)
     }
 }
 
-// private functions
+// at this stage the device has already had the data written to it
+void LocalDiskRepo::putFileFinished(FileInfo file_info, QIODevice* device)
+{
+    if (device->isOpen()){
+        Output::warning("WorkingFileRepo::putFileComplete device is still open. closing");
+        device->close();
+    }
+    QString newFilePath = this->temporaryFilePath(file_info);
+    QFile *file = new QFile(newFilePath);
+    if (!file->open(QIODevice::ReadOnly)){
+        Output::error("WorkingFileRepo::putFileComplete cant open newFilePath of putFile:"+newFilePath);
+    }
+    if (file->size() != file_info.size()){
+        Output::error("WorkingFileRepo::putFileComplete new file is the wrong size. expected:"+
+                      QString::number(file_info.size())+
+                      " actual:"+QString::number(file->size()));
+    }
 
-QStringList WorkingFileRepo::filesOnDisk()
+    if (this->readFingerPrint(file) != file_info.fingerPrint()){
+        Output::error("WorkingFileRepo::putFileComplete new file:"+newFilePath+" has different fingerprint to expected.");
+    }
+
+    if (this->hasFile(file_info)){
+        Output::error("existing file with same name as putFile") ;
+    }else{
+        file->rename(file_info.fileName());
+    }
+    file->close();
+    Output::debug("WorkingFileRepo::putFileComplete added file:"+newFilePath+" successfully");
+}
+
+QIODevice* LocalDiskRepo::incommingFileDevice(const FileInfo &fileInfo)
+{
+    QFile* f = new QFile(this->temporaryFilePath(fileInfo));
+    if (f->open(QIODevice::WriteOnly)){
+        return f;
+    }else{
+        Output::error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
+        return 0;
+    }
+}
+
+QString LocalDiskRepo::temporaryFilePath(FileInfo f)
+{
+    return f.filePath()+".part";
+}
+
+QStringList LocalDiskRepo::filesOnDisk()
 {
     QStringList found_files;
     findAllFiles(m_path, &found_files);
     return found_files;
 }
 
-void WorkingFileRepo::findAllFiles(QString path, QStringList *found_files)
+void LocalDiskRepo::findAllFiles(QString path, QStringList *found_files)
 {
     QCoreApplication::processEvents();
     // first grab the list of files
@@ -133,7 +177,11 @@ void WorkingFileRepo::findAllFiles(QString path, QStringList *found_files)
     QStringList fileNames = dir.entryList();
     QString fileName;
     foreach(fileName, fileNames){
-        found_files->append(relativeFilePath(path+'/'+fileName));
+        // .part is the extention for a file we are still writing
+        // we dont wanna know about these files
+        if (!fileName.endsWith(".part")){
+            found_files->append(relativeFilePath(path+'/'+fileName));
+        }
     }
 
     // then recurse down into every directory
@@ -145,7 +193,7 @@ void WorkingFileRepo::findAllFiles(QString path, QStringList *found_files)
     }
 }
 
-QString WorkingFileRepo::relativeFilePath(QString filePath){
+QString LocalDiskRepo::relativeFilePath(QString filePath){
     if (filePath.startsWith(m_path+'/')){
         return filePath.remove(0, m_path.length()+1);
     }else{
@@ -153,25 +201,33 @@ QString WorkingFileRepo::relativeFilePath(QString filePath){
     }
 }
 
-FileInfo* WorkingFileRepo::newFileInfo(QString filePath)
+FileInfo* LocalDiskRepo::newFileInfo(QString filePath)
 {
     QFileInfo *qfi = new QFileInfo(m_path+"/"+filePath);
     return new FileInfo(filePath, qfi->lastModified(),
                         qfi->size(), readFingerPrint(filePath));
 }
 
-QString WorkingFileRepo::readFingerPrint(QString filePath)
+QString LocalDiskRepo::readFingerPrint(QString filePath)
 {
     QFile file(m_path+'/'+filePath);
     Output::info(QString("reading fingerprint of ").append(filePath));
     QCryptographicHash hash(QCryptographicHash::Sha1);
-    if (file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-        while (!file.atEnd()){
+    file.open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+    return readFingerPrint(&file);
+}
+
+QString LocalDiskRepo::readFingerPrint(QFile* d)
+{
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    if (d->isOpen() && d->isReadable()) {
+        while (!d->atEnd()){
+            hash.addData(d->read(256*1024));
             QCoreApplication::processEvents();
-            hash.addData(file.read(256*1024));
         }
         return hash.result().toHex();
     }else{
-        return "failed to open file for fingerprint";
+        Output::error("could not open device to read fingerprint");
+        return "";
     }
 }

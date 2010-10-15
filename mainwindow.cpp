@@ -3,8 +3,8 @@
 #include <QtGui>
 #include <QtNetwork>
 #include "output.h"
-#include "workingfilerepo.h"
-#include "httpclientfilerepo.h"
+#include "localdiskrepo.h"
+#include "httpclientrepo.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     m_repoModel = new RepoModel();
-    server = new Server(m_repoModel, this);
+    server = new HttpServer(m_repoModel, this);
     if (!server->listen(QHostAddress::Any, 54573)){
 //    if (!server->listen(QHostAddress::Any)){
         QMessageBox::critical(this, tr("Dudley Server"),
@@ -38,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::writeSettings()
 {
     m_settings.beginGroup("repos");
-    foreach(FileRepo* repo, m_repoModel->repoList()){
+    foreach(Repo* repo, m_repoModel->repoList()){
         m_settings.beginGroup(repo->name());
         m_settings.setValue("type", repo->type());
         m_settings.setValue("path", repo->path());
@@ -104,14 +104,14 @@ void MainWindow::removeRepoButtonPressed()
 
 bool MainWindow::addRepo(QString type, QString path, QString name)
 {
-    FileRepo* repo;
+    Repo* repo;
     Output::info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
     if (type == "HttpClientFileRepo"){
         Output::debug("opening httpclientfilerepo");
-        repo = new HttpClientFileRepo(this, path, name);
+        repo = new HttpClientRepo(this, path, name);
     }else if(type == "WorkingFileRepo"){
         Output::debug("opening workingfilerepo");
-        repo = new WorkingFileRepo(this, path, name);
+        repo = new LocalDiskRepo(this, path, name);
     }
 
     m_repoModel->insertRepo(repo);

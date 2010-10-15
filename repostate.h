@@ -7,18 +7,18 @@
 #include <QDateTime>
 #include "fileinfo.h"
 
-class FileRepoStateLogger;
+class RepoStateLogger;
 
-class FileRepoState : public QObject
+class RepoState : public QObject
 {
     Q_OBJECT
 public:
-    FileRepoState(QObject* parent = 0);
-    FileRepoState(QObject* parent, QString logs_dir);
-    ~FileRepoState();
+    RepoState(QObject* parent = 0);
+    RepoState(QObject* parent, QString logs_dir);
+    ~RepoState();
     void reload();
-    FileRepoStateLogger* logger();
-    void setLogger(FileRepoStateLogger* logger);
+    RepoStateLogger* logger();
+    void setLogger(RepoStateLogger* logger);
     void importLog(QString name, QString body);
     bool commitChanges();
     bool containsFileInfo(FileInfo file_info);
@@ -46,7 +46,7 @@ public:
     QStringList unknownFilePaths(QStringList found_files);
 
 private:
-    FileRepoStateLogger* m_logger;
+    RepoStateLogger* m_logger;
     QHash<QString, FileInfo*> m_files;
     QHash<QString, FileInfo*> m_fingerprints;
     bool m_logChanges;

@@ -532,3 +532,4 @@ ogg audio/ogg
 webm video/webm
 wmv video/x-ms-wmv
 wma audio/x-ms-wma
+m4a audio/mp4

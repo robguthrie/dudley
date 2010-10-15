@@ -5,19 +5,19 @@
 #include <iostream>
 #include <QDir>
 
-#include "filerepostate.h"
+#include "repostate.h"
 #include "fileinfo.h"
-#include "filerepostatelogger.h"
+#include "repostatelogger.h"
 #include "output.h"
 
-FileRepoState::FileRepoState(QObject* parent)
+RepoState::RepoState(QObject* parent)
     :QObject(parent), m_logger(0), m_logChanges(false)
 {}
 
-FileRepoState::FileRepoState(QObject* parent, QString logs_dir)
+RepoState::RepoState(QObject* parent, QString logs_dir)
     :QObject(parent), m_logChanges(false)
 {
-    m_logger = new FileRepoStateLogger(logs_dir);
+    m_logger = new RepoStateLogger(logs_dir);
     if (m_logger->isReady()){
         reload();
     }else{
@@ -26,12 +26,12 @@ FileRepoState::FileRepoState(QObject* parent, QString logs_dir)
     }
 }
 
-FileRepoState::~FileRepoState()
+RepoState::~RepoState()
 {
     if (m_logger != 0) delete m_logger;
 }
 
-void FileRepoState::reload()
+void RepoState::reload()
 {
     m_files.clear();
     m_fingerprints.clear();
@@ -52,12 +52,12 @@ void FileRepoState::reload()
 //    // what files from self are not present in state?
 //}
 
-FileRepoStateLogger* FileRepoState::logger()
+RepoStateLogger* RepoState::logger()
 {
     return m_logger;
 }
 
-void FileRepoState::importLog(QString name, QString body)
+void RepoState::importLog(QString name, QString body)
 {
 //    m_logChanges = false;
     m_logger->writeLogFile(name, body);
@@ -65,49 +65,49 @@ void FileRepoState::importLog(QString name, QString body)
 //    m_logChanges = true;
 }
 
-void FileRepoState::setLogger(FileRepoStateLogger* logger)
+void RepoState::setLogger(RepoStateLogger* logger)
 {
     m_logger = logger;
 }
 
 // should support a commit message or label eventually
-bool FileRepoState::commitChanges()
+bool RepoState::commitChanges()
 {
     return m_logger->commitChanges();
 }
 
-bool FileRepoState::containsFileInfo(FileInfo file_info)
+bool RepoState::containsFileInfo(FileInfo file_info)
 {
     return containsFingerPrint(file_info.fingerPrint());
 }
 
-bool FileRepoState::containsFilePath(QString file_path)
+bool RepoState::containsFilePath(QString file_path)
 {
     return m_files.contains(file_path);
 }
 
-bool FileRepoState::containsFingerPrint(QString finger_print)
+bool RepoState::containsFingerPrint(QString finger_print)
 {
     return m_fingerprints.contains(finger_print);
 }
 
-FileInfo* FileRepoState::fileInfoByFilePath(QString file_path)
+FileInfo* RepoState::fileInfoByFilePath(QString file_path)
 {
     return m_files.value(file_path);
 }
 
-FileInfo* FileRepoState::fileInfoByFingerPrint(QString sha1)
+FileInfo* RepoState::fileInfoByFingerPrint(QString sha1)
 {
     return m_fingerprints.value(sha1);
 }
 
-void FileRepoState::addFile(FileInfo* file_info)
+void RepoState::addFile(FileInfo* file_info)
 {
     addFile(file_info->filePath(), file_info->lastModified(),
             file_info->size(), file_info->fingerPrint());
 }
 
-void FileRepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
     if (!m_files.contains(filePath)){
         // update existing without touching disk
@@ -123,7 +123,7 @@ void FileRepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeI
     }
 }
 
-void FileRepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
 {
     if (m_files.contains(filePath)){
         // update existing without touching disk
@@ -141,7 +141,7 @@ void FileRepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 si
     }
 }
 
-bool FileRepoState::removeFile(QString filePath)
+bool RepoState::removeFile(QString filePath)
 {
     FileInfo *fileInfo = m_files.value(filePath);
     if (m_files.remove(filePath)){
@@ -151,7 +151,7 @@ bool FileRepoState::removeFile(QString filePath)
     }else return false;
 }
 
-bool FileRepoState::renameFile(QString filePath, QString newFilePath)
+bool RepoState::renameFile(QString filePath, QString newFilePath)
 {
     if (m_files.contains(filePath)){
         FileInfo *fileInfo = m_files.value(filePath);
@@ -164,7 +164,7 @@ bool FileRepoState::renameFile(QString filePath, QString newFilePath)
 }
 
 // an known file is is thought to be on disk as far as a collection is concerned
-QHash<QString, FileInfo*> FileRepoState::knownFiles(QStringList found_files)
+QHash<QString, FileInfo*> RepoState::knownFiles(QStringList found_files)
 {
     QString file_path;
     QHash<QString, FileInfo*> known_found_files;
@@ -177,7 +177,7 @@ QHash<QString, FileInfo*> FileRepoState::knownFiles(QStringList found_files)
     return known_found_files;
 }
 
-QHash<QString, FileInfo*> FileRepoState::missingFiles(QStringList found_files)
+QHash<QString, FileInfo*> RepoState::missingFiles(QStringList found_files)
 {
     QHash<QString, FileInfo*> missing_files = m_files;
     QString file_path;
@@ -188,13 +188,13 @@ QHash<QString, FileInfo*> FileRepoState::missingFiles(QStringList found_files)
 }
 
 // a missing file is in the collection but not on the disk
-QStringList FileRepoState::missingFilePaths(QStringList found_files)
+QStringList RepoState::missingFilePaths(QStringList found_files)
 {
     return missingFiles(found_files).keys();
 }
 
 // an known file is is thought to be on disk as far as a collection is concerned
-QStringList FileRepoState::knownFilePaths(QStringList found_files)
+QStringList RepoState::knownFilePaths(QStringList found_files)
 {
     QString file_path;
     QStringList known_found_files;
@@ -208,7 +208,7 @@ QStringList FileRepoState::knownFilePaths(QStringList found_files)
 }
 
 // an unknown file is on the disk but not in the collection
-QStringList FileRepoState::unknownFilePaths(QStringList found_files)
+QStringList RepoState::unknownFilePaths(QStringList found_files)
 {
     QStringList unknown_file_paths;
     QString file_path;
@@ -220,7 +220,7 @@ QStringList FileRepoState::unknownFilePaths(QStringList found_files)
     return unknown_file_paths;
 }
 
-QStringList FileRepoState::subDirs(QString path)
+QStringList RepoState::subDirs(QString path)
 {
     QStringList keys = m_files.keys();
     QStringList sub_dirs;
@@ -241,7 +241,7 @@ QStringList FileRepoState::subDirs(QString path)
     return sub_dirs;
 }
 
-QList<FileInfo*> FileRepoState::filesInDir(QString path)
+QList<FileInfo*> RepoState::filesInDir(QString path)
 {
 //    Output::debug("filesInDir path:"+path);
     QHash<QString, FileInfo*>::const_iterator i;

@@ -4,7 +4,7 @@
 #include <QAbstractListModel>
 #include <QList>
 
-#include "filerepo.h"
+#include "repo.h"
 /* a readonly model to display info about the locally mounted repos */
 class RepoModel : public QAbstractListModel
 {
@@ -17,21 +17,21 @@ public:
     QVariant headerData(int section,
                         Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const;
-    void insertRepo(FileRepo* repo);
+    void insertRepo(Repo* repo);
     bool addRepo(QString type, QString path, QString name);
     void removeRepo(QModelIndex i);
     bool hasRepo(QString name);
-    FileRepo* repo(QString name) const;
-    FileRepo* repo(QModelIndex i) const;
+    Repo* repo(QString name) const;
+    Repo* repo(QModelIndex i) const;
 
     QStringList repoNames();
-    QList<FileRepo*> repoList();
+    QList<Repo*> repoList();
     void writeSettings(QSettings* s);
     void readSettings(QSettings* s);
 
 private:
     static QStringList columns;
-    QList<FileRepo*> m_repoList;
+    QList<Repo*> m_repoList;
 
 };
 

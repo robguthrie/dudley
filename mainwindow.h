@@ -3,11 +3,12 @@
 
 #include <QSystemTrayIcon>
 #include <QMainWindow>
-#include <server.h>
-#include "repodialog.h"
-#include "repotablemodel.h"
-#include "filerepo.h"
 #include <QSettings>
+#include "httpserver.h"
+#include "repodialog.h"
+#include "repomodel.h"
+#include "repo.h"
+
 namespace Ui {
     class MainWindow;
 }
@@ -30,7 +31,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    Server* server;
+    HttpServer* server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
     RepoModel *m_repoModel;

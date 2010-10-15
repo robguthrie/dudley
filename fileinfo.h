@@ -7,26 +7,28 @@
 #include "mimetypefinder.h"
 
 
-class FileRepoState;
+class RepoState;
 
 class FileInfo
 {
 
     static MimeTypeFinder mimeTypeFinder;
 public:
+    FileInfo();
     FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    FileInfo(const FileInfo &f);
     void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
     bool isIdenticalTo(FileInfo *fi);
     bool seemsIdenticalTo(QFileInfo q);
 
-    QDateTime lastModified();
-    QString fingerPrint();
-    QString filePath();
-    QString fileName();
-    QString toString();
-    QString mimeType();
-    QString humanSize();
-    qint64 size();
+    QDateTime lastModified() const;
+    QString fingerPrint() const;
+    QString filePath() const;
+    QString fileName() const;
+    QString toString() const;
+    QString mimeType() const;
+    QString humanSize() const;
+    qint64 size() const;
     void rename(QString newFilePath);
 
 private:

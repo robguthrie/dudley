@@ -9,41 +9,48 @@ CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfo.cpp \
-    filerepostate.cpp \
-    filerepostatelogger.cpp \
-    filerepo.cpp \
-    workingfilerepo.cpp \
-    storagefilerepo.cpp \
+    repostate.cpp \
+    repostatelogger.cpp \
+    localdiskrepo.cpp \
+    localstoragerepo.cpp \
     output.cpp \
-    server.cpp \
+    httpserver.cpp \
     mainwindow.cpp \
     repodialog.cpp \
-    repotablemodel.cpp \
+    repomodel.cpp \
     httprequest.cpp \
     httpresponse.cpp \
-    httpclientfilerepo.cpp \
-    mimetypefinder.cpp
+    httpclientrepo.cpp \
+    mimetypefinder.cpp \
+    filetransfer.cpp \
+    filetransfermanager.cpp \
+    httpmessage.cpp \
+    repo.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
-    filerepostate.h \
-    filerepostatelogger.h \
-    filerepo.h \
-    workingfilerepo.h \
-    storagefilerepo.h \
+    repostate.h \
+    repostatelogger.h \
+    localdiskrepo.h \
+    localstoragerepo.h \
     output.h \
-    server.h \
+    httpserver.h \
     mainwindow.h \
     repodialog.h \
-    repotablemodel.h \
+    repomodel.h \
     httprequest.h \
     httpresponse.h \
-    httpclientfilerepo.h \
-    mimetypefinder.h
+    httpclientrepo.h \
+    mimetypefinder.h \
+    filetransfer.h \
+    filetransfermanager.h \
+    httpmessage.h \
+    repo.h
 
 # filetransfer.h
 # filerepomanager.h
 FORMS += mainwindow.ui \
     repodialog.ui
-OTHER_FILES += notes.txt
+OTHER_FILES += notes.txt \
+    uploadform.html
 RESOURCES += icon.qrc

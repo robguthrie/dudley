@@ -1,17 +1,18 @@
-#include "server.h"
+
 #include <QTcpSocket>
 #include <QDataStream>
 #include <QStringList>
 #include <QDateTime>
 #include <QUrl>
 #include <output.h>
+#include "httpserver.h"
 #include "httprequest.h"
 #include "httpresponse.h"
-#include "repotablemodel.h"
-#include "filerepostatelogger.h"
+#include "repomodel.h"
+#include "repostatelogger.h"
 
-Server::Server(RepoModel* model, QObject *parent)
-    :QTcpServer(parent), repoTableModel(model)
+HttpServer::HttpServer(RepoModel* model, QObject *parent)
+    :QTcpServer(parent), repoModel(model)
 {
     // need a function to be called on newConnection
     // it will read the connection
@@ -28,7 +29,7 @@ Server::Server(RepoModel* model, QObject *parent)
 
 }
 
-void Server::printStatus(QString a)
+void HttpServer::printStatus(QString a)
 {
     Output::info("Server Connection Status: "+a);
     Output::info("m_socketsOpened = "+QString::number(m_socketsOpened));
@@ -40,9 +41,9 @@ void Server::printStatus(QString a)
     Output::info("m_handledSockets.size() = "+QString::number(m_handledSockets.size()));
 }
 
-void Server::acceptConnection()
+void HttpServer::acceptConnection()
 {
-    printStatus("accept connection");
+//    printStatus("accept connection");
     if (this->hasPendingConnections()){
         m_socketsOpened++;
 
@@ -55,7 +56,7 @@ void Server::acceptConnection()
 
 }
 
-void Server::processDisconnected()
+void HttpServer::processDisconnected()
 {
     m_socketsClosed++;
     QIODevice* socket = (QIODevice*) sender();
@@ -68,68 +69,61 @@ void Server::processDisconnected()
 //    printStatus("socket disconnected");
 }
 
-void Server::processAboutToClose()
+void HttpServer::processAboutToClose()
 {
     Output::debug("Server::processAboutToClose");
 }
 
-void Server::processError()
+void HttpServer::processError()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
     Output::debug("Server::processError: "+socket->errorString());
 }
 
-void Server::processReadyRead()
+void HttpServer::processReadyRead()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
-    // we need to check that we can parse a complete header ..
-    // using peek'ed data?
-    // while canreadline
-    // readlines.. and fail unless they pass regex
-    // the last line needs to be crlf ..else its not valid
-
-    if (m_handledSockets.contains(socket)){
-//        printStatus("processReadyRead - from socket which is being handled ");
-    }else{
-        // this is new socket connection
+    // we only worry about new connections.. existing ones will manage fine
+    if (!m_handledSockets.contains(socket)){
         m_handledSockets << (QIODevice*) socket;
-        // the http request will call respondToRequest when it is ready
         m_requestsStarted++;
         printStatus("processReadyRead - new request (new or existing socket)");
+        // the http request will call respondToRequest when it is ready
         HttpRequest *request = new HttpRequest(this, socket);
+        connect(request, SIGNAL(finished()), this, SLOT(requestFinished()));
     }
-
 }
 
-void Server::respondToRequest()
+void HttpServer::respondToRequest()
 {
     HttpRequest* request = (HttpRequest*) sender();
+
     // create the HttpResponse object, and deal with it, and click send.
-    m_responsesStarted++;
-//    printStatus("respondToRequest - new response started");
     HttpResponse* response = new HttpResponse(this, request, request->device());
+    m_responsesStarted++;
     if (!request->isValid()){
         response->setResponseCode("400 Bad Request", "HTTP Request is invalid");
     }else{
-        // at this point we should authorize them
-        // then send the 100-continue
-        request->accept();
         routeRequestToAction(request, response);
     }
-    m_requestsFinished++;
-    m_handledSockets.remove(request->device());
-//    printStatus("respondToRequest - request finished and deleted");
     connect(response, SIGNAL(finished()), this, SLOT(responseFinished()));
     response->send();
 }
 
-void Server::responseFinished()
+void HttpServer::requestFinished()
+{
+    printStatus("request finished");
+    HttpRequest* request = (HttpRequest*) sender();
+    m_handledSockets.remove(request->device());
+    m_requestsFinished++;
+
+}
+
+void HttpServer::responseFinished()
 {
     HttpResponse* response = (HttpResponse*) sender();
     if (response->failed()){
         Output::debug("Server::responseFinished() with failure");
-    }else{
-//        Output::debug("Server::responseFinished() successfully ");
     }
     // this socket may now be used to receive another request.
     if (response->protocol() == "HTTP/1.0"){
@@ -137,16 +131,16 @@ void Server::responseFinished()
     }
     m_responsesFinished++;
     response->deleteLater();
-//    delete response;
     printStatus("Server::responseFinished");
 }
 
 
-void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
+void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* response){
     QUrl uri(request->uri());
     QString uri_path = uri.path();
 
     QMap<QString, QRegExp> routes;
+    routes["upload"] = QRegExp("/(upload)/?");
     routes["favicon"] = QRegExp("/favicon.ico");
     routes["file"] = QRegExp("/(file)/(\\w+)/(\\w{40})/([^?*:;{}\\\\]+)");
     routes["history"] = QRegExp("/(history)/(\\w+)/?");
@@ -155,7 +149,7 @@ void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
     routes["ping"] = QRegExp ("/(ping)/(\\w+)(/.*)?");
     // naked is an overloaded actionless route for each repo
     // it should give the most normal looking urls for your files
-    QStringList repo_names = repoTableModel->repoNames();
+    QStringList repo_names = repoModel->repoNames();
     routes["naked"] = QRegExp("/("+(repo_names.join("|"))+")(/.*)?");
     // dont forget to create a torrent action to return a bittorrent info file
     QMap<QString, QRegExp>::const_iterator i;
@@ -166,9 +160,22 @@ void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
         key = i.key();
         regex = i.value();
         if(regex.exactMatch(uri_path)){
+            // at this point we should authorize them and send the 100-continue
+            request->accept();
             routed_request = true;
             Output::debug("matched "+key+" route");
-            if (key == "favicon"){
+            if (key == "upload"){
+                // send the 100 continue here
+                // read and validate the filepath
+                QString repo_name = regex.cap(2);
+                if (request->method() == "POST"){
+                    // tell the request to process the uploaded files
+                    // and connect to its uploadFileReadyRead(QString, QIODevice*) signal
+                    actionUploadRequest(request, response, repo_name);
+                }else{
+                    // return the upload form
+                }
+            }else if (key == "favicon"){
                 actionFaviconRequest(response);
             }else if (key == "file"){
                 QString repo_name = regex.cap(2);
@@ -214,7 +221,22 @@ void Server::routeRequestToAction(HttpRequest* request, HttpResponse* response){
     }
 }
 
-void Server::actionFaviconRequest(HttpResponse* response)
+void HttpServer::actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name)
+{
+    // read the filename from the request
+    // open the repo
+    //
+    if (Repo* repo = repoModel->repo(repo_name)){
+        // we may get a whole file_info or just a filename.. and size?
+        // check if the repo has a file by this nameresponse->setResponseCode("500 Internal Server Error", "Could not open repo");
+        response->setResponseCode("200 OK");
+        response->setBody("hello danynon uploader");
+    }else{
+        response->setResponseCode("500 Internal Server Error", "Could not open repo");
+    }
+}
+
+void HttpServer::actionFaviconRequest(HttpResponse* response)
 {
     QFile *f  = new QFile(":/icons/dino1.png");
     if(f->open(QIODevice::ReadOnly)){
@@ -228,10 +250,10 @@ void Server::actionFaviconRequest(HttpResponse* response)
     }
 }
 
-bool Server::actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path)
+bool HttpServer::actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path)
 {
     Output::debug("actionfilerequestbyfilename:"+repo_name+" "+file_path);
-    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+    if (Repo* repo = repoModel->repo(repo_name)){
         if (repo->hasFileInfoByFilePath(file_path)){
             FileInfo* file_info = repo->fileInfoByFilePath(file_path);
             setFileResponse(response, repo, file_info);
@@ -246,9 +268,9 @@ bool Server::actionFileRequestByFileName(HttpResponse* response, QString repo_na
 }
 
 
-bool Server::actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint)
+bool HttpServer::actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint)
 {
-    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+    if (Repo* repo = repoModel->repo(repo_name)){
         if (repo->hasFileInfoByFingerPrint(fingerprint)){
             FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
             setFileResponse(response, repo, file_info);
@@ -262,7 +284,7 @@ bool Server::actionFileRequestByFingerprint(HttpResponse* response, QString repo
     return false;
 }
 
-void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* file_info)
+void HttpServer::setFileResponse(HttpResponse* response, Repo* repo, FileInfo* file_info)
 {
     Output::debug("about to call getFile("+file_info->fileName()+") on repo:"+repo->name());
     QIODevice *file = repo->getFile(file_info);
@@ -275,9 +297,9 @@ void Server::setFileResponse(HttpResponse* response, FileRepo* repo, FileInfo* f
     Output::debug("set content device on the response for: "+response->request()->uri());
 }
 
-void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)
+void HttpServer::actionHistoryRequest(HttpResponse* response, QString repo_name)
 {
-    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+    if (Repo* repo = repoModel->repo(repo_name)){
         response->setResponseCode("200 OK");
         response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
     }else{
@@ -285,9 +307,9 @@ void Server::actionHistoryRequest(HttpResponse* response, QString repo_name)
     }
 }
 
-void Server::actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name)
+void HttpServer::actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name)
 {
-    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+    if (Repo* repo = repoModel->repo(repo_name)){
         if (repo->state()->logger()->hasLogFile(commit_name)){
             response->setResponseCode("200 OK");
             response->setBody(repo->state()->logger()->openLog(commit_name));
@@ -299,9 +321,9 @@ void Server::actionCommitRequest(HttpResponse* response, QString repo_name, QStr
     }
 }
 
-void Server::actionBrowseRequest(HttpResponse* response, QString repo_name, QString dir_name)
+void HttpServer::actionBrowseRequest(HttpResponse* response, QString repo_name, QString dir_name)
 {
-    if (FileRepo* repo = repoTableModel->repo(repo_name)){
+    if (Repo* repo = repoModel->repo(repo_name)){
         if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
         Output::debug("browse repo_name:"+repo_name+" dir_name: "+dir_name);
         QStringList dir_tokens = dir_name.split("/");
@@ -326,7 +348,7 @@ void Server::actionBrowseRequest(HttpResponse* response, QString repo_name, QStr
 
 }
 
-QString Server::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
+QString HttpServer::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
 {
     QString str;
     foreach(QString dir, sub_dirs){
@@ -338,7 +360,7 @@ QString Server::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
     return str;
 }
 
-QString Server::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
+QString HttpServer::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
 {
     QString table;
     foreach(FileInfo* f, fileInfos){
@@ -349,7 +371,7 @@ QString Server::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
     return QString("<table>%1</table>").arg(table);
 }
 
-QString Server::browseBreadCrumb(QStringList dirs) const
+QString HttpServer::browseBreadCrumb(QStringList dirs) const
 {
     QStringList links;
     QStringList temp_dirs;
@@ -360,7 +382,7 @@ QString Server::browseBreadCrumb(QStringList dirs) const
     return links.join("/");
 }
 
-QString Server::linkToBrowse(QStringList tokens) const
+QString HttpServer::linkToBrowse(QStringList tokens) const
 {
     QString repo_name = tokens.takeFirst();
     QString name;
@@ -374,7 +396,7 @@ QString Server::linkToBrowse(QStringList tokens) const
     return str.arg(repo_name, file_path, name);
 }
 
-QString Server::linkToFile(QString repo_name, FileInfo* f)
+QString HttpServer::linkToFile(QString repo_name, FileInfo* f)
 {
     QString str("<a href=\"/%1/%2\">%4</a>");
     return str.arg(repo_name, f->filePath(), f->fileName());

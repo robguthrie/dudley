@@ -1,20 +1,20 @@
 #ifndef HTTPCLIENTFILEREPO_H
 #define HTTPCLIENTFILEREPO_H
 
-#include "filerepostate.h"
-#include "filerepo.h"
+#include "repostate.h"
+#include "repo.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-class HttpClientFileRepo : public FileRepo
+class HttpClientRepo : public Repo
 {
     Q_OBJECT
 public:
-    HttpClientFileRepo(QObject *parent, QString path, QString name);
+    HttpClientRepo(QObject *parent, QString path, QString name);
     QString type() const;
     bool canReadData() const;
     void updateState(bool commit_changes = true);
-//    bool hasFile(FileInfo fileInfo) const;
+    bool hasFile(const FileInfo &file_info) const;
     QIODevice* getFile(FileInfo* fileInfo);
 
 private slots:
@@ -25,6 +25,9 @@ private slots:
 private:
     void ping();
     QIODevice* get(QUrl url);
+    QIODevice* incommingFileDevice(const FileInfo &fileInfo);
+    QString temporaryFilePath(const FileInfo &fileInfo);
+    void putFileFinished(FileInfo file_info, QIODevice* file);
     QUrl fileUrl(FileInfo* fileInfo);
     QUrl urlFor(QString a, QString b = "", QString c = "", QString d = "");
     QString relativeFilePath(QString filePath);

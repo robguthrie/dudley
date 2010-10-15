@@ -5,3 +5,9 @@ build nodewide table of unique file ids, with frequency count,
 
 ensure that httpclientfilerepo sorts the commitnames before loading them
 and ensure that filrepologger sorts them before loading them too
+
+getFile and putFile should take offset and length and the http server needs to
+support range headers.. then we can resume downloads.. but i feel this is going
+to be a source of problems unless i get it right..
+
+test a big loop of httpclientfilerepos!!

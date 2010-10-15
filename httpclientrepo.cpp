@@ -1,14 +1,14 @@
-#include "httpclientfilerepo.h"
+#include "httpclientrepo.h"
 #include <QDesktopServices>
 #include <QTextStream>
 #include "output.h"
-#include "filerepostate.h"
-#include "filerepostatelogger.h"
+#include "repostate.h"
+#include "repostatelogger.h"
 
-HttpClientFileRepo::HttpClientFileRepo(QObject *parent, QString path, QString name)
-    :FileRepo(parent, path, name)
+HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
+    :Repo(parent, path, name)
 {
-    Output::debug("constructed HttpClientFileRepo on path: "+path);
+    Output::debug("constructed HttpClientRepo on path: "+path);
     m_pendingLogDownloads = 0;
     // path is something like http://localhost:54573/music
     // where the node is serving the repo "music" at http://localhost:54573
@@ -19,7 +19,7 @@ HttpClientFileRepo::HttpClientFileRepo(QObject *parent, QString path, QString na
         m_log_path = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
         m_log_path.append(QString("/logs/%1/%2").arg(this->type(), this->name()));
         Output::debug("logs data location:"+m_log_path);
-        m_state = new FileRepoState(this, m_log_path);
+        m_state = new RepoState(this, m_log_path);
     }else{
         Output::error("invalid repo url: "+path);
     }
@@ -31,49 +31,84 @@ HttpClientFileRepo::HttpClientFileRepo(QObject *parent, QString path, QString na
     connect(m_manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
 }
 
-QString HttpClientFileRepo::type() const
+QString HttpClientRepo::type() const
 {
-    return QString("HttpClientFileRepo");
+    return QString("HttpClientRepo");
 }
 
-bool HttpClientFileRepo::canReadData() const
+bool HttpClientRepo::canReadData() const
 {
     // check that m_lastPingTime is within 10 Minutes
     return true;
 }
 
-void HttpClientFileRepo::ping()
+void HttpClientRepo::ping()
 {
     // set last ping time
     m_lastPingTime = QDateTime::currentDateTime();
     this->get(urlFor(QString("ping")));
 }
 
-void HttpClientFileRepo::updateState(bool commit_changes)
+void HttpClientRepo::updateState(bool commit_changes)
 {
     m_commitChanges = commit_changes;
     this->get(urlFor(QString("history"), m_host_repo_name));
 }
 
-QIODevice* HttpClientFileRepo::getFile(FileInfo* fileInfo)
+bool HttpClientRepo::hasFile(const FileInfo &file_info) const
+{
+    return m_state->containsFileInfo(file_info);
+}
+
+QIODevice* HttpClientRepo::getFile(FileInfo* fileInfo)
 {
     return this->get(fileUrl(fileInfo));
 }
 
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
-QIODevice* HttpClientFileRepo::get(QUrl url)
+QIODevice* HttpClientRepo::get(QUrl url)
 {
-    Output::debug("httpclientfilerepo get:"+url.toString());
+    Output::debug("HttpClientRepo get:"+url.toString());
     QString url_str = url.toString();
     QNetworkReply* reply = m_manager->get(QNetworkRequest(url));
-    if (!reply->isOpen()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is not open");
-    if (reply->error()) Output::debug("HttpClientFileRepo::get("+url_str+") reply error: "+QString::number(reply->error())+" "+reply->errorString());
-    if (!reply->isReadable()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is not readable");
-    if (reply->isFinished()) Output::debug("HttpClientFileRepo::get("+url_str+") reply is finished already!");
+    if (!reply->isOpen()) Output::debug("HttpClientRepo::get("+url_str+") reply is not open");
+    if (reply->error()) Output::debug("HttpClientRepo::get("+url_str+") reply error: "+QString::number(reply->error())+" "+reply->errorString());
+    if (!reply->isReadable()) Output::debug("HttpClientRepo::get("+url_str+") reply is not readable");
+    if (reply->isFinished()) Output::debug("HttpClientRepo::get("+url_str+") reply is finished already!");
     return reply;
 }
 
-void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
+QIODevice* HttpClientRepo::incommingFileDevice(const FileInfo &fileInfo)
+{
+    // pretty special case here
+    // i think we need to create a file on disk
+
+    Output::debug("HttpClientRepo::incommingFileDevice called");
+    QString filename = temporaryFilePath(fileInfo);
+    QFile* file = new QFile();
+    if (file->open(QIODevice::WriteOnly)){
+        Output::debug("HttpClientRepo::incommingFileDevice created temp file ok:"+filename);
+        return file;
+    }else{
+        Output::debug("HttpClientRepo::incommingFileDevice failed to create temp file:"+filename);
+        return 0;
+    }
+}
+
+void HttpClientRepo::putFileFinished(FileInfo file_info, QIODevice *file)
+{
+    QUrl url = urlFor("upload", file_info.filePath());
+    QNetworkRequest r(url);
+    m_manager->post(r, file);
+    Output::debug("HttpClientRepo::putFileFinished beginning upload of:"+file_info.fileName());
+}
+
+QString HttpClientRepo::temporaryFilePath(const FileInfo &fileInfo)
+{
+    QString path = QDesktopServices::storageLocation(QDesktopServices::CacheLocation);
+    return path+"/"+fileInfo.fingerPrint()+fileInfo.fileName();
+}
+void HttpClientRepo::requestFinished(QNetworkReply* reply)
 {
     if (reply->error()){
 
@@ -108,7 +143,7 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
             // add the pong and its time to a limited length queue
             m_lastPingTime = QDateTime::currentDateTime();
         }else if (action == "file"){
-            Output::debug(QString("HttpClientFileRepo::requestFinished() file %1 size: %2").arg(file_path, QString::number(reply->size())));
+            Output::debug(QString("HttpClientRepo::requestFinished() file %1 size: %2").arg(file_path, QString::number(reply->size())));
             // files will be written as bytes are received.. so file should be written by now
         }else if (action == "history"){
             QStringList commit_list = bodystr.trimmed().split("\n");
@@ -132,6 +167,8 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
                 // we can reload the state now..
                 m_state->reload();
             }
+        }else if (action == "upload"){
+            Output::debug("upload request finished");
         }else{
             Output::error("action not recognised: "+action);
         }
@@ -140,11 +177,11 @@ void HttpClientFileRepo::requestFinished(QNetworkReply* reply)
     }
 }
 
-QUrl HttpClientFileRepo::fileUrl(FileInfo* fileInfo){
+QUrl HttpClientRepo::fileUrl(FileInfo* fileInfo){
     return urlFor(QString("file"), m_host_repo_name, fileInfo->fingerPrint(), fileInfo->filePath());
 }
 
-QUrl HttpClientFileRepo::urlFor(QString a, QString b, QString c, QString d)
+QUrl HttpClientRepo::urlFor(QString a, QString b, QString c, QString d)
 {
     QStringList tokens;
     tokens << m_host_url;
@@ -157,7 +194,7 @@ QUrl HttpClientFileRepo::urlFor(QString a, QString b, QString c, QString d)
     return QUrl(tokens.join("/"));
 }
 
-QString HttpClientFileRepo::relativeFilePath(QString filePath){
+QString HttpClientRepo::relativeFilePath(QString filePath){
     if (filePath.startsWith(m_path+'/')){
         return filePath.remove(0, m_path.length()+1);
     }else{
