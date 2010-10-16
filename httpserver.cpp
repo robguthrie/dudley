@@ -26,7 +26,6 @@ HttpServer::HttpServer(RepoModel* model, QObject *parent)
     m_responsesStarted = 0;
     m_responsesFinished = 0;
     connect(this, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
-
 }
 
 void HttpServer::printStatus(QString a)
@@ -53,7 +52,6 @@ void HttpServer::acceptConnection()
         connect(socket, SIGNAL(disconnected()), this, SLOT(processDisconnected()));
         connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(processError()));
     }
-
 }
 
 void HttpServer::processDisconnected()
@@ -90,7 +88,6 @@ void HttpServer::processReadyRead()
         printStatus("processReadyRead - new request (new or existing socket)");
         // the http request will call respondToRequest, finished etc when it is ready
         HttpRequest *request = new HttpRequest(this, socket);
-
     }
 }
 
@@ -111,11 +108,10 @@ void HttpServer::respondToRequest()
 
 void HttpServer::requestFinished()
 {
-    printStatus("request finished");
     HttpRequest* request = (HttpRequest*) sender();
     m_handledSockets.remove(request->device());
     m_requestsFinished++;
-
+    printStatus("request finished");
 }
 
 void HttpServer::responseFinished()
@@ -173,6 +169,7 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
                     actionUploadRequest(request, response, repo_name);
                 }else{
                     // return the upload form
+                    actionUploadFormRequest(request, response);
                 }
             }else if (key == "favicon"){
                 actionFaviconRequest(response);
@@ -218,6 +215,14 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
         // The request cannot be fulfilled due to bad syntax
         response->setResponseCode("400 Bad Request", "Could not route your request");
     }
+}
+
+void HttpServer::actionUploadFormRequest(HttpRequest* request, HttpResponse* response)
+{
+    response->setResponseCode("200 OK");
+    QFile* file = new QFile(":/icons/uploadform.html");
+    response->setContentLength(file->size());
+    response->setContentDevice(file);
 }
 
 void HttpServer::actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name)

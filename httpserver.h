@@ -27,6 +27,7 @@ public slots:
 private:
     void routeRequestToAction(HttpRequest* request, HttpResponse* response);
     void actionFaviconRequest(HttpResponse* response);
+    void actionUploadFormRequest(HttpRequest* request, HttpResponse* response);
     void actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name);
     void actionHistoryRequest(HttpResponse* response, QString repo_name);
     void actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name);

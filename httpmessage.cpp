@@ -105,7 +105,6 @@ void HttpMessage::parseHeaders(QIODevice* device)
     // read 0 or more header lines..
     QByteArray line;
     QRegExp header_rx("([^:]+):(.+)");
-    Output::debug("okokoEEE");
     while ((m_valid) && (!m_headersFinished) && (device->canReadLine())){
         line = device->readLine().trimmed();
         if (line.length() == 0){
@@ -153,18 +152,16 @@ void HttpMessage::parseMultiPartContent(QIODevice* device){
         line = device->readLine();
         m_contentBytesReceived += line.size();
         if (line ==  "--"+m_formDataBoundry+"\r\n"){
-            m_currentMessage = new HttpMessage();
-            Output::debug("first boundry");
-        }else if (line ==  "--"+m_formDataBoundry+"\r\n"){
-            Output::debug("middle data boundry line:"+line);
             // this is the end of the content for the current part, or the frist cp
             if (m_currentMessage){
+                Output::debug("middle data boundry line:"+line);
                 m_currentMessage->setComplete();
                 m_messages << m_currentMessage;
+            }else{
+                Output::debug("first boundry line:"+line);
             }
             // prepare new content part for the following data
             m_currentMessage = new HttpMessage();
-            Output::debug("completed a message within multipart.");
         }else if (line == ("--"+m_formDataBoundry+"--\r\n")){
             Output::debug("final boundry:"+line);
             // last boundry line of the request

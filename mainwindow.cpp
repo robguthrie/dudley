@@ -124,6 +124,7 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
         }
     }else{
         Output::debug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
+        return false;
     }
 }
 

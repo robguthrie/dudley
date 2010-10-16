@@ -2,5 +2,6 @@
     <qresource prefix="/icons">
         <file>dino1.png</file>
         <file>mimetypes.txt</file>
+        <file>uploadform.html</file>
     </qresource>
 </RCC>
