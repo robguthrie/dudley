@@ -17,6 +17,7 @@ HttpResponse::HttpResponse(QObject* parent, HttpRequest* request, QIODevice* des
     m_bodyBytesSent = 0;
     m_protocol = request->protocol();
     m_maxAge = 30; // things get stale quick
+    connect(this, SIGNAL(finished()), parent, SLOT(responseFinished()));
 }
 
 QByteArray HttpResponse::protocol() const

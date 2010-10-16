@@ -88,16 +88,16 @@ void HttpServer::processReadyRead()
         m_handledSockets << (QIODevice*) socket;
         m_requestsStarted++;
         printStatus("processReadyRead - new request (new or existing socket)");
-        // the http request will call respondToRequest when it is ready
+        // the http request will call respondToRequest, finished etc when it is ready
         HttpRequest *request = new HttpRequest(this, socket);
-        connect(request, SIGNAL(finished()), this, SLOT(requestFinished()));
+
     }
 }
 
 void HttpServer::respondToRequest()
 {
     HttpRequest* request = (HttpRequest*) sender();
-
+    Output::debug("responding to request");
     // create the HttpResponse object, and deal with it, and click send.
     HttpResponse* response = new HttpResponse(this, request, request->device());
     m_responsesStarted++;
@@ -106,7 +106,6 @@ void HttpServer::respondToRequest()
     }else{
         routeRequestToAction(request, response);
     }
-    connect(response, SIGNAL(finished()), this, SLOT(responseFinished()));
     response->send();
 }
 

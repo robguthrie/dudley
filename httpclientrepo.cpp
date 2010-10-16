@@ -21,6 +21,7 @@ HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
         Output::debug("logs data location:"+m_log_path);
         m_state = new RepoState(this, m_log_path);
     }else{
+        m_state = new RepoState(this);
         Output::error("invalid repo url: "+path);
     }
 

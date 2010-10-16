@@ -12,14 +12,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     m_repoModel = new RepoModel();
-    server = new HttpServer(m_repoModel, this);
-    if (!server->listen(QHostAddress::Any, 54573)){
-//    if (!server->listen(QHostAddress::Any)){
-        QMessageBox::critical(this, tr("Dudley Server"),
-                              tr("Dudley unable to start server: %1.").arg(server->errorString()));
-        close();
-        return;
-    }
     ui->repoTreeView->setModel(m_repoModel);
     readSettings();
     setWindowTitle(tr("Dudley Server"));
@@ -28,6 +20,14 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->removeRepoButton, SIGNAL(clicked()), this, SLOT(removeRepoButtonPressed()));
     connect(ui->refreshRepoButton, SIGNAL(clicked()), this, SLOT(refreshRepoButtonPressed()));
     Output::outputTextEdit = ui->outputTextEdit;
+    server = new HttpServer(m_repoModel, this);
+    if (!server->listen(QHostAddress::Any, 54573)){
+//    if (!server->listen(QHostAddress::Any)){
+        QMessageBox::critical(this, tr("Dudley Server"),
+                              tr("Dudley unable to start server: %1.").arg(server->errorString()));
+        close();
+        return;
+    }
     Output::info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
                          .arg(bestIpAddress()).arg(server->serverPort()));
     trayIcon = new QSystemTrayIcon(QIcon(":/icons/dino1.png"), this);
@@ -104,7 +104,7 @@ void MainWindow::removeRepoButtonPressed()
 
 bool MainWindow::addRepo(QString type, QString path, QString name)
 {
-    Repo* repo;
+    Repo* repo = 0;
     Output::info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
     if (type == "HttpClientFileRepo"){
         Output::debug("opening httpclientfilerepo");
@@ -114,12 +114,16 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
         repo = new LocalDiskRepo(this, path, name);
     }
 
-    m_repoModel->insertRepo(repo);
+    if (repo){
+        m_repoModel->insertRepo(repo);
 
-    if (repo->isReady()){
-        return true;
+        if (repo->isReady()){
+            return true;
+        }else{
+            return repo->initialize();
+        }
     }else{
-        return repo->initialize();
+        Output::debug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
     }
 }
 
