@@ -16,9 +16,12 @@ public:
     QByteArray method() const;
     void       accept();
     QIODevice *device() const;
+    QHash<QString, QVariant> params();
+    void printParams();
 
 public slots:
     void processReadyRead();
+
 private:
     void parseRequestLine();
 

@@ -17,8 +17,10 @@ public:
     bool isEmpty() const;
     bool isValid() const;
     bool isComplete() const;
+    bool isMultiPart() const;
     bool hasHeader(QByteArray key) const;
     QByteArray header(QByteArray key) const;
+    QByteArray formFieldName();
     QByteArray m_data;
 
 signals:
@@ -45,7 +47,7 @@ protected:
     QMap<QByteArray, QByteArray> m_headers;
     bool m_headersFinished;
 
-    bool m_multiPart; // true when this is a multipart formdata message
+    bool m_hasMultipleParts; // true when this is a multipart message (not true for the child messages themselves)
     QByteArray m_formFieldName;
     QByteArray m_formFieldFileName;
     QByteArray m_formDataBoundry; // hopefully contains the boundry when multipart

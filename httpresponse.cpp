@@ -109,9 +109,9 @@ QIODevice* HttpResponse::contentDevice()
 void HttpResponse::setContentDevice(QIODevice *file)
 {
     m_contentDevice = file;
-    if (!m_contentDevice->isOpen())
+    if (!m_contentDevice->isOpen()){
         Output::error("m_bodyIODevice is not open");
-
+    }
     if (!m_contentDevice->isReadable())
         Output::error("m_bodyIODevice is not readable");
 

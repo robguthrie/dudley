@@ -112,6 +112,7 @@ void HttpServer::requestFinished()
     m_handledSockets.remove(request->device());
     m_requestsFinished++;
     printStatus("request finished");
+    request->printParams();
 }
 
 void HttpServer::responseFinished()
@@ -221,6 +222,7 @@ void HttpServer::actionUploadFormRequest(HttpRequest* request, HttpResponse* res
 {
     response->setResponseCode("200 OK");
     QFile* file = new QFile(":/icons/uploadform.html");
+    file->open(QIODevice::ReadOnly);
     response->setContentLength(file->size());
     response->setContentDevice(file);
 }

@@ -11,7 +11,6 @@ HttpRequest::HttpRequest(QObject* parent, QIODevice* device)
 {
     m_currentMessage = 0;
     m_method = "";
-    Output::debug("hello");
     connect(this, SIGNAL(headersReady()), parent, SLOT(respondToRequest()));
     connect(this, SIGNAL(finished()), parent, SLOT(requestFinished()));
     connect(device, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
@@ -40,22 +39,20 @@ QByteArray HttpRequest::protocol() const
 
 void HttpRequest::accept()
 {
-    if ((hasHeader("expect") && (header("expect").toLower() == "100-continue"))){
-        Output::debug("sending 100 continue");
-//        m_device->write("HTTP/1.1 100 Continue\r\n\r\n");
+    if (hasHeader("expect")){
+        Output::debug("got some kind of expect header");
+        if (header("expect").toLower() == "100-continue") {
+            Output::debug("sending 100 continue ok!");
+            m_device->write("HTTP/1.1 100 Continue\r\n\r\n");
+        }
     }
-    // need to verify the correct times to send this
-    m_device->write("HTTP/1.1 100 Continue\r\n\r\n");
 }
 
 void HttpRequest::processReadyRead()
 {
     // on construction m_validRequest == true and m_headersFinished == false
-
     if (!m_headersFinished){
-        Output::debug("here i am");
         if (m_method == "") parseRequestLine();
-        Output::debug("here i am:"+m_method);
         if (m_method != "") parseHeaders(m_device);
     }
     if (m_headersFinished){
@@ -65,7 +62,6 @@ void HttpRequest::processReadyRead()
             setComplete();
         }
     }
-
 }
 
 void HttpRequest::parseRequestLine()
@@ -87,5 +83,32 @@ void HttpRequest::parseRequestLine()
             Output::error("invalid first line in http request: "+line);
             setInvalid();
         }
+    }
+}
+
+QHash<QString, QVariant> HttpRequest::params()
+{
+    // parse query string
+    // parse multipart messages
+    QHash<QString, QVariant> h;
+    if (m_hasMultipleParts){
+        foreach(HttpMessage* message, m_messages){
+            if (message->isValid()){
+                h[message->formFieldName()] = QVariant(message->m_data);
+            }else{
+                Output::debug("sub message is not valid!");
+            }
+        }
+    }
+    return h;
+}
+
+void HttpRequest::printParams()
+{
+    Output::debug("params:");
+    QHash<QString, QVariant> h = params();
+    QHash<QString, QVariant>::const_iterator i;
+    for (i = h.begin(); i != h.end(); ++i){
+        Output::debug(i.key()+":"+i.value().toString());
     }
 }
