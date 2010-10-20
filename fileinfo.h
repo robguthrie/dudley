@@ -12,24 +12,37 @@ class RepoState;
 class FileInfo
 {
 
+    Q_PROPERTY(QString filePath READ filePath WRITE setFilePath)
+    Q_PROPERTY(qint64 size READ size WRITE setSize)
+    Q_PROPERTY(QString fingerPrint READ setFingerPrint)
+    Q_PROPERTY(QDateTime lastModified READ lastModified WRITE setLastModified)
+    Q_PROPERTY(QString mimeType READ mimeType)
+
     static MimeTypeFinder mimeTypeFinder;
 public:
     FileInfo();
-    FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    FileInfo(QString filePath, qint64 sizeInBytes);
+    FileInfo(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     FileInfo(const FileInfo &f);
-    void update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+
+    void update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void rename(QString newFilePath);
+    void setFilePath(QString file_path);
+    void setSize(qint64 size);
+    void setFingerPrint(QString fingerprint);
+    void setLastModified(QDateTime date_time);
+
+    QString   filePath()     const;
+    QString   fileName()     const;
+    qint64    size()         const;
+    QString   fingerPrint()  const;
+    QDateTime lastModified() const;
+    QString   mimeType()     const;
+    QString   humanSize()    const;
+    QString   toString()     const;
+
     bool isIdenticalTo(FileInfo *fi);
     bool seemsIdenticalTo(QFileInfo q);
-
-    QDateTime lastModified() const;
-    QString fingerPrint() const;
-    QString filePath() const;
-    QString fileName() const;
-    QString toString() const;
-    QString mimeType() const;
-    QString humanSize() const;
-    qint64 size() const;
-    void rename(QString newFilePath);
 
 private:
     QDateTime m_modifiedAt; // last modification date of file

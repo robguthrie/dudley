@@ -10,10 +10,16 @@
 MimeTypeFinder FileInfo::mimeTypeFinder = MimeTypeFinder();
 FileInfo::FileInfo() {}
 
-FileInfo::FileInfo(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+FileInfo::FileInfo(QString filePath, qint64 sizeInBytes)
 {
     m_filePath = filePath;
-    update(modifiedAt, sizeInBytes, sha1);
+    m_sizeInBytes = sizeInBytes;
+}
+
+FileInfo::FileInfo(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
+{
+    m_filePath = filePath;
+    update(sizeInBytes, modifiedAt, sha1);
 }
 
 FileInfo::FileInfo(const FileInfo &f)
@@ -25,7 +31,7 @@ FileInfo::FileInfo(const FileInfo &f)
 }
 
 // we call this when updating collection from log file
-void FileInfo::update(QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void FileInfo::update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
     m_modifiedAt = modifiedAt;
     m_sizeInBytes = sizeInBytes;
@@ -100,6 +106,10 @@ qint64 FileInfo::size() const
     return m_sizeInBytes;
 }
 
+void FileInfo::setSize(qint64 size)
+{
+    m_sizeInBytes = size;
+}
 
 QString FileInfo::toString() const
 {

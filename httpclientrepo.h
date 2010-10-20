@@ -14,7 +14,7 @@ public:
     QString type() const;
     bool canReadData() const;
     void updateState(bool commit_changes = true);
-    bool hasFile(const FileInfo &file_info) const;
+    bool hasFile(FileInfo* file_info) const;
     QIODevice* getFile(FileInfo* fileInfo);
 
 private slots:
@@ -25,9 +25,8 @@ private slots:
 private:
     void ping();
     QIODevice* get(QUrl url);
-    QIODevice* incommingFileDevice(const FileInfo &fileInfo);
-    QString temporaryFilePath(const FileInfo &fileInfo);
-    void putFileFinished(FileInfo file_info, QIODevice* file);
+    QString temporaryFilePath(FileInfo *fileInfo);
+    void putFileFinished(FileInfo* file_info, QIODevice* file);
     QUrl fileUrl(FileInfo* fileInfo);
     QUrl urlFor(QString a, QString b = "", QString c = "", QString d = "");
     QString relativeFilePath(QString filePath);

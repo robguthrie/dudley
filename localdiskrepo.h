@@ -15,8 +15,8 @@ public:
     bool canReadData() const;
     void updateState(bool commit_changes = true);
     QIODevice* getFile(FileInfo* fileInfo);
-    bool hasFile(const FileInfo &file_info) const;
-    bool putFile(FileInfo *fileInfo, QIODevice *file);
+    bool hasFile(FileInfo* fileInfo) const;
+    bool putFile(FileInfo* fileInfo, QIODevice *file);
 private:
     QStringList filesOnDisk();
     FileInfo* newFileInfo(QString filePath);
@@ -24,10 +24,8 @@ private:
     QString readFingerPrint(QFile* d);
     void findAllFiles(QString path, QStringList *found_files);
     QString relativeFilePath(QString filePath);
-    QString temporaryFilePath(FileInfo f);
-    void putFileFinished(FileInfo file_info, QIODevice* device);
-    QIODevice* incommingFileDevice(const FileInfo &fileInfo);
-
+    QString temporaryFilePath(FileInfo* f);
+    void putFileFinished(FileInfo* file_info, QIODevice* device);
 };
 
 

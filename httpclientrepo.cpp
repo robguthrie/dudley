@@ -56,7 +56,7 @@ void HttpClientRepo::updateState(bool commit_changes)
     this->get(urlFor(QString("history"), m_host_repo_name));
 }
 
-bool HttpClientRepo::hasFile(const FileInfo &file_info) const
+bool HttpClientRepo::hasFile(FileInfo* file_info) const
 {
     return m_state->containsFileInfo(file_info);
 }
@@ -79,36 +79,20 @@ QIODevice* HttpClientRepo::get(QUrl url)
     return reply;
 }
 
-QIODevice* HttpClientRepo::incommingFileDevice(const FileInfo &fileInfo)
+void HttpClientRepo::putFileFinished(FileInfo* file_info, QIODevice *file)
 {
-    // pretty special case here
-    // i think we need to create a file on disk
-
-    Output::debug("HttpClientRepo::incommingFileDevice called");
-    QString filename = temporaryFilePath(fileInfo);
-    QFile* file = new QFile();
-    if (file->open(QIODevice::WriteOnly)){
-        Output::debug("HttpClientRepo::incommingFileDevice created temp file ok:"+filename);
-        return file;
-    }else{
-        Output::debug("HttpClientRepo::incommingFileDevice failed to create temp file:"+filename);
-        return 0;
-    }
-}
-
-void HttpClientRepo::putFileFinished(FileInfo file_info, QIODevice *file)
-{
-    QUrl url = urlFor("upload", file_info.filePath());
+    QUrl url = urlFor("upload", file_info->filePath());
     QNetworkRequest r(url);
     m_manager->post(r, file);
-    Output::debug("HttpClientRepo::putFileFinished beginning upload of:"+file_info.fileName());
+    Output::debug("HttpClientRepo::putFileFinished beginning upload of:"+file_info->fileName());
 }
 
-QString HttpClientRepo::temporaryFilePath(const FileInfo &fileInfo)
+QString HttpClientRepo::temporaryFilePath(FileInfo* fileInfo)
 {
     QString path = QDesktopServices::storageLocation(QDesktopServices::CacheLocation);
-    return path+"/"+fileInfo.fingerPrint()+fileInfo.fileName();
+    return path+"/"+fileInfo->fingerPrint()+fileInfo->fileName();
 }
+
 void HttpClientRepo::requestFinished(QNetworkReply* reply)
 {
     if (reply->error()){

@@ -8,7 +8,7 @@
 #include "repodialog.h"
 #include "repomodel.h"
 #include "repo.h"
-
+#include "filetransfermanager.h"
 namespace Ui {
     class MainWindow;
 }
@@ -34,7 +34,8 @@ private:
     HttpServer* server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
-    RepoModel *m_repoModel;
+    RepoModel* m_repoModel;
+    FileTransferManager* m_fileTransferManager;
     QSettings m_settings;
     void writeSettings();
     void readSettings();

@@ -97,10 +97,10 @@ void RepoStateLogger::playLogFile(QString name, RepoState* state)
             qint64 sizeInBytes = parts[3].toULongLong();
             QString sha1 = parts[4];
             if (operation == "add_file"){
-                state->addFile(filePath, modifiedAt, sizeInBytes, sha1);
+                state->addFile(filePath, sizeInBytes, modifiedAt, sha1);
             }
             if (operation == "modify_file"){
-                state->modifyFile(filePath, modifiedAt, sizeInBytes, sha1);
+                state->modifyFile(filePath, sizeInBytes, modifiedAt, sha1);
             }
         }
         if (operation == "remove_file") {
@@ -196,9 +196,9 @@ void RepoStateLogger::logAddFile(FileInfo* fi)
     logAddOrModifyFile("add_file", fi);
 }
 
-void RepoStateLogger::logAddFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoStateLogger::logAddFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
-    logAddOrModifyFile("add_file", filePath, modifiedAt, sizeInBytes, sha1);
+    logAddOrModifyFile("add_file", filePath, sizeInBytes, modifiedAt,  sha1);
 }
 
 void RepoStateLogger::logModifyFile(FileInfo* fi)
@@ -206,21 +206,21 @@ void RepoStateLogger::logModifyFile(FileInfo* fi)
     logAddOrModifyFile("modify_file", fi);
 }
 
-void RepoStateLogger::logModifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoStateLogger::logModifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
-    logAddOrModifyFile("modify_file", filePath, modifiedAt, sizeInBytes, sha1);
+    logAddOrModifyFile("modify_file", filePath, sizeInBytes, modifiedAt, sha1);
 }
 
 void RepoStateLogger::logAddOrModifyFile(QString operation, FileInfo* fi)
 {
-    logAddOrModifyFile(operation, fi->filePath(), fi->lastModified(),
-                       fi->size(), fi->fingerPrint());
+    logAddOrModifyFile(operation, fi->filePath(), fi->size(),
+                        fi->lastModified(), fi->fingerPrint());
 }
 
 void RepoStateLogger::logAddOrModifyFile(QString operation,
                                              QString filePath,
-                                             QDateTime modifiedAt,
                                              qint64 sizeInBytes,
+                                             QDateTime modifiedAt,
                                              QString sha1)
 {
     QStringList tokens;

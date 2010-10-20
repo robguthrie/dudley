@@ -12,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     m_repoModel = new RepoModel();
+    m_fileTransferManager = new FileTransferManager();
     ui->repoTreeView->setModel(m_repoModel);
     readSettings();
     setWindowTitle(tr("Dudley Server"));
@@ -20,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->removeRepoButton, SIGNAL(clicked()), this, SLOT(removeRepoButtonPressed()));
     connect(ui->refreshRepoButton, SIGNAL(clicked()), this, SLOT(refreshRepoButtonPressed()));
     Output::outputTextEdit = ui->outputTextEdit;
-    server = new HttpServer(m_repoModel, this);
+    server = new HttpServer(this, m_repoModel, m_fileTransferManager);
     if (!server->listen(QHostAddress::Any, 54573)){
 //    if (!server->listen(QHostAddress::Any)){
         QMessageBox::critical(this, tr("Dudley Server"),

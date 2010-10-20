@@ -21,7 +21,7 @@ public:
     void setLogger(RepoStateLogger* logger);
     void importLog(QString name, QString body);
     bool commitChanges();
-    bool containsFileInfo(FileInfo file_info);
+    bool containsFileInfo(FileInfo* file_info);
     bool containsFilePath(QString file_path);
     bool containsFingerPrint(QString finger_print);
     FileInfo* fileInfoByFilePath(QString file_path);
@@ -29,9 +29,9 @@ public:
 
     // manipulation
     void addFile(FileInfo* file_info);
-    void addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void modifyFile(FileInfo* file_info);
-    void modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     bool removeFile(QString filePath);
     bool renameFile(QString filePath, QString newFilePath);
 

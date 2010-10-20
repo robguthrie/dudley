@@ -12,6 +12,7 @@ HttpRequest::HttpRequest(QObject* parent, QIODevice* device)
     m_currentMessage = 0;
     m_method = "";
     connect(this, SIGNAL(headersReady()), parent, SLOT(respondToRequest()));
+    connect(this, SIGNAL(ready()), this, SLOT(parseParams()));
     connect(this, SIGNAL(finished()), parent, SLOT(requestFinished()));
     connect(device, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
     processReadyRead();
@@ -29,7 +30,7 @@ QByteArray HttpRequest::uri() const
 
 QByteArray HttpRequest::method() const
 {
-    return m_method;
+    return m_method.toLower();
 }
 
 QByteArray HttpRequest::protocol() const
@@ -86,29 +87,31 @@ void HttpRequest::parseRequestLine()
     }
 }
 
-QHash<QString, QVariant> HttpRequest::params()
+void HttpRequest::parseParams()
 {
     // parse query string
     // parse multipart messages
-    QHash<QString, QVariant> h;
-    if (m_hasMultipleParts){
-        foreach(HttpMessage* message, m_messages){
-            if (message->isValid()){
-                h[message->formFieldName()] = QVariant(message->m_data);
-            }else{
-                Output::debug("sub message is not valid!");
-            }
-        }
-    }
-    return h;
+//    if (m_hasMultipleParts){
+//        foreach(HttpMessage* message, m_messages){
+//            if (message->isValid() && message->formFieldFileName().isEmpty()){
+//                m_params[message->formFieldName()] = QVariant(message->contentDevice()->readAll());
+//            }else{
+//                Output::debug("sub message is not valid!");
+//            }
+//        }
+//    }
 }
 
-void HttpRequest::printParams()
+QHash<QString, QVariant> HttpRequest::params()
+{
+    return m_params;
+}
+
+void HttpRequest::printParams() const
 {
     Output::debug("params:");
-    QHash<QString, QVariant> h = params();
     QHash<QString, QVariant>::const_iterator i;
-    for (i = h.begin(); i != h.end(); ++i){
+    for (i = m_params.begin(); i != m_params.end(); ++i){
         Output::debug(i.key()+":"+i.value().toString());
     }
 }

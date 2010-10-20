@@ -83,12 +83,15 @@ bool Repo::initialize()
     return false;
 }
 
-QIODevice* Repo::putFile(const FileInfo &fileInfo)
+
+// maybe a bit unrealistic
+//
+QIODevice* Repo::putFile(FileInfo *fileInfo)
 {
     // start a temporary device to receive the file with
     // when we have fileInfo->size bytes, we can close it
 
-    QIODevice* f = this->incommingFileDevice(fileInfo);
+    QIODevice* f = this->writableTempFile(fileInfo);
     if (f && f->isOpen() && f->isWritable()){
         m_incommingFiles.insert(f, fileInfo);
         connect(f, SIGNAL(aboutToClose()), this, SLOT(putFileAboutToClose()));
@@ -102,12 +105,41 @@ QIODevice* Repo::putFile(const FileInfo &fileInfo)
 void Repo::putFileAboutToClose()
 {
     QIODevice* file = (QIODevice*) sender();
-    if (!m_incommingFiles.contains(file)){
-        Output::error("unknown file (not in m_incommingFiles) about to close.. weird");
-    }else{
-        FileInfo file_info = m_incommingFiles.value(file);
+    if (m_incommingFiles.contains(file)){
+        FileInfo* file_info = m_incommingFiles.value(file);
         m_incommingFiles.remove(file);
         Output::debug("FileRepo::putFileAboutToClose file seems complete in size");
-        this->putFileFinished(file_info, file);
+        if (file->size() == file_info->size()){
+            this->putFileFinished(file_info, file);
+        }else{
+//            this->putFileFailed(file_info, file);
+            Output::debug("putfile failed.. size of file is not what was expected");
+        }
+    }else{
+        Output::error("got AboutToClose signal from file not in m_incommingFiles.");
     }
 }
+
+QIODevice* Repo::writableTempFile(FileInfo* fileInfo)
+{
+    QFile* f = new QFile(this->temporaryFilePath(fileInfo));
+    if (f->open(QIODevice::WriteOnly)){
+        return f;
+    }else{
+        Output::error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
+        return 0;
+    }
+}
+
+bool Repo::discardWritableTempFile(QIODevice* device)
+{
+    device->close();
+    QFile* file = (QFile*) device;
+    return file->remove();
+}
+
+
+//void Repo::putFileFailed(FileInfo file_info, QIODevice* device)
+//{
+
+//}

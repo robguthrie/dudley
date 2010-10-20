@@ -19,7 +19,7 @@ public:
     virtual bool isReady() const;
     virtual bool initialize();
     virtual bool canReadData() const = 0;
-    virtual bool hasFile(const FileInfo &file_info) const = 0;
+    virtual bool hasFile(FileInfo* file_info) const = 0;
     virtual void updateState(bool commit_changes = true) = 0;
     virtual RepoState* state();
     virtual QMap<QString, QVariant> settings();
@@ -30,20 +30,22 @@ public:
 //    virtual bool hasFile(FileInfo fileInfo) const = 0;
     // the returned file should be open
     virtual QIODevice* getFile(FileInfo* fileInfo) = 0;
-    virtual QIODevice* putFile(const FileInfo &fileInfo);
+    virtual QIODevice* putFile(FileInfo* fileInfo);
 
 protected slots:
     virtual void putFileAboutToClose();
 
 protected:
-    virtual void putFileFinished(FileInfo file_info, QIODevice* file) = 0;
-    virtual QIODevice* incommingFileDevice(const FileInfo &fileInfo) = 0;
+    virtual void putFileFinished(FileInfo* file_info, QIODevice* file) = 0;
+    virtual QIODevice* writableTempFile(FileInfo* fileInfo);
+    virtual bool discardWritableTempFile(QIODevice* device);
+    virtual QString temporaryFilePath(FileInfo* fileInfo) = 0;
     RepoState *m_state;
     QString m_path;
     QString m_name;
     QString m_log_path;
 
-    QHash<QIODevice*, FileInfo> m_incommingFiles;
+    QHash<QIODevice*, FileInfo*> m_incommingFiles;
 };
 
 #endif // FILEREPO_H

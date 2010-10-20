@@ -24,9 +24,9 @@ public:
     bool writeLogFile(QString commit_name, QString body);
     void printChanges();
     void logAddFile(FileInfo* fi);
-    void logAddFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    void logAddFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void logModifyFile(FileInfo* fi);
-    void logModifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    void logModifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void logRemoveFile(QString file_path);
     void logRenameFile(QString file_path, QString new_file_path);
     QStringList logNames();
@@ -41,7 +41,7 @@ private:
     QList<QStringList> m_logLines;
 
     void logAddOrModifyFile(QString operation, FileInfo* fi);
-    void logAddOrModifyFile(QString operation, QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1);
+    void logAddOrModifyFile(QString operation, QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void addLogLine(QStringList tokens);
     QString logFilePath(QString name);
 };

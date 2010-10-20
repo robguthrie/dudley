@@ -76,9 +76,9 @@ bool RepoState::commitChanges()
     return m_logger->commitChanges();
 }
 
-bool RepoState::containsFileInfo(FileInfo file_info)
+bool RepoState::containsFileInfo(FileInfo* file_info)
 {
-    return containsFingerPrint(file_info.fingerPrint());
+    return containsFingerPrint(file_info->fingerPrint());
 }
 
 bool RepoState::containsFilePath(QString file_path)
@@ -103,19 +103,19 @@ FileInfo* RepoState::fileInfoByFingerPrint(QString sha1)
 
 void RepoState::addFile(FileInfo* file_info)
 {
-    addFile(file_info->filePath(), file_info->lastModified(),
-            file_info->size(), file_info->fingerPrint());
+    addFile(file_info->filePath(), file_info->size(),
+            file_info->lastModified(), file_info->fingerPrint());
 }
 
-void RepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoState::addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
     if (!m_files.contains(filePath)){
         // update existing without touching disk
-        FileInfo *fileInfo = new FileInfo(filePath, modifiedAt, sizeInBytes, sha1);
+        FileInfo *fileInfo = new FileInfo(filePath, sizeInBytes, modifiedAt, sha1);
         m_files.insert(filePath, fileInfo);
         m_fingerprints.insert(sha1, fileInfo);
         if (m_logChanges){
-            m_logger->logAddFile(filePath, modifiedAt, sizeInBytes, sha1);
+            m_logger->logAddFile(filePath, sizeInBytes, modifiedAt, sha1);
         }
     }else{
         // insert new
@@ -123,7 +123,7 @@ void RepoState::addFile(QString filePath, QDateTime modifiedAt, qint64 sizeInByt
     }
 }
 
-void RepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeInBytes, QString sha1)
+void RepoState::modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
     if (m_files.contains(filePath)){
         // update existing without touching disk
@@ -131,10 +131,10 @@ void RepoState::modifyFile(QString filePath, QDateTime modifiedAt, qint64 sizeIn
         FileInfo *fileInfo = m_files.value(filePath);
         QString old_sha1 = fileInfo->fingerPrint();
         m_fingerprints.remove(old_sha1);
-        fileInfo->update(modifiedAt, sizeInBytes, sha1);
+        fileInfo->update(sizeInBytes, modifiedAt, sha1);
         m_fingerprints.insert(sha1, fileInfo);
         if (m_logChanges){
-            m_logger->logModifyFile(filePath, modifiedAt, sizeInBytes, sha1);
+            m_logger->logModifyFile(filePath, sizeInBytes, modifiedAt, sha1);
         }
     }else{
         Output::error("modify state for fileinfo which does not exist: "+filePath+", "+sha1);

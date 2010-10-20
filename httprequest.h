@@ -6,7 +6,7 @@
 #include <QIODevice>
 #include <QHash>
 #include "httpmessage.h"
-
+#include <QVariant>
 class HttpRequest : public HttpMessage {
 Q_OBJECT
 public:
@@ -17,18 +17,19 @@ public:
     void       accept();
     QIODevice *device() const;
     QHash<QString, QVariant> params();
-    void printParams();
+    void printParams() const;
 
 public slots:
+    void parseParams();
     void processReadyRead();
 
 private:
     void parseRequestLine();
-
+    QHash<QString, QVariant> m_params;
     QByteArray m_method;
     QByteArray m_uri;
     QByteArray m_protocol;
-    QIODevice* m_device;
+    QIODevice* m_device; // the socket we talk on
 };
 
 #endif /* !_HTTP_REQUEST_ */

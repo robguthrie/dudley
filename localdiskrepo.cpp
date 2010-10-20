@@ -63,7 +63,7 @@ void LocalDiskRepo::updateState(bool commit_changes)
         if (!stored_fi->seemsIdenticalTo(qfi)){
             // file has changed on disk but filename is the same.
             // record the new values for the file
-            m_state->modifyFile(file_path, qfi.lastModified(), qfi.size(),
+            m_state->modifyFile(file_path, qfi.size(), qfi.lastModified(),
                                 readFingerPrint(file_path));
         }
     }
@@ -96,10 +96,10 @@ void LocalDiskRepo::updateState(bool commit_changes)
     }
 }
 
-bool LocalDiskRepo::hasFile(const FileInfo &file_info) const
+bool LocalDiskRepo::hasFile(FileInfo* file_info) const
 {
     // need to actually check the disk here..
-    return QFile::exists( m_path +"/"+ file_info.filePath());
+    return QFile::exists( m_path +"/"+ file_info->filePath());
 }
 
 QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
@@ -113,7 +113,7 @@ QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
 }
 
 // at this stage the device has already had the data written to it
-void LocalDiskRepo::putFileFinished(FileInfo file_info, QIODevice* device)
+void LocalDiskRepo::putFileFinished(FileInfo* file_info, QIODevice* device)
 {
     if (device->isOpen()){
         Output::warning("WorkingFileRepo::putFileComplete device is still open. closing");
@@ -124,39 +124,28 @@ void LocalDiskRepo::putFileFinished(FileInfo file_info, QIODevice* device)
     if (!file->open(QIODevice::ReadOnly)){
         Output::error("WorkingFileRepo::putFileComplete cant open newFilePath of putFile:"+newFilePath);
     }
-    if (file->size() != file_info.size()){
+    if (file->size() != file_info->size()){
         Output::error("WorkingFileRepo::putFileComplete new file is the wrong size. expected:"+
-                      QString::number(file_info.size())+
+                      QString::number(file_info->size())+
                       " actual:"+QString::number(file->size()));
     }
 
-    if (this->readFingerPrint(file) != file_info.fingerPrint()){
-        Output::error("WorkingFileRepo::putFileComplete new file:"+newFilePath+" has different fingerprint to expected.");
-    }
+//    if (this->readFingerPrint(file) != file_info.fingerPrint()){
+//        Output::error("WorkingFileRepo::putFileComplete new file:"+newFilePath+" has different fingerprint to expected.");
+//    }
 
     if (this->hasFile(file_info)){
         Output::error("existing file with same name as putFile") ;
     }else{
-        file->rename(file_info.fileName());
+        file->rename(file_info->fileName());
     }
     file->close();
-    Output::debug("WorkingFileRepo::putFileComplete added file:"+newFilePath+" successfully");
+    Output::debug("WorkingFileRepo::putFileComplete added file:"+file_info->fileName()+" successfully");
 }
 
-QIODevice* LocalDiskRepo::incommingFileDevice(const FileInfo &fileInfo)
+QString LocalDiskRepo::temporaryFilePath(FileInfo* fileInfo)
 {
-    QFile* f = new QFile(this->temporaryFilePath(fileInfo));
-    if (f->open(QIODevice::WriteOnly)){
-        return f;
-    }else{
-        Output::error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
-        return 0;
-    }
-}
-
-QString LocalDiskRepo::temporaryFilePath(FileInfo f)
-{
-    return f.filePath()+".part";
+    return m_path+"/"+fileInfo->filePath()+".part";
 }
 
 QStringList LocalDiskRepo::filesOnDisk()
@@ -204,8 +193,8 @@ QString LocalDiskRepo::relativeFilePath(QString filePath){
 FileInfo* LocalDiskRepo::newFileInfo(QString filePath)
 {
     QFileInfo *qfi = new QFileInfo(m_path+"/"+filePath);
-    return new FileInfo(filePath, qfi->lastModified(),
-                        qfi->size(), readFingerPrint(filePath));
+    return new FileInfo(filePath, qfi->size(),
+                        qfi->lastModified(), readFingerPrint(filePath));
 }
 
 QString LocalDiskRepo::readFingerPrint(QString filePath)

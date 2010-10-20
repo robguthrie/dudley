@@ -32,6 +32,8 @@ signals:
 
 public slots:
     void send();
+    void send(QByteArray code, QByteArray body);
+    void send(QByteArray body);
 
 private:
     HttpRequest* m_request;

@@ -1,4 +1,3 @@
-
 #include <QTcpSocket>
 #include <QDataStream>
 #include <QStringList>
@@ -8,11 +7,15 @@
 #include "httpserver.h"
 #include "httprequest.h"
 #include "httpresponse.h"
+#include "repo.h"
 #include "repomodel.h"
 #include "repostatelogger.h"
+#include "filetransfer.h"
+#include "filetransfermanager.h"
+#include "httpfiletransfercontext.h"
 
-HttpServer::HttpServer(RepoModel* model, QObject *parent)
-    :QTcpServer(parent), repoModel(model)
+HttpServer::HttpServer(QObject *parent, RepoModel* model, FileTransferManager* ftm)
+    :QTcpServer(parent), repoModel(model), fileTransferManager(ftm)
 {
     // need a function to be called on newConnection
     // it will read the connection
@@ -87,7 +90,7 @@ void HttpServer::processReadyRead()
         m_requestsStarted++;
         printStatus("processReadyRead - new request (new or existing socket)");
         // the http request will call respondToRequest, finished etc when it is ready
-        HttpRequest *request = new HttpRequest(this, socket);
+        new HttpRequest(this, socket);
     }
 }
 
@@ -103,7 +106,6 @@ void HttpServer::respondToRequest()
     }else{
         routeRequestToAction(request, response);
     }
-    response->send();
 }
 
 void HttpServer::requestFinished()
@@ -125,6 +127,14 @@ void HttpServer::responseFinished()
     if (response->protocol() == "HTTP/1.0"){
         response->destDevice()->close();
     }
+
+    // clean up any ftc's we used (it would have been an upload)
+    if (m_fileTransferContexts.contains(response->request())){
+        HttpFileTransferContext* ftc = m_fileTransferContexts.value(response->request());
+        m_fileTransferContexts.remove(ftc->m_request);
+        delete ftc;
+    }
+
     m_responsesFinished++;
     response->deleteLater();
     printStatus("Server::responseFinished");
@@ -136,7 +146,7 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
     QString uri_path = uri.path();
 
     QMap<QString, QRegExp> routes;
-    routes["upload"] = QRegExp("/(upload)/?");
+//    routes["upload"] = QRegExp("/(upload)/?");
     routes["favicon"] = QRegExp("/favicon.ico");
     routes["file"] = QRegExp("/(file)/(\\w+)/(\\w{40})/([^?*:;{}\\\\]+)");
     routes["history"] = QRegExp("/(history)/(\\w+)/?");
@@ -160,19 +170,7 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
             request->accept();
             routed_request = true;
             Output::debug("matched "+key+" route");
-            if (key == "upload"){
-                // send the 100 continue here
-                // read and validate the filepath
-                QString repo_name = regex.cap(2);
-                if (request->method() == "POST"){
-                    // tell the request to process the uploaded files
-                    // and connect to its uploadFileReadyRead(QString, QIODevice*) signal
-                    actionUploadRequest(request, response, repo_name);
-                }else{
-                    // return the upload form
-                    actionUploadFormRequest(request, response);
-                }
-            }else if (key == "favicon"){
+            if (key == "favicon"){
                 actionFaviconRequest(response);
             }else if (key == "file"){
                 QString repo_name = regex.cap(2);
@@ -192,20 +190,31 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
                 actionBrowseRequest(response, repo_name, dir_name);
             }else if (key == "naked"){
                 QString repo_name = regex.cap(1);
-                QString dir_name("");
-                if (regex.captureCount() == 2) dir_name = regex.cap(2);
-                if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
-                if (actionFileRequestByFileName(response, repo_name, dir_name)){
-                    // supposed to be blank (it's in the condition)
+                QString path("");
+                if (regex.captureCount() == 2) path = cleanPath(regex.cap(2));
+                if (request->method() == "post"){
+                    // this is a file upload (via web form) to a repo/path
+                    Output::debug(QString("post reponame: %1 path: %2").arg(repo_name, path));
+                    actionUploadRequest(request, response, repo_name, path);
                 }else{
-                    // repo_name cant be wrong due to way i create the regex
-                    actionBrowseRequest(response, repo_name, dir_name);
+                    // want to support upload of files to the current browse path.
+                    // path might refer to a file or a dir at at this point
+                    Output::debug(QString("get reponame: %1 path: %2").arg(repo_name, path));
+                    Repo* repo = 0;
+                    if ( (repo = repoModel->repo(repo_name)) &&
+                          repo->hasFileInfoByFilePath(path) ){
+                        actionFileRequestByFileName(response, repo_name, path);
+                        // supposed to be blank (it's in the condition)
+                    }else{
+                        // repo_name cant be wrong due to way i create the regex
+                        actionBrowseRequest(response, repo_name, path);
+                    }
                 }
             }else if (key == "ping"){
-                response->setBody("pong");
+                response->send("pong");
             }else{
-                response->setResponseCode("500 Internal Server Error",
-                                          "action is not being handled but route was matched");
+                response->send("500 Internal Server Error",
+                               "action is not being handled but route was matched");
             }
             // break the for loop.. we should only ever match one route
             break;
@@ -214,31 +223,65 @@ void HttpServer::routeRequestToAction(HttpRequest* request, HttpResponse* respon
 
     if (!routed_request){
         // The request cannot be fulfilled due to bad syntax
-        response->setResponseCode("400 Bad Request", "Could not route your request");
+        response->send("400 Bad Request", "Could not route your request");
     }
 }
 
-void HttpServer::actionUploadFormRequest(HttpRequest* request, HttpResponse* response)
+void HttpServer::actionUploadRequest(HttpRequest* request,
+                                     HttpResponse* response,
+                                     QString repo_name, QString path)
 {
-    response->setResponseCode("200 OK");
-    QFile* file = new QFile(":/icons/uploadform.html");
-    file->open(QIODevice::ReadOnly);
-    response->setContentLength(file->size());
-    response->setContentDevice(file);
-}
-
-void HttpServer::actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name)
-{
-    // read the filename from the request
-    // open the repo
-    //
-    if (Repo* repo = repoModel->repo(repo_name)){
+    if (repoModel->repo(repo_name)){
         // we may get a whole file_info or just a filename.. and size?
         // check if the repo has a file by this nameresponse->setResponseCode("500 Internal Server Error", "Could not open repo");
-        response->setResponseCode("200 OK");
-        response->setBody("hello danynon uploader");
+        HttpFileTransferContext* fuc = new HttpFileTransferContext(request, response, repo_name, path);
+        m_fileTransferContexts.insert(request, fuc);
+        connect(request, SIGNAL(fileUploadStarted()), this, SLOT(processFileUploadStarted()));
     }else{
-        response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        response->send("500 Internal Server Error", "Could not open repo: "+repo_name.toAscii());
+    }
+}
+
+void HttpServer::processFileUploadStarted()
+{
+    HttpRequest* request = (HttpRequest*) sender();
+    if (request->hasPendingFileUploads()){
+        HttpMessage* message = request->getNextFileUploadMessage();
+        HttpFileTransferContext* ftc = m_fileTransferContexts.value(request);
+        QIODevice* source_file = message->contentDevice(); // returns a qbuffer pointer to the data
+        QString file_path = ftc->m_path+"/"+message->formFieldFileName();
+        qint64 size = -1; // we don't know the size until it completes successfully
+        FileInfo* file_info = new FileInfo(file_path, size);
+        ftc->m_fileInfo = file_info;
+        if (Repo* repo = repoModel->repo(ftc->m_repoName)){
+            QIODevice* dest_file = repo->putFile(file_info);
+            FileTransfer* ft = fileTransferManager->copy((QObject*)request, source_file, (QObject*) repo, dest_file, file_info);
+            connect(ft, SIGNAL(finished()), this, SLOT(processFileUploadFinished()));
+        }else{
+            ftc->m_response->send("500 Internal Server Error", "Could not open repo");
+        }
+    }
+}
+
+void HttpServer::processFileUploadFinished()
+{
+    // oh my god there is still someone waiting for a response after that.
+    // well the html form should use a background upload patten so we can just
+    // give the file stats for now.
+    FileTransfer* ft = (FileTransfer*) sender();
+    // we only know its size and name and that we got to the end
+    // find the response object waiting for us in the fuc (heh)
+    // the sourceParent is the request object
+    if (m_fileTransferContexts.contains((HttpRequest*)ft->sourceParent())){
+        HttpFileTransferContext* ftc = m_fileTransferContexts.value((HttpRequest*)ft->sourceParent());
+        if (ft->isComplete()){
+            ftc->m_response->setResponseCode("200 OK",
+                "got your file:"+ftc->m_fileInfo->fileName().toAscii()+" into repo: "+ftc->m_repoName.toAscii()
+                +" size: "+QByteArray::number(ftc->m_fileInfo->humanSize()));
+        }else{
+            ftc->m_response->setResponseCode("400 BAD REQUEST", "It looks like the file upload was incomplete");
+        }
+        ftc->m_response->send();
     }
 }
 
@@ -254,40 +297,39 @@ void HttpServer::actionFaviconRequest(HttpResponse* response)
     }else{
         response->setResponseCode("404 Not Found", "could not open the favicon file");
     }
+    response->send();
 }
 
-bool HttpServer::actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path)
+void HttpServer::actionFileRequestByFileName(HttpResponse* response, QString repo_name, QString file_path)
 {
     Output::debug("actionfilerequestbyfilename:"+repo_name+" "+file_path);
     if (Repo* repo = repoModel->repo(repo_name)){
         if (repo->hasFileInfoByFilePath(file_path)){
             FileInfo* file_info = repo->fileInfoByFilePath(file_path);
             setFileResponse(response, repo, file_info);
-            return true;
         }else{
             response->setResponseCode("404 Not Found");
         }
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
-    return false;
+    response->send();
 }
 
 
-bool HttpServer::actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint)
+void HttpServer::actionFileRequestByFingerprint(HttpResponse* response, QString repo_name, QString fingerprint)
 {
     if (Repo* repo = repoModel->repo(repo_name)){
         if (repo->hasFileInfoByFingerPrint(fingerprint)){
             FileInfo* file_info = repo->fileInfoByFingerPrint(fingerprint);
             setFileResponse(response, repo, file_info);
-            return true;
         }else{
             response->setResponseCode("404 Not Found");
         }
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
-    return false;
+    response->send();
 }
 
 void HttpServer::setFileResponse(HttpResponse* response, Repo* repo, FileInfo* file_info)
@@ -311,6 +353,7 @@ void HttpServer::actionHistoryRequest(HttpResponse* response, QString repo_name)
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
+    response->send();
 }
 
 void HttpServer::actionCommitRequest(HttpResponse* response, QString repo_name, QString commit_name)
@@ -325,33 +368,53 @@ void HttpServer::actionCommitRequest(HttpResponse* response, QString repo_name, 
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
+    response->send();
 }
 
-void HttpServer::actionBrowseRequest(HttpResponse* response, QString repo_name, QString dir_name)
+void HttpServer::actionBrowseRequest(HttpResponse* response, QString repo_name, QString path)
 {
     if (Repo* repo = repoModel->repo(repo_name)){
-        if (dir_name.startsWith("/")) dir_name = dir_name.remove(0,1);
-        Output::debug("browse repo_name:"+repo_name+" dir_name: "+dir_name);
-        QStringList dir_tokens = dir_name.split("/");
+        Output::debug("browse repo_name:"+repo_name+" dir_name: "+path);
         QStringList path_tokens;
         path_tokens << repo_name;
-        if (dir_tokens.at(0).length() != 0) path_tokens << dir_tokens;
+        if (path.trimmed().length() > 0)
+            path_tokens << path.split("/");
         // add the title (with nav breadcrumb)
         QByteArray body;
         body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
         // add the list of subdirs
-        QStringList sub_dirs = repo->state()->subDirs(dir_name);
+        QStringList sub_dirs = repo->state()->subDirs(path);
         body.append(browseDirIndex(path_tokens, sub_dirs));
         // list the files in the directory
-        QList<FileInfo*> matches = repo->state()->filesInDir(dir_name);
+        QList<FileInfo*> matches = repo->state()->filesInDir(path);
         body.append(browseFileIndex(repo_name, matches));
+        body.append(browseUploadForm(repo_name+"/"+path));
         response->setResponseCode("200 OK");
         response->setBody(body);
         response->setMaxAge(60*15);
     }else{
         response->setResponseCode("500 Internal Server Error", "Could not open repo");
     }
+    response->send();
+}
 
+QString HttpServer::cleanPath(QString path)
+{
+    path = path.trimmed();
+    if (path.startsWith("/")) path.remove(0,1);
+    if (path.endsWith("/")) path.chop(1);
+    return path;
+}
+
+QString HttpServer::browseUploadForm(QString path = "")
+{
+    QString form =
+       "<h1>Upload a File</h1>"
+       "<form method='post' action='/"+path+"' enctype='multipart/form-data'>"
+       "File: <input type='file' name='file' /><br/>"
+       "<input type='submit' value='Upload File' />"
+       "</form>";
+    return form;
 }
 
 QString HttpServer::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
@@ -362,8 +425,21 @@ QString HttpServer::browseDirIndex(QStringList path_dirs, QStringList sub_dirs)
         temp_dirs << dir;
         str.append(linkToBrowse(temp_dirs)+"<br />\n");
     }
-
     return str;
+}
+
+QString HttpServer::linkToBrowse(QStringList tokens) const
+{
+    QString repo_name = tokens.takeFirst();
+    QString name;
+    if (tokens.isEmpty()){
+        name = repo_name;
+    }else{
+        name = tokens.last();
+    }
+    QString file_path = tokens.join("/");
+    QString str("<a href=\"/%1/%2\">%3</a>");
+    return str.arg(repo_name, file_path, name);
 }
 
 QString HttpServer::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
@@ -388,22 +464,11 @@ QString HttpServer::browseBreadCrumb(QStringList dirs) const
     return links.join("/");
 }
 
-QString HttpServer::linkToBrowse(QStringList tokens) const
-{
-    QString repo_name = tokens.takeFirst();
-    QString name;
-    if (tokens.isEmpty()){
-        name = repo_name;
-    }else{
-        name = tokens.last();
-    }
-    QString file_path = tokens.join("/");
-    QString str("<a href=\"/%1/%2\">%3</a>");
-    return str.arg(repo_name, file_path, name);
-}
 
 QString HttpServer::linkToFile(QString repo_name, FileInfo* f)
 {
     QString str("<a href=\"/%1/%2\">%4</a>");
     return str.arg(repo_name, f->filePath(), f->fileName());
 }
+
+

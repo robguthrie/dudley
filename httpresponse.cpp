@@ -135,6 +135,17 @@ void HttpResponse::setBody(QByteArray body)
     setContentLength(body.size());
 }
 
+void HttpResponse::send(QByteArray code, QByteArray body){
+    this->setResponseCode(code);
+    this->setBody(body);
+    this->send();
+}
+
+void HttpResponse::send(QByteArray body){
+    this->setBody(body);
+    this->send();
+}
+
 void HttpResponse::send()
 {
     // send headers if they have not already been sent
