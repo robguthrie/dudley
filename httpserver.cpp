@@ -83,9 +83,7 @@ void HttpServer::processReadyRead()
     if (!m_controllers.contains(socket)){
         m_requestsStarted++;
         // the http request will call respondToRequest, finished etc when it is ready
-        HttpRequest* request = new HttpRequest(this, socket);
-        HttpResponse* response = new HttpResponse(this, request, socket);
-        HttpController* controller = new HttpController(this, request, response, socket);
+        HttpController* controller = new HttpController(this, socket);
         m_controllers.insert(socket, controller);
         printStatus("new controller");
     }else{

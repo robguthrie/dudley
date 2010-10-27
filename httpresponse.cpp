@@ -16,9 +16,7 @@ HttpResponse::HttpResponse(QObject* parent)
     m_contentLength = 0;
     m_bodyBytesSent = 0;
     m_protocol = "HTTP/1.1";
-    m_protocol = request->protocol();
     m_maxAge = 30; // things get stale quick
-    connect(this, SIGNAL(finished()), parent, SLOT(responseFinished()));
 }
 
 QByteArray HttpResponse::setProtocol(QByteArray protocol)
@@ -146,6 +144,3 @@ void HttpResponse::send()
 {
     emit ready();
 }
-
-// emit a finished signal when you call send();
-// the server will then push it down the wire

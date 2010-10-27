@@ -4,9 +4,8 @@ HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
     HttpServer(parent), m_socket(socket)
 {
     m_repoModel = parent->repoModel();
-
-    HttpRequest* request = new HttpRequest(this, socket);
-    HttpResponse* response = new HttpResponse(this, socket);
+    m_request = new HttpRequest(this, socket);
+    m_response = new HttpResponse(this, socket);
     m_request->processReadyRead();
 }
 
