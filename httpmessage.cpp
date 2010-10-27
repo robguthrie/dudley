@@ -1,23 +1,56 @@
 #include "httpmessage.h"
 #include <QRegExp>
 #include "output.h"
+
+QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
+
 HttpMessage::HttpMessage(QObject* parent)
     :QObject(parent)
 {
+    m_contentType = "text/html; charset=utf-8";
     m_contentLength = 0;
-    m_contentBytesReceived = 0;
-    m_headersFinished = false;
+    m_contentBytesTransferred = 0;
+    m_contentBytesSent = 0;
+    m_headersReady = false;
+    m_headersSent = false;
     m_hasMultipleParts = false;
     m_complete = false;
     m_valid = true;
+    m_protocol = "HTTP/1.1";
     m_data.open(QBuffer::ReadWrite | QBuffer::Append);
 }
 
 HttpMessage::~HttpMessage()
 {
-    foreach(HttpMessage* message, m_messages){
+    foreach(HttpMessage* message, m_childMessages){
         message->deleteLater();
     }
+}
+
+QByteArray HttpMessage::protocol() const
+{
+    return m_protocol;
+}
+
+QByteArray HttpMessage::setProtocol(QByteArray protocol)
+{
+    m_protcol = protocol;
+}
+
+bool HttpMessage::hasHeader(QByteArray key) const
+{
+    return m_headers.contains(key.toLower());
+}
+
+//private
+void HttpMessage::setHeader(QByteArray key, QByteArray value)
+{
+    m_headers.insert(key.trimmed().toLower(), value.trimmed());
+}
+
+void HttpMessage::setContentType(QByteArray contentType)
+{
+    m_contentType = contentType;
 }
 
 qint64 HttpMessage::contentLength() const
@@ -25,9 +58,14 @@ qint64 HttpMessage::contentLength() const
     return m_contentLength;
 }
 
-qint64 HttpMessage::contentBytesReceived() const
+void HttpMessage::setContentLength(quint64 size)
 {
-    return m_contentBytesReceived;
+    m_contentLength = size;
+}
+
+qint64 HttpMessage::contentBytesTransferred() const
+{
+    return m_contentBytesTransferred;
 }
 
 bool HttpMessage::isValid() const
@@ -35,9 +73,10 @@ bool HttpMessage::isValid() const
     return m_valid;
 }
 
-bool HttpMessage::isEmpty() const
+void HttpMessage::setInvalid()
 {
-    return (m_headers.size() == 0);
+    m_valid = false;
+    emit finished();
 }
 
 bool HttpMessage::isComplete() const
@@ -47,12 +86,17 @@ bool HttpMessage::isComplete() const
 
 QIODevice* HttpMessage::contentDevice()
 {
-    return &m_data;
+    return m_contentDevice;
+}
+
+void HttpMessage::setContentDevice(QIODevice *file)
+{
+    m_contentDevice = file;
 }
 
 QList<HttpMessage*> HttpMessage::childMessages() const
 {
-    return m_messages;
+    return m_childMessages;
 }
 
 QByteArray HttpMessage::formFieldName() const
@@ -65,39 +109,14 @@ QByteArray HttpMessage::formFieldFileName() const
     return m_formFieldFileName;
 }
 
-bool HttpMessage::headersFinished() const
-{
-    return m_headersFinished;
-}
-
-void HttpMessage::setHeader(QByteArray key, QByteArray value)
-{
-    m_headers.insert(key.trimmed().toLower(), value.trimmed());
-}
-
-bool HttpMessage::hasHeader(QByteArray key) const
-{
-    return m_headers.contains(key.toLower());
-}
-
-QByteArray HttpMessage::header(QByteArray key) const
-{
-    return m_headers.value(key.toLower());
-}
-
 void HttpMessage::setComplete()
 {
     m_complete = true;
-    emit complete(m_contentBytesReceived);
+    emit complete(m_contentBytesTransferred);
     emit finished();
 }
 
-void HttpMessage::setInvalid()
-{
-    m_valid = false;
-    emit finished();
-}
-void HttpMessage::setHeadersFinished()
+void HttpMessage::parseHeaders()
 {
     // read the content-disposition header (probably only found in a multipart message
     if (m_headers.contains("content-disposition")){
@@ -133,22 +152,20 @@ void HttpMessage::setHeadersFinished()
         m_contentLength = header("content-length").toLongLong();
     }
 
-    m_headersFinished = true;
+    m_headersReady = true;
 
     if (!m_formFieldFileName.isEmpty()){
         emit isFileUpload();
     }
-
     emit headersReady();
-    printHeaders();
 }
 
-void HttpMessage::parseData(QByteArray data)
+void HttpMessage::readData(QByteArray data)
 {
-    if (!m_headersFinished){
+    if (!m_headersReceived){
         parseHeaderLine(data);
     }else{
-        m_contentBytesReceived += data.size();
+        m_contentBytesTransferred += data.size();
 
         if (m_hasMultipleParts){
             // read lines at a time
@@ -158,10 +175,10 @@ void HttpMessage::parseData(QByteArray data)
         }
 
         if (hasHeader("content-length")){
-            if (m_contentBytesReceived == m_contentLength){
+            if (m_contentBytesTransferred == m_contentLength){
                 setComplete();
             }
-            if (m_contentBytesReceived > m_contentLength){
+            if (m_contentBytesTransferred > m_contentLength){
                 g_log->error("more content arrived than was expected");
                 setInvalid();
             }
@@ -174,7 +191,7 @@ void HttpMessage::parseHeaderLine(QByteArray line)
     QRegExp header_rx("([^:]+):(.+)\r\n");
     if (line == "\r\n"){
         // empty line. normal end of headers
-        setHeadersFinished();
+        parseHeaders();
     }else if (header_rx.exactMatch(line)){
         // read the header
         setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).toAscii());
@@ -194,19 +211,19 @@ void HttpMessage::parseMultiPartContentLine(QByteArray line)
             g_log->debug("middle data boundry line");
             // the the current message to finsihed and prep a new one
             m_currentMessage->setComplete();
-            m_messages << m_currentMessage;
+            m_childMessages << m_currentMessage;
         }
         // prepare new content part for the following data
         m_currentMessage = new HttpMessage();
         connect(m_currentMessage, SIGNAL(isFileUpload()), this, SLOT(processIsFileUpload()));
     }else if (line == "--"+m_formDataBoundry+"--\r\n"){
         g_log->debug("final boundry line");
-        m_messages << m_currentMessage;
+        m_childMessages << m_currentMessage;
         m_currentMessage->setComplete();
         m_currentMessage = 0;
         this->setComplete();
     }else if (m_currentMessage){
-        m_currentMessage->parseData(line);
+        m_currentMessage->readData(line);
     }else{
         g_log->debug("no m_current message.. very strange:"+line);
         setInvalid();

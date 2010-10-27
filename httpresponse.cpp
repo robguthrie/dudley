@@ -2,31 +2,12 @@
 #include "httprequest.h"
 #include "output.h"
 
-QString HttpResponse::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
-
 HttpResponse::HttpResponse(QObject* parent)
-: QObject(parent)
+: HttpMessage(parent)
 {
     m_responseCode = "200 OK";
-    m_contentType = "text/html; charset=utf-8";
-    m_headerSent = false;
-    m_failed = false;
-    m_finished = false;
     m_contentDevice = 0;
-    m_contentLength = 0;
-    m_bodyBytesSent = 0;
-    m_protocol = "HTTP/1.1";
     m_maxAge = 30; // things get stale quick
-}
-
-QByteArray HttpResponse::setProtocol(QByteArray protocol)
-{
-    m_protcol = protocol;
-}
-
-QByteArray HttpResponse::protocol() const
-{
-    return m_protocol;
 }
 
 HttpResponse::~HttpResponse()
@@ -37,25 +18,11 @@ HttpResponse::~HttpResponse()
     }
 }
 
-bool HttpResponse::failed()
-{
-    return m_failed;
-}
-
 void HttpResponse::setResponseCode(QByteArray code, QByteArray error_message){
     m_responseCode = code.trimmed();
     if (error_message.length() != 0){
         setBody(code+": "+error_message);
     }
-}
-void HttpResponse::setContentType(QString contentType)
-{
-    m_contentType = QByteArray(contentType.toAscii()).trimmed();
-}
-
-void HttpResponse::setContentLength(quint64 size)
-{
-    m_contentLength = size;
 }
 
 void HttpResponse::setLastModified(QDateTime d)
@@ -73,7 +40,7 @@ void HttpResponse::setMaxAge(qint64 m)
     m_maxAge = m;
 }
 
-QByteArray HttpResponse::header()
+QByteArray HttpResponse::headers()
 {
     QMap<QByteArray, QByteArray> h; // holds the headers
     h["Content-Length"] = QByteArray::number(m_contentLength);
@@ -94,34 +61,9 @@ QByteArray HttpResponse::header()
     return text;
 }
 
-QIODevice* HttpResponse::contentDevice()
-{
-    return m_contentDevice;
-}
 
-// set the QIODevice from which to read (it shoud be open already)
-void HttpResponse::setContentDevice(QIODevice *file)
+void HttpResponse::setContent(QByteArray body)
 {
-    m_contentDevice = file;
-// i dont think i need this if the filetransfer can manage it
-//    if (!m_contentDevice->isOpen()){
-//        g_log->error("m_bodyIODevice is not open");
-//    }
-//    if (!m_contentDevice->isReadable())
-//        g_log->error("m_bodyIODevice is not readable");
-//    connect(file, SIGNAL(readyRead()), this, SLOT(send()));
-}
-
-void HttpResponse::setBody(QByteArray body)
-{
-
-//    if (m_request->acceptsEncoding("deflate")){
-//        QByteArray comp_data = qCompress(body, 9);
-//        uint32_t comp_size_no = htonl(nb.size());
-//        nb.prepend(comp_size_no, 4);
-//    }else{
-//
-//    }
     QByteArray* nb = new QByteArray(body);
     QIODevice* d = (QIODevice*) new QBuffer(nb);
     d->open(QIODevice::ReadOnly);
@@ -143,4 +85,79 @@ void HttpResponse::send(QByteArray body){
 void HttpResponse::send()
 {
     emit ready();
+}
+
+// just dumped this in here
+void HttpResponse::sendResponse(QIODevice* device)
+{
+    // get the sender of the signal (the response object)
+    // get the context object via  m_requests(response->request) object
+    // send headers if they have not already been sent
+    if (m_finished){
+        g_log->error("send called on finished response");
+        return;
+    }
+
+    if (m_failed){
+        g_log->error("send called on failed response");
+        return;
+    }
+
+    if (!m_headersSent){
+        // send header
+        int headerSize = device->write(header());
+        if (headerSize != -1){
+            m_headersSent = true;
+        }else{
+            g_log->error("failed to write header to socket");
+            m_failed = true;
+        }
+    }
+
+    if (m_contentDevice == 0){
+        m_failed = true;
+        g_log->error("HttpResponse::send() no device to read content from");
+    }
+
+    if (!m_contentDevice->isReadable()){
+        m_failed = true;
+        g_log->error("m_bodyIODevice is not readable anymore");
+    }
+
+    if (!device->isWritable()){
+        m_failed = true;
+        g_log->error("m_socket is not writable anymore - finished");
+    }
+
+    // send the content if there is any to send
+    // move this function into the server and create a filetransfer to represent the body ..
+    // we will have access to the context for this to work nicely once in the server
+    if ((!m_failed) && (m_contentBytesSent < m_contentLength)){
+        if (m_contentDevice->bytesAvailable()){
+            QByteArray bytes = m_contentDevice->readAll();
+            int bytes_written = device->write(bytes);
+            if (bytes_written == -1){
+                m_failed = true;
+                g_log->error("HttpResponse::send() "+QString(m_request->uri())+"failed to write "+QString::number(bytes.length()));
+            }else{
+                m_contentBytesSent += bytes_written;
+            }
+        }
+        // wait to send more data? avoid finished
+        if ((!m_failed) && (m_contentBytesSent < m_contentLength)) return;
+    }
+
+    if (m_contentBytesSent > m_contentLength){
+        m_failed = true;
+        g_log->error("resonse sent "+QByteArray::number(m_contentBytesSent - m_contentLength)+" bytes EXTRA!");
+    }
+
+    // ok how did it go?
+    if ((!m_failed) && (m_contentBytesSent == m_contentLength)){
+            g_log->debug("response sent successfully. "+QByteArray::number(m_contentLength)+" bytes");
+            m_finished = true;
+    }
+    // if we get here.. it must be finished;
+
+    emit finished();
 }

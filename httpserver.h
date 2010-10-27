@@ -10,7 +10,6 @@ class HttpResponse;
 class Repo;
 class FileTransfer;
 class FileTransferManager;
-class HttpRequestContext;
 class HttpController;
 
 class HttpServer : public QTcpServer
@@ -27,17 +26,17 @@ public slots:
     void processDisconnected();
     void processAboutToClose();
     void processError();
-    void respondToRequest();
-    void responseFinished();
     void requestFinished();
-    void processFileUploadStarted();
-    void processFileUploadFinished();
+    void responseFinished();
+    void processResponseReady(QTcpSocket* socket);
 
 private:
 
     RepoModel* m_repoModel;
     FileTransferManager* transferManager;
-    QHash<QTcpSocket*, HttpController*> m_controllers;
+    // we must reply to requests in the order that we got them
+    QHash<QTcpSocket*, QList<HttpController*> > m_controllers;
+    QSet<QTcpSocket*> m_handledSockets;
     int m_socketsOpened;
     int m_socketsClosed;
     int m_requestsStarted;

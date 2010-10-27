@@ -11,9 +11,19 @@ class HttpController : public QObject
 {
     Q_OBJECT
 public:
-    explicit HttpController(HttpServer *parent, HttpRequest* request, HttpResponse* response, QTcpSocket* socket);
+    explicit HttpController(HttpServer *parent, QTcpSocket* socket);
+    ~HttpController();
+
+    bool responseIsReady() const;
 
 signals:
+    void responseReady(QTcpSocket* socket);
+
+private slots:
+    void respondToRequest();
+    void processFileUploadStarted();
+    void processFileUploadFinished();
+    void processResponseReady();
 
 private:
     void routeRequestToAction();
@@ -36,13 +46,14 @@ private:
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
     QString cleanPath(QString path);
 
-private:
     QHash<QByteArray, QVariant> m_params;
     QList<FileTransfer*>        m_transfers;
     RepoModel*                  m_repoModel;
     HttpRequest*                m_request;
     HttpResponse*               m_response;
     QTcpSocket*                 m_socket;
+    bool                        m_responseReady;
+
 };
 
 #endif // HTTPCONTROLLER_H

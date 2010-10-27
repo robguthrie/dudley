@@ -1,15 +1,34 @@
 #include "httpcontroller.h"
 #include "repo.h"
+
 HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
     HttpServer(parent), m_socket(socket)
 {
+    // need to hookup the repoModel and transferManager..
     m_repoModel = parent->repoModel();
-    m_request = new HttpRequest(this, socket);
-    m_response = new HttpResponse(this, socket);
+
+    m_request = new HttpRequest(this);
+    connect(m_request, SIGNAL(headersReady()), this, SLOT(respondToRequest()));
+    connect(m_request, SIGNAL(finished()), parent, SLOT(requestFinished()));
+    connect(m_socket,  SIGNAL(readyRead()), m_request, SLOT(processReadyRead()));
+
+    m_response = new HttpResponse(this);
+    m_responseReady = false;
+    connect(m_response, SIGNAL(ready()), this, SLOT(processResponseReady()));
+
+    connect(this, SIGNAL(responseReady(QTcpSocket*)),
+            parent, SLOT(processResponseReady(QTcpSocket*)));
+
     m_request->processReadyRead();
 }
 
-void HttpServer::respondToRequest()
+HttpController::~HttpController()
+{
+    delete m_request;
+    delete m_response;
+}
+
+void HttpController::respondToRequest()
 {
     if (m_request->isValid()){
         routeRequestToAction();
@@ -18,7 +37,20 @@ void HttpServer::respondToRequest()
     }
 }
 
-void HttpController::routeRequestToAction(){
+void HttpController::processResponseReady()
+{
+    // let the parent server know that this socket needs shuffling
+    m_responseReady = true;
+    emit responseReady(m_socket);
+}
+
+bool HttpController::responseIsReady() const
+{
+    return m_responseReady;
+}
+
+void HttpController::routeRequestToAction()
+{
     QUrl uri(m_request->uri());
     QString uri_path = uri.path();
 
@@ -63,7 +95,7 @@ void HttpController::routeRequestToAction(){
             routed_request = true;
 
             // at this point we should authorize them and send the 100-continue
-            m_request->accept();
+            //            m_request->accept();
 
             g_log->debug("matched "+key+" route");
 

@@ -79,12 +79,21 @@ void HttpServer::processError()
 void HttpServer::processReadyRead()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
-    // we only worry about new connections.. existing ones will manage fine
-    if (!m_controllers.contains(socket)){
+    // we need to respond to requests in the order that they were received
+    // when a request is being sent, it's socket is in m_handledSockets
+    // when a request is finished we remove the socket from m_handledSockets
+    // controllers responses are sent back on the socket in the order they appear in the qlist
+    if (!m_handledSockets.contains(socket)){
         m_requestsStarted++;
-        // the http request will call respondToRequest, finished etc when it is ready
+        m_handledSockets << socket;
+
+        if (!m_controllers.contains(socket)){
+            // first request on this socket
+            m_controllers.insert(socket, QList<HttpController*>());
+        }
+
         HttpController* controller = new HttpController(this, socket);
-        m_controllers.insert(socket, controller);
+        m_controllers[socket].append(controller);
         printStatus("new controller");
     }else{
 //        printStatus("ready read but this socket is being responded to it seems");
@@ -94,91 +103,28 @@ void HttpServer::processReadyRead()
 void HttpServer::requestFinished()
 {
     HttpRequest* request = (HttpRequest*) sender();
-    int n = m_controllers.remove((QTcpSocket*)request->device());
+    m_handledSockets.remove((QTcpSocket*)request->device());
     m_requestsFinished++;
-    printStatus("request finished:"+QString::number(n));
 }
 
-// just dumped this in here
-void HttpServer::sendResponse()
+void HttpServer::processResponseReady(QTcpSocket* socket)
 {
-    // get the sender of the signal (the response object)
-    // get the context object via  m_requests(response->request) object
-    // send headers if they have not already been sent
-    if (m_finished){
-        g_log->error("send called on finished response");
-        return;
-    }
+    // this makes sure that we send responses back in the correct order.
+    // send each ready response (in order) on the socket until none left or not ready
+    if (m_controllers.contains(socket)){
+        if (m_controllers[socket].first()->responseIsReady()){
 
-    if (m_failed){
-        g_log->error("send called on failed response");
-        return;
-    }
-
-    if (!m_headerSent){
-        // send header
-        int headerSize = m_destDevice->write(header());
-        if (headerSize != -1){
-            m_headerSent = true;
-        }else{
-            g_log->error("failed to write header to socket");
-            m_failed = true;
+            // remove the controller and fire it off
         }
     }
-
-    if (m_contentDevice == 0){
-        m_failed = true;
-        g_log->error("HttpResponse::send() no device to read content from");
-    }
-
-    if (!m_contentDevice->isReadable()){
-        m_failed = true;
-        g_log->error("m_bodyIODevice is not readable anymore");
-    }
-
-    if (!m_destDevice->isWritable()){
-        m_failed = true;
-        g_log->error("m_socket is not writable anymore - finished");
-    }
-    // send the content if there is any to send
-    // move this function into the server and create a filetransfer to represent the body ..
-    // we will have access to the context for this to work nicely once in the server
-    if ((!m_failed) && (m_bodyBytesSent < m_contentLength)){
-        if (m_contentDevice->bytesAvailable()){
-            QByteArray bytes = m_contentDevice->readAll();
-            int bytes_written = m_destDevice->write(bytes);
-            if (bytes_written == -1){
-                m_failed = true;
-                g_log->error("HttpResponse::send() "+QString(m_request->uri())+"failed to write "+QString::number(bytes.length()));
-            }else{
-                m_bodyBytesSent += bytes_written;
-            }
-        }
-        // wait to send more data? avoid finished
-        if ((!m_failed) && (m_bodyBytesSent < m_contentLength)) return;
-    }
-
-    if (m_bodyBytesSent > m_contentLength){
-        m_failed = true;
-        g_log->error("resonse sent "+QByteArray::number(m_bodyBytesSent - m_contentLength)+" bytes EXTRA!");
-    }
-
-    // ok how did it go?
-    if ((!m_failed) && (m_bodyBytesSent == m_contentLength)){
-            g_log->debug("response sent successfully. "+QByteArray::number(m_contentLength)+" bytes");
-            m_finished = true;
-    }
-    // if we get here.. it must be finished;
-
-    emit finished();
 }
 
 void HttpServer::responseFinished()
 {
 
     HttpResponse* response = (HttpResponse*) sender();
-    if (response->failed()){
-        g_log->debug("Server::responseFinished() with failure");
+    if (response->complete()){
+        g_log->debug("Server::responseFinished() incomplete finish");
     }
 
     //  close if its http 1.0
@@ -186,11 +132,7 @@ void HttpServer::responseFinished()
         response->destDevice()->close();
     }
 
-    if (m_requestContexts.contains(response->request())){
-        HttpRequestContext* ftc = m_requestContexts.value(response->request());
-        m_requestContexts.remove(ftc->m_request);
-        delete ftc;
-    }
+    // delete the controller
 
     m_responsesFinished++;
     response->deleteLater();
