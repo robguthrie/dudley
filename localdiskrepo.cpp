@@ -1,5 +1,8 @@
+#include "repo.h"
+#include "repostate.h"
 #include "localdiskrepo.h"
 #include <QCryptographicHash>
+#include <QCoreApplication>
 #include <QDir>
 #include "output.h"
 #include "filetransfer.h"
@@ -36,8 +39,6 @@ QString LocalDiskRepo::type() const
 */
 void LocalDiskRepo::updateState(bool commit_changes)
 {
-    Output::verbose(QString("building list of files"));
-
     QStringList found_files = filesOnDisk();
 
     // a missing file is in the collection but not on the disk
@@ -116,31 +117,36 @@ QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
 void LocalDiskRepo::putFileFinished(FileInfo* file_info, QIODevice* device)
 {
     if (device->isOpen()){
-        Output::warning("WorkingFileRepo::putFileComplete device is still open. closing");
         device->close();
     }
     QString newFilePath = this->temporaryFilePath(file_info);
     QFile *file = new QFile(newFilePath);
     if (!file->open(QIODevice::ReadOnly)){
-        Output::error("WorkingFileRepo::putFileComplete cant open newFilePath of putFile:"+newFilePath);
+        g_log->error("WorkingFileRepo::putFileComplete cant open newFilePath of putFile:"+newFilePath);
     }
     if (file->size() != file_info->size()){
-        Output::error("WorkingFileRepo::putFileComplete new file is the wrong size. expected:"+
+        g_log->error("WorkingFileRepo::putFileComplete new file is the wrong size. expected:"+
                       QString::number(file_info->size())+
                       " actual:"+QString::number(file->size()));
     }
 
-//    if (this->readFingerPrint(file) != file_info.fingerPrint()){
-//        Output::error("WorkingFileRepo::putFileComplete new file:"+newFilePath+" has different fingerprint to expected.");
-//    }
-
     if (this->hasFile(file_info)){
-        Output::error("existing file with same name as putFile") ;
+        g_log->error("existing file with same name as putFile") ;
     }else{
-        file->rename(file_info->fileName());
+        if (file->rename(absoluteFilePath(file_info))){
+            g_log->debug("renamed file to:"+absoluteFilePath(file_info));
+        }else{
+            g_log->debug("could not rename file to:"+absoluteFilePath(file_info));
+        }
     }
     file->close();
-    Output::debug("WorkingFileRepo::putFileComplete added file:"+file_info->fileName()+" successfully");
+
+}
+
+
+QString LocalDiskRepo::absoluteFilePath(FileInfo* fileInfo)
+{
+    return m_path+"/"+fileInfo->filePath();
 }
 
 QString LocalDiskRepo::temporaryFilePath(FileInfo* fileInfo)
@@ -159,7 +165,7 @@ void LocalDiskRepo::findAllFiles(QString path, QStringList *found_files)
 {
     QCoreApplication::processEvents();
     // first grab the list of files
-    Output::verbose(path);
+    g_log->verbose(path);
     QDir dir(path);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot);
     dir.setSorting(QDir::Name);
@@ -193,14 +199,14 @@ QString LocalDiskRepo::relativeFilePath(QString filePath){
 FileInfo* LocalDiskRepo::newFileInfo(QString filePath)
 {
     QFileInfo *qfi = new QFileInfo(m_path+"/"+filePath);
-    return new FileInfo(filePath, qfi->size(),
+    return new FileInfo(this, filePath, qfi->size(),
                         qfi->lastModified(), readFingerPrint(filePath));
 }
 
 QString LocalDiskRepo::readFingerPrint(QString filePath)
 {
     QFile file(m_path+'/'+filePath);
-    Output::info(QString("reading fingerprint of ").append(filePath));
+    g_log->info(QString("reading fingerprint of ").append(filePath));
     QCryptographicHash hash(QCryptographicHash::Sha1);
     file.open(QIODevice::ReadOnly | QIODevice::Unbuffered);
     return readFingerPrint(&file);
@@ -216,7 +222,7 @@ QString LocalDiskRepo::readFingerPrint(QFile* d)
         }
         return hash.result().toHex();
     }else{
-        Output::error("could not open device to read fingerprint");
+        g_log->error("could not open device to read fingerprint");
         return "";
     }
 }

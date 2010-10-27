@@ -26,7 +26,8 @@ SOURCES += main.cpp \
     filetransfermanager.cpp \
     httpmessage.cpp \
     repo.cpp \
-    httpfiletransfercontext.cpp
+    readoncebuffer.cpp \
+    httpcontroller.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
@@ -47,7 +48,8 @@ HEADERS += fileinfo.h \
     filetransfermanager.h \
     httpmessage.h \
     repo.h \
-    httpfiletransfercontext.h
+    readoncebuffer.h \
+    httpcontroller.h
 
 # filetransfer.h
 # filerepomanager.h

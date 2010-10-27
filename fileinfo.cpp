@@ -8,21 +8,24 @@
 #include "mimetypefinder.h"
 
 MimeTypeFinder FileInfo::mimeTypeFinder = MimeTypeFinder();
-FileInfo::FileInfo() {}
+FileInfo::FileInfo(QObject* parent): QObject(parent) {}
 
-FileInfo::FileInfo(QString filePath, qint64 sizeInBytes)
+FileInfo::FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes)
+    :QObject(parent)
 {
     m_filePath = filePath;
     m_sizeInBytes = sizeInBytes;
 }
 
-FileInfo::FileInfo(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
+FileInfo::FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
+    :QObject(parent)
 {
     m_filePath = filePath;
     update(sizeInBytes, modifiedAt, sha1);
 }
 
 FileInfo::FileInfo(const FileInfo &f)
+    :QObject(f.parent())
 {
     m_filePath = f.m_filePath;
     m_modifiedAt = f.m_modifiedAt;
@@ -68,9 +71,19 @@ QDateTime FileInfo::lastModified() const
     return m_modifiedAt;
 }
 
+void FileInfo::setLastModified(QDateTime date_time)
+{
+    m_modifiedAt = date_time;
+}
+
 QString FileInfo::fingerPrint() const
 {
     return m_sha1;
+}
+
+void FileInfo::setFingerPrint(QString fingerprint)
+{
+    m_sha1 = fingerprint;
 }
 
 QString FileInfo::filePath() const
@@ -78,27 +91,15 @@ QString FileInfo::filePath() const
     return m_filePath;
 }
 
+void FileInfo::setFilePath(QString file_path)
+{
+    m_filePath = file_path;
+}
+
 QString FileInfo::fileName() const
 {
     QFileInfo fi(m_filePath);
     return fi.fileName();
-}
-
-QString FileInfo::humanSize() const
-{
-    float num = (float) m_sizeInBytes;
-    QStringList list;
-    list << "KB" << "MB" << "GB" << "TB";
-
-    QStringListIterator i(list);
-    QString unit("bytes");
-
-    while(num >= 1024.0 && i.hasNext())
-     {
-        unit = i.next();
-        num /= 1024.0;
-    }
-    return QString().setNum(num,'f',2)+" "+unit;
 }
 
 qint64 FileInfo::size() const

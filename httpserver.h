@@ -10,15 +10,16 @@ class HttpResponse;
 class Repo;
 class FileTransfer;
 class FileTransferManager;
-class HttpFileTransferContext;
+class HttpRequestContext;
 class HttpServer : public QTcpServer
 {
     Q_OBJECT
 public:
     HttpServer(QObject *parent, RepoModel* repoTableModel, FileTransferManager* ftm);
+    RepoModel* repoModel() const;
+    void printStatus(QString a = "");
 
 public slots:
-    void printStatus(QString a = "");
     void acceptConnection();
     void processReadyRead();
     void processDisconnected();
@@ -32,6 +33,7 @@ public slots:
 
 private:
     void routeRequestToAction(HttpRequest* request, HttpResponse* response);
+    void actionRootRequest(HttpResponse* response);
     void actionFaviconRequest(HttpResponse* response);
     void actionUploadRequest(HttpRequest* request, HttpResponse* response, QString repo_name, QString path = "");
     void actionHistoryRequest(HttpResponse* response, QString repo_name);
@@ -49,12 +51,10 @@ private:
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
     QString cleanPath(QString path);
 
-    RepoModel* repoModel;
-    FileTransferManager* fileTransferManager;
-    QSet<QIODevice*> m_handledSockets;
-    QSet<HttpRequest*> m_activeRequests;
-    QSet<HttpResponse*> m_activeResponses;
-    QHash<HttpRequest*, HttpFileTransferContext*> m_fileTransferContexts;
+    RepoModel* m_repoModel;
+    FileTransferManager* transferManager;
+    QHash<QTcpSocket*, HttpRequest*> m_requests;
+    QHash<HttpRequest*, HttpRequestContext*> m_requestContexts;
     int m_socketsOpened;
     int m_socketsClosed;
     int m_requestsStarted;

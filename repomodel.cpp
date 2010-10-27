@@ -102,7 +102,7 @@ Repo* RepoModel::repo(QString name) const
 {
     for (int i =0; i < m_repoList.size(); i++){
         if (m_repoList.at(i)->name() == name){
-//            Output::debug("RepoTableModel loading reponame: "+name);
+//            g_log->debug("RepoTableModel loading reponame: "+name);
             return m_repoList.at(i);
         }
     }

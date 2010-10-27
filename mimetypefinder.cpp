@@ -31,7 +31,7 @@ QString MimeTypeFinder::lookup(QString ext)
     if (m_mimes.contains(ext)){
         return m_mimes[ext];
     }else{
-        Output::debug("no mimetype found for ext: "+ext);
+        g_log->debug("no mimetype found for ext: "+ext);
         return QString();
     }
 }

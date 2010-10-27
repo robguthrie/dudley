@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QBuffer>
 #include <QMap>
+#include "readoncebuffer.h"
 class QIODevice;
 
 class HttpMessage : public QObject
@@ -13,7 +14,8 @@ class HttpMessage : public QObject
 public:
     HttpMessage(QObject* parent = 0);
     ~HttpMessage();
-    bool headersFinsihed() const;
+    void parseData(QByteArray line);
+    bool headersFinished() const;
     void printHeaders();
     bool isEmpty() const;
     bool isValid() const;
@@ -27,19 +29,25 @@ public:
     QByteArray header(QByteArray key) const;
     QByteArray formFieldName() const;
     QByteArray formFieldFileName() const;
-    QBuffer* contentDevice();
+    QIODevice* contentDevice();
+    QList<HttpMessage*> childMessages() const;
 
 signals:
     void headersReady(); // when the headers have been parsed
     void complete(qint64 contentBytesReceived); // when the whole thing has been parsed (complete message finished)
     void finished(); // when its finished (may be invalid and finished)
     void fileUploadStarted(); // when we start getting an upload in a multipart format
+    void fileUploadComplete(); // when a child message (we must be multipart) has completely uploaded
+    void isFileUpload();
+
+public slots:
+    void processIsFileUpload();
 
 protected:
     QBuffer m_data;
-    void parseHeaders(QIODevice* device);
-    void parseContent(QIODevice* device);
-    void parseMultiPartContent(QIODevice* device);
+    void parseHeaderLine(QByteArray line);
+    void parseContentLine(QByteArray line);
+    void parseMultiPartContentLine(QByteArray line);
 
     void setInvalid();
     bool m_valid;

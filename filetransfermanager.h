@@ -9,8 +9,8 @@ class FileTransferManager : public QObject
     Q_OBJECT
 public:
     explicit FileTransferManager(QObject *parent = 0);
-    FileTransfer* copy(QObject* source_parent, QIODevice* source_file,
-                       QObject* dest_parent, QIODevice* dest_file, FileInfo* file_info);
+    FileTransfer* copy(QString source_name, QIODevice* source_file,
+                       QString dest_name, QIODevice* dest_file, FileInfo* file_info);
 signals:
 
 public slots:

@@ -3,7 +3,7 @@
 #include <iostream>
 #include "output.h"
 #include <QCryptographicHash>
-
+#include <QDirIterator>
 // logger is a file state history log
 RepoStateLogger::RepoStateLogger(QString logsDir)
     :m_logsDir(logsDir) {}
@@ -11,7 +11,6 @@ RepoStateLogger::RepoStateLogger(QString logsDir)
 bool RepoStateLogger::initialize()
 {
     QDir dir;
-    Output::debug(QString("creating log dir: %1").arg(m_logsDir));
     return dir.mkpath(m_logsDir);
 }
 
@@ -62,13 +61,13 @@ QByteArray RepoStateLogger::openLog(QString name)
     if (hasLogFile(name)){
         QFile file(logFilePath(name));
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Output::debug("opening log file:"+logFilePath(name));
+            g_log->debug("opening log file:"+logFilePath(name));
            return file.readAll();
         }else{
-            Output::error("could not open file:"+logFilePath(name));
+            g_log->error("could not open file:"+logFilePath(name));
         }
     }else{
-        Output::error("file not found: "+logFilePath(name));
+        g_log->error("file not found: "+logFilePath(name));
     }
     return QByteArray();
 }
@@ -119,7 +118,7 @@ void RepoStateLogger::playLogFile(QString name, RepoState* state)
 void RepoStateLogger::printChanges()
 {
     if (m_logLines.size() > 0){
-        Output::info("Changes waiting to be written to log:"+pendingLogLines().join("\n"));
+        g_log->info("Changes waiting to be written to log:"+pendingLogLines().join("\n"));
     }
 }
 
@@ -149,7 +148,7 @@ bool RepoStateLogger::commitChanges(){
         QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
         QString body = pendingLogLines().join("\n");
         if (writeLogFile(commit_name, body)){
-            Output::debug("writeLogFile returned true");
+            g_log->debug("writeLogFile returned true");
             m_logLines.clear();
             return true;
         }
@@ -162,14 +161,14 @@ bool RepoStateLogger::commitChanges(){
 bool RepoStateLogger::writeLogFile(QString name, QString body)
 {
     if (!QFile::exists(m_logsDir)){
-        Output::error("could not open log dir");
+        g_log->error("could not open log dir");
         return false;
     }
 
     // refuse to save a log with a funny name
     QRegExp name_rx("\\d+");
     if (!name_rx.exactMatch(name)){
-        Output::error("log filename is not just digits: "+name);
+        g_log->error("log filename is not just digits: "+name);
         return false;
     }
 
@@ -177,11 +176,11 @@ bool RepoStateLogger::writeLogFile(QString name, QString body)
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QFile::Append)){
         QTextStream out(&file);
         out << body;
-        Output::debug(QString::number(body.size()).append(" bytes written to logfile"));
+        g_log->debug(QString::number(body.size()).append(" bytes written to logfile"));
         file.close();
         return true;
     }else{
-        Output::error("could not write log: "+logFilePath(name));
+        g_log->error("could not write log: "+logFilePath(name));
         return false;
     }
 }

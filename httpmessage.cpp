@@ -30,9 +30,29 @@ qint64 HttpMessage::contentBytesReceived() const
     return m_contentBytesReceived;
 }
 
-QBuffer* HttpMessage::contentDevice()
+bool HttpMessage::isValid() const
+{
+    return m_valid;
+}
+
+bool HttpMessage::isEmpty() const
+{
+    return (m_headers.size() == 0);
+}
+
+bool HttpMessage::isComplete() const
+{
+    return m_complete;
+}
+
+QIODevice* HttpMessage::contentDevice()
 {
     return &m_data;
+}
+
+QList<HttpMessage*> HttpMessage::childMessages() const
+{
+    return m_messages;
 }
 
 QByteArray HttpMessage::formFieldName() const
@@ -45,6 +65,38 @@ QByteArray HttpMessage::formFieldFileName() const
     return m_formFieldFileName;
 }
 
+bool HttpMessage::headersFinished() const
+{
+    return m_headersFinished;
+}
+
+void HttpMessage::setHeader(QByteArray key, QByteArray value)
+{
+    m_headers.insert(key.trimmed().toLower(), value.trimmed());
+}
+
+bool HttpMessage::hasHeader(QByteArray key) const
+{
+    return m_headers.contains(key.toLower());
+}
+
+QByteArray HttpMessage::header(QByteArray key) const
+{
+    return m_headers.value(key.toLower());
+}
+
+void HttpMessage::setComplete()
+{
+    m_complete = true;
+    emit complete(m_contentBytesReceived);
+    emit finished();
+}
+
+void HttpMessage::setInvalid()
+{
+    m_valid = false;
+    emit finished();
+}
 void HttpMessage::setHeadersFinished()
 {
     // read the content-disposition header (probably only found in a multipart message
@@ -56,13 +108,13 @@ void HttpMessage::setHeadersFinished()
                 QString key = kvrx.cap(1);
                 QString value = kvrx.cap(2);
                 if (key == "name"){
-                    Output::debug("matched name:"+value);
+                    g_log->debug("matched name:"+value);
                     m_formFieldName = value.toAscii();
                 }else if (key == "filename"){
-                    Output::debug("matched filename:"+value);
+                    g_log->debug("matched filename:"+value);
                     m_formFieldFileName = value.toAscii();
                 }else{
-                    Output::debug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
+                    g_log->debug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
                 }
             }
         }
@@ -82,155 +134,90 @@ void HttpMessage::setHeadersFinished()
     }
 
     m_headersFinished = true;
-    printHeaders();
+
+    if (!m_formFieldFileName.isEmpty()){
+        emit isFileUpload();
+    }
 
     emit headersReady();
-
+    printHeaders();
 }
 
-bool HttpMessage::isValid() const
+void HttpMessage::parseData(QByteArray data)
 {
-    return m_valid;
-}
+    if (!m_headersFinished){
+        parseHeaderLine(data);
+    }else{
+        m_contentBytesReceived += data.size();
 
-bool HttpMessage::isEmpty() const
-{
-    return (m_headers.size() == 0);
-}
-
-void HttpMessage::setComplete()
-{
-    m_complete = true;
-    emit complete(m_contentBytesReceived);
-    emit finished();
-}
-
-bool HttpMessage::isComplete() const
-{
-    return m_complete;
-}
-
-void HttpMessage::setInvalid()
-{
-    m_valid = false;
-    emit finished();
-}
-
-bool HttpMessage::headersFinsihed() const
-{
-    return m_headersFinished;
-}
-
-void HttpMessage::setHeader(QByteArray key, QByteArray value)
-{
-    m_headers.insert(key.trimmed().toLower(), value.trimmed());
-}
-bool HttpMessage::hasHeader(QByteArray key) const
-{
-    return m_headers.contains(key.toLower());
-}
-
-QByteArray HttpMessage::header(QByteArray key) const
-{
-    return m_headers.value(key.toLower());
-}
-
-void HttpMessage::parseHeaders(QIODevice* device)
-{
-    // read 0 or more header lines..
-    QByteArray line;
-    QRegExp header_rx("([^:]+):(.+)\r\n");
-    while ((m_valid) && (!m_headersFinished) && (device->canReadLine())){
-        line = device->readLine();
-        if (line == "\r\n"){
-            // empty line. normal end of headers
-            setHeadersFinished();
-        }else if (header_rx.exactMatch(line)){
-            // read the header
-            setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).toAscii());
-        }else{
-            // header is invalid.. termate loop
-            setInvalid();
-        }
-    }
-}
-
-void HttpMessage::parseContent(QIODevice* device)
-{
-    if ((m_valid) && (m_headersFinished) && (device->bytesAvailable())){
-        // if the request is HTTP/1.1 then we wont have content until we accept
         if (m_hasMultipleParts){
-            parseMultiPartContent(device);
+            // read lines at a time
+            parseMultiPartContentLine(data);
         }else{
-            // just signal that there is content to read in the device?
-            if (hasHeader("content-length")){
-                Output::debug(" more content, not multipart, but there is a content length.");
-                if (m_contentLength < (m_contentBytesReceived + device->bytesAvailable())){
-                    qint64 n_extra_bytes = (m_contentBytesReceived + device->bytesAvailable()) - m_contentLength;
-                    Output::error("more data than expected has arrived in the request, by "+QString::number(n_extra_bytes)+" bytes");
-                }
-            }else{
-                Output::debug("data available from request device.. but it's not multipart and there is no content length ");
-            }
+            m_data.write(data);
         }
-    }
-}
 
-void HttpMessage::parseMultiPartContent(QIODevice* device){
-    // request is multipart format.
-    QByteArray line;
-    QRegExp header_rx("([^:]+):(.+)\r\n");
-
-    while (device->canReadLine()){
-        line = device->readLine();
-        if (line ==  "--"+m_formDataBoundry+"\r\n"){
-            // this is the end of the content for the current part, or the frist cp
-            if (!m_currentMessage){
-                Output::debug("first boundry line");
-            }else{
-                Output::debug("middle data boundry line");
-                // the the current message to finsihed and prep a new one
-                m_currentMessage->setComplete();
-                m_messages << m_currentMessage;
+        if (hasHeader("content-length")){
+            if (m_contentBytesReceived == m_contentLength){
+                setComplete();
             }
-            // prepare new content part for the following data
-            m_currentMessage = new HttpMessage();
-        }else if (line == "--"+m_formDataBoundry+"--\r\n"){
-            Output::debug("final boundry line");
-            m_messages << m_currentMessage;
-            m_currentMessage->setComplete();
-            m_currentMessage = 0;
-            this->setComplete();
-        }else if (m_currentMessage){
-            if (m_currentMessage->headersFinsihed()){
-                m_contentBytesReceived += line.size();
-                // the headers are finished already. this is data
-                if (qint64 bw = m_currentMessage->m_data.write(line)){
-//                    Output::debug("wrote "+QString::number(bw)+" bytes to m_data (the upload buffer)");
-//                    Output::debug("m_data size:"+QString::number(m_currentMessage->m_data.size()));
-                }else{
-                    Output::debug("failed to write "+QString::number(bw)+" bytes to m_data (the upload buffer)");
-                    setInvalid();
-                }
-            }else if (header_rx.exactMatch(line)){
-                m_currentMessage->setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).toAscii());
-            }else if (line == "\r\n"){
-                // this empty line indicates the end of headers
-                Output::debug("end of headers (of a multipart child message)");
-                m_currentMessage->setHeadersFinished();
-                if (!m_currentMessage->formFieldFileName().isEmpty()){
-                    m_pendingFileUploadMessages << m_currentMessage;
-                    emit fileUploadStarted();
-                }
-            }else{
-                Output::debug("invalid httpmessage; unexpect line: "+line);
+            if (m_contentBytesReceived > m_contentLength){
+                g_log->error("more content arrived than was expected");
                 setInvalid();
             }
-        }else{
-            Output::debug("no m_current message.. very strange:"+line);
-            setInvalid();
         }
     }
+}
+
+void HttpMessage::parseHeaderLine(QByteArray line)
+{
+    QRegExp header_rx("([^:]+):(.+)\r\n");
+    if (line == "\r\n"){
+        // empty line. normal end of headers
+        setHeadersFinished();
+    }else if (header_rx.exactMatch(line)){
+        // read the header
+        setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).toAscii());
+    }else{
+        // header is invalid.. termate loop
+        setInvalid();
+    }
+}
+
+void HttpMessage::parseMultiPartContentLine(QByteArray line)
+{
+    if (line ==  "--"+m_formDataBoundry+"\r\n"){
+        // this is the end of the content for the current part, or the frist cp
+        if (!m_currentMessage){
+            g_log->debug("first boundry line");
+        }else{
+            g_log->debug("middle data boundry line");
+            // the the current message to finsihed and prep a new one
+            m_currentMessage->setComplete();
+            m_messages << m_currentMessage;
+        }
+        // prepare new content part for the following data
+        m_currentMessage = new HttpMessage();
+        connect(m_currentMessage, SIGNAL(isFileUpload()), this, SLOT(processIsFileUpload()));
+    }else if (line == "--"+m_formDataBoundry+"--\r\n"){
+        g_log->debug("final boundry line");
+        m_messages << m_currentMessage;
+        m_currentMessage->setComplete();
+        m_currentMessage = 0;
+        this->setComplete();
+    }else if (m_currentMessage){
+        m_currentMessage->parseData(line);
+    }else{
+        g_log->debug("no m_current message.. very strange:"+line);
+        setInvalid();
+    }
+}
+
+void HttpMessage::processIsFileUpload()
+{
+    // we get this from child messages
+    m_pendingFileUploadMessages << (HttpMessage*) sender();
+    emit fileUploadStarted();
 }
 
 bool HttpMessage::hasPendingFileUploads() const
@@ -240,7 +227,6 @@ bool HttpMessage::hasPendingFileUploads() const
 
 HttpMessage*  HttpMessage::getNextFileUploadMessage()
 {
-    Output::debug("returning next upload message.. buffer size: "+QString::number(m_pendingFileUploadMessages.first()->contentDevice()->size()));
     return m_pendingFileUploadMessages.takeFirst();
 }
 
@@ -248,16 +234,16 @@ void HttpMessage::printHeaders()
 {
     QMap<QByteArray, QByteArray>::const_iterator i = m_headers.begin();
     for(; i != m_headers.end(); ++i){
-        Output::debug(i.key()+":"+i.value());
+        g_log->debug(i.key()+":"+i.value());
     }
 
     if (m_hasMultipleParts){
-        Output::debug("m_formDataBoundry: "+m_formDataBoundry);
-        Output::debug("m_formFieldName: "+m_formFieldName);
-        Output::debug("m_formFieldFileName: "+m_formFieldFileName);
+        g_log->debug("m_formDataBoundry: "+m_formDataBoundry);
+        g_log->debug("m_formFieldName: "+m_formFieldName);
+        g_log->debug("m_formFieldFileName: "+m_formFieldFileName);
     }
-    if (m_complete) Output::debug("complete message");
-    if (!m_valid) Output::debug("invalid message");
+    if (m_complete) g_log->debug("complete message");
+    if (!m_valid) g_log->debug("invalid message");
 }
 
 bool HttpMessage::isMultiPart() const

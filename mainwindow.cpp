@@ -6,9 +6,8 @@
 #include "localdiskrepo.h"
 #include "httpclientrepo.h"
 
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow)
+MainWindow::MainWindow(QSettings* settings, QWidget *parent) :
+    QMainWindow(parent),  ui(new Ui::MainWindow), m_settings(settings)
 {
     ui->setupUi(this);
     m_repoModel = new RepoModel();
@@ -20,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->editRepoButton, SIGNAL(clicked()), this, SLOT(editRepoButtonPressed()));
     connect(ui->removeRepoButton, SIGNAL(clicked()), this, SLOT(removeRepoButtonPressed()));
     connect(ui->refreshRepoButton, SIGNAL(clicked()), this, SLOT(refreshRepoButtonPressed()));
-    Output::outputTextEdit = ui->outputTextEdit;
+    connect(g_log, SIGNAL(message(QString)), ui->outputTextEdit, SLOT(appendPlainText(QString)));
     server = new HttpServer(this, m_repoModel, m_fileTransferManager);
     if (!server->listen(QHostAddress::Any, 54573)){
 //    if (!server->listen(QHostAddress::Any)){
@@ -29,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
         close();
         return;
     }
-    Output::info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
+    g_log->info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
                          .arg(bestIpAddress()).arg(server->serverPort()));
     trayIcon = new QSystemTrayIcon(QIcon(":/icons/dino1.png"), this);
     trayIcon->show();
@@ -38,29 +37,29 @@ MainWindow::MainWindow(QWidget *parent) :
 
 void MainWindow::writeSettings()
 {
-    m_settings.beginGroup("repos");
+    m_settings->beginGroup("repos");
     foreach(Repo* repo, m_repoModel->repoList()){
-        m_settings.beginGroup(repo->name());
-        m_settings.setValue("type", repo->type());
-        m_settings.setValue("path", repo->path());
-        m_settings.setValue("log_path", repo->logPath());
-        m_settings.endGroup();
+        m_settings->beginGroup(repo->name());
+        m_settings->setValue("type", repo->type());
+        m_settings->setValue("path", repo->path());
+        m_settings->setValue("log_path", repo->logPath());
+        m_settings->endGroup();
     }
-    m_settings.endGroup();
+    m_settings->endGroup();
 }
 
 void MainWindow::readSettings()
 {
-    m_settings.beginGroup("repos");
-    foreach(QString repo_name, m_settings.childGroups()){
-        m_settings.beginGroup(repo_name);
-        QString type = m_settings.value("type").toString();
-        QString path = m_settings.value("path").toString();
-        QString log_path = m_settings.value("log_path").toString();
+    m_settings->beginGroup("repos");
+    foreach(QString repo_name, m_settings->childGroups()){
+        m_settings->beginGroup(repo_name);
+        QString type = m_settings->value("type").toString();
+        QString path = m_settings->value("path").toString();
+        QString log_path = m_settings->value("log_path").toString();
         this->addRepo(type, path, repo_name);
-        m_settings.endGroup();
+        m_settings->endGroup();
     }
-    m_settings.endGroup();
+    m_settings->endGroup();
 }
 
 MainWindow::~MainWindow()
@@ -86,7 +85,7 @@ void MainWindow::addRepoButtonPressed()
 
 //    connect(repoDialog, SIGNAL(newSettings(QString)), this, SLOT(addRepo(QString)));
     if (repoDialog->exec()){
-        Output::debug("hellooo? returned from addRepoDialog");
+        g_log->debug("hellooo? returned from addRepoDialog");
         addRepo(repoDialog->type(), repoDialog->path(), repoDialog->name());
     }
 }
@@ -106,12 +105,12 @@ void MainWindow::removeRepoButtonPressed()
 bool MainWindow::addRepo(QString type, QString path, QString name)
 {
     Repo* repo = 0;
-    Output::info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
+    g_log->info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
     if (type == "HttpClientFileRepo"){
-        Output::debug("opening httpclientfilerepo");
+        g_log->debug("opening httpclientfilerepo");
         repo = new HttpClientRepo(this, path, name);
     }else if(type == "WorkingFileRepo"){
-        Output::debug("opening workingfilerepo");
+        g_log->debug("opening workingfilerepo");
         repo = new LocalDiskRepo(this, path, name);
     }
 
@@ -124,7 +123,7 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
             return repo->initialize();
         }
     }else{
-        Output::debug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
+        g_log->debug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
         return false;
     }
 }

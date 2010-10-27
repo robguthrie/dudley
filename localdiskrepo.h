@@ -23,6 +23,7 @@ private:
     QString readFingerPrint(QString filePath);
     QString readFingerPrint(QFile* d);
     void findAllFiles(QString path, QStringList *found_files);
+    QString absoluteFilePath(FileInfo* f);
     QString relativeFilePath(QString filePath);
     QString temporaryFilePath(FileInfo* f);
     void putFileFinished(FileInfo* file_info, QIODevice* device);

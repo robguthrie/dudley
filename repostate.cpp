@@ -22,7 +22,7 @@ RepoState::RepoState(QObject* parent, QString logs_dir)
         reload();
     }else{
         // warn of unready logger..
-        Output::warning("FileRepoState cant open history. need to initialize logger");
+        g_log->warning("FileRepoState cant open history. need to initialize logger");
     }
 }
 
@@ -111,7 +111,7 @@ void RepoState::addFile(QString filePath, qint64 sizeInBytes, QDateTime modified
 {
     if (!m_files.contains(filePath)){
         // update existing without touching disk
-        FileInfo *fileInfo = new FileInfo(filePath, sizeInBytes, modifiedAt, sha1);
+        FileInfo *fileInfo = new FileInfo(this, filePath, sizeInBytes, modifiedAt, sha1);
         m_files.insert(filePath, fileInfo);
         m_fingerprints.insert(sha1, fileInfo);
         if (m_logChanges){
@@ -119,7 +119,7 @@ void RepoState::addFile(QString filePath, qint64 sizeInBytes, QDateTime modified
         }
     }else{
         // insert new
-        Output::error("adding file "+filePath+". it's already indexed");
+        g_log->error("adding file "+filePath+". it's already indexed");
     }
 }
 
@@ -137,7 +137,7 @@ void RepoState::modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modif
             m_logger->logModifyFile(filePath, sizeInBytes, modifiedAt, sha1);
         }
     }else{
-        Output::error("modify state for fileinfo which does not exist: "+filePath+", "+sha1);
+        g_log->error("modify state for fileinfo which does not exist: "+filePath+", "+sha1);
     }
 }
 
@@ -243,10 +243,10 @@ QStringList RepoState::subDirs(QString path)
 
 QList<FileInfo*> RepoState::filesInDir(QString path)
 {
-//    Output::debug("filesInDir path:"+path);
+//    g_log->debug("filesInDir path:"+path);
     QHash<QString, FileInfo*>::const_iterator i;
     QList<FileInfo*> matches;
-//    Output::debug(QString("size of m_files: %1").arg(m_files.size()));
+//    g_log->debug(QString("size of m_files: %1").arg(m_files.size()));
     for(i = m_files.begin(); i != m_files.end(); ++i){
         QRegExp files_in_dir_rx = QRegExp(QString("^%1/([^/?*\\\\]+)").arg(QRegExp::escape(path)));
         if (files_in_dir_rx.exactMatch(i.key())){

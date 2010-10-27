@@ -9,6 +9,8 @@
 #include "repomodel.h"
 #include "repo.h"
 #include "filetransfermanager.h"
+#include "output.h"
+
 namespace Ui {
     class MainWindow;
 }
@@ -16,7 +18,7 @@ namespace Ui {
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
-    MainWindow(QWidget *parent = 0);
+    MainWindow(QSettings* settings, QWidget *parent = 0);
     ~MainWindow();
 
 protected:
@@ -36,7 +38,7 @@ private:
     QSystemTrayIcon *trayIcon;
     RepoModel* m_repoModel;
     FileTransferManager* m_fileTransferManager;
-    QSettings m_settings;
+    QSettings* m_settings;
     void writeSettings();
     void readSettings();
 };

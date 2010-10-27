@@ -14,17 +14,26 @@
 #include "output.h"
 #include "mainwindow.h"
 
+Output* g_log = 0;
 // my master backup is on the internet
-QPlainTextEdit *Output::outputTextEdit = 0;
 int main(int argc, char *argv[])
 {
+    g_log = new Output();
     QStringList params;
     for(int i = 1; i < argc; ++i) params << argv[i];
     QApplication app(argc, argv);
+    QStringList args = app.arguments();
     QApplication::setOrganizationName("Dinotech");
     QApplication::setOrganizationDomain("dinotech.co.nz");
     QApplication::setApplicationName("Dudley");
-    MainWindow mainWindow;
+
+    QSettings* settings;
+    if (args.size() > 1){
+        settings = new QSettings(args[1]);
+    }else{
+        settings = new QSettings();
+    }
+    MainWindow mainWindow(settings);
     mainWindow.show();
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
     return app.exec();

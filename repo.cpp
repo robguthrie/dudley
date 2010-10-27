@@ -75,10 +75,10 @@ bool Repo::initialize()
         if (m_state->logger()->initialize()){
             return true;
         }else{
-            Output::error("Cannot initialize history logger");
+            g_log->error("Cannot initialize history logger");
         }
     }else{
-        Output::error(QString("Can't read data: ").append(m_path));
+        g_log->error(QString("Can't read data: ").append(m_path));
     }
     return false;
 }
@@ -97,7 +97,7 @@ QIODevice* Repo::putFile(FileInfo *fileInfo)
         connect(f, SIGNAL(aboutToClose()), this, SLOT(putFileAboutToClose()));
         return f;
     }else{
-        Output::error("temporary file device is null or not writable");
+        g_log->error("temporary file device is null or not writable");
         return 0;
     }
 }
@@ -108,15 +108,13 @@ void Repo::putFileAboutToClose()
     if (m_incommingFiles.contains(file)){
         FileInfo* file_info = m_incommingFiles.value(file);
         m_incommingFiles.remove(file);
-        Output::debug("FileRepo::putFileAboutToClose file seems complete in size");
+        g_log->debug("FileRepo::putFileAboutToClose file seems complete in size");
         if (file->size() == file_info->size()){
             this->putFileFinished(file_info, file);
         }else{
 //            this->putFileFailed(file_info, file);
-            Output::debug("putfile failed.. size of file is not what was expected");
+            g_log->debug("putfile failed.. size of file is not what was expected");
         }
-    }else{
-        Output::error("got AboutToClose signal from file not in m_incommingFiles.");
     }
 }
 
@@ -126,7 +124,7 @@ QIODevice* Repo::writableTempFile(FileInfo* fileInfo)
     if (f->open(QIODevice::WriteOnly)){
         return f;
     }else{
-        Output::error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
+        g_log->error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
         return 0;
     }
 }
