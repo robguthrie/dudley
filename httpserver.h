@@ -18,6 +18,7 @@ class HttpServer : public QTcpServer
 public:
     HttpServer(QObject *parent, RepoModel* repoTableModel, FileTransferManager* ftm);
     RepoModel* repoModel() const;
+    FileTransferManager* transferManager() const;
     void printStatus(QString a = "");
 
 public slots:
@@ -26,14 +27,14 @@ public slots:
     void processDisconnected();
     void processAboutToClose();
     void processError();
-    void requestFinished();
-    void responseFinished();
+    void responseFinished(QTcpSocket* socket);
+    void processRequestFinished(QTcpSocket* socket);
     void processResponseReady(QTcpSocket* socket);
 
 private:
 
     RepoModel* m_repoModel;
-    FileTransferManager* transferManager;
+    FileTransferManager* m_transferManager;
     // we must reply to requests in the order that we got them
     QHash<QTcpSocket*, QList<HttpController*> > m_controllers;
     QSet<QTcpSocket*> m_handledSockets;

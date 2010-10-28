@@ -6,6 +6,9 @@
 #include <httpserver.h>
 #include <httprequest.h>
 #include <httpresponse.h>
+#include <repo.h>
+#include <repomodel.h>
+#include <filetransfermanager.h>
 
 class HttpController : public QObject
 {
@@ -13,17 +16,21 @@ class HttpController : public QObject
 public:
     explicit HttpController(HttpServer *parent, QTcpSocket* socket);
     ~HttpController();
-
     bool responseIsReady() const;
-
+    void sendResponse();
 signals:
+    void requestFinished(QTcpSocket* socket);
     void responseReady(QTcpSocket* socket);
+    void responseFinished(QTcpSocket* socket);
 
 private slots:
     void respondToRequest();
     void processFileUploadStarted();
     void processFileUploadFinished();
+    void processRequestFinished();
     void processResponseReady();
+    void processResponseFinished();
+
 
 private:
     void routeRequestToAction();
@@ -46,13 +53,14 @@ private:
     QString browseDirIndex(QStringList path_dirs, QStringList sub_dirs);
     QString cleanPath(QString path);
 
-    QHash<QByteArray, QVariant> m_params;
+    QHash<QByteArray, QByteArray> m_params;
     QList<FileTransfer*>        m_transfers;
     RepoModel*                  m_repoModel;
+    FileTransferManager*        m_transferManager;
     HttpRequest*                m_request;
     HttpResponse*               m_response;
     QTcpSocket*                 m_socket;
-    bool                        m_responseReady;
+    HttpServer*                 m_server;
 
 };
 

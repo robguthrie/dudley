@@ -17,13 +17,8 @@
 #include "httpcontroller.h"
 
 HttpServer::HttpServer(QObject *parent, RepoModel* model, FileTransferManager* ftm)
-    :QTcpServer(parent), m_repoModel(model), transferManager(ftm)
+    :QTcpServer(parent), m_repoModel(model), m_transferManager(ftm)
 {
-    // need a function to be called on newConnection
-    // it will read the connection
-    // if it gets a GET request we will return a bit of fake html
-    // later we will return files and indexes
-    //    g_log->debug("constructing a tcp server");
     m_socketsOpened = 0;
     m_socketsClosed = 0;
     m_requestsStarted = 0;
@@ -50,7 +45,6 @@ void HttpServer::acceptConnection()
 //    printStatus("accept connection");
     if (this->hasPendingConnections()){
         m_socketsOpened++;
-
         QTcpSocket* socket = this->nextPendingConnection();
         connect(socket, SIGNAL(disconnected()), this, SLOT(processDisconnected()));
         connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(processError()));
@@ -100,10 +94,9 @@ void HttpServer::processReadyRead()
     }
 }
 
-void HttpServer::requestFinished()
+void HttpServer::processRequestFinished(QTcpSocket* socket)
 {
-    HttpRequest* request = (HttpRequest*) sender();
-    m_handledSockets.remove((QTcpSocket*)request->device());
+    m_handledSockets.remove(socket);
     m_requestsFinished++;
 }
 
@@ -112,30 +105,29 @@ void HttpServer::processResponseReady(QTcpSocket* socket)
     // this makes sure that we send responses back in the correct order.
     // send each ready response (in order) on the socket until none left or not ready
     if (m_controllers.contains(socket)){
-        if (m_controllers[socket].first()->responseIsReady()){
-
-            // remove the controller and fire it off
+        foreach(HttpController* controller, m_controllers[socket]){
+            if (controller->responseIsReady()){
+                controller->sendResponse();
+            }else{
+                break;
+            }
         }
     }
 }
 
-void HttpServer::responseFinished()
+void HttpServer::responseFinished(QTcpSocket* socket)
 {
-
-    HttpResponse* response = (HttpResponse*) sender();
-    if (response->complete()){
-        g_log->debug("Server::responseFinished() incomplete finish");
-    }
-
-    //  close if its http 1.0
-    if (response->protocol() == "HTTP/1.0"){
-        response->destDevice()->close();
+    HttpController* controller = (HttpController*) sender();
+    // remove the controller from the response queue
+    if (m_controllers.contains(socket)){
+        m_controllers[socket].removeAll(controller);
+    }else{
+        g_log->error("removing controller.. it was not there");
     }
 
     // delete the controller
-
     m_responsesFinished++;
-    response->deleteLater();
+    controller->deleteLater();
     printStatus("response finished");
 }
 

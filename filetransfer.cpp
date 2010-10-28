@@ -11,6 +11,7 @@ FileTransfer::FileTransfer(QObject *parent, QString source_name,
 
     if (everythingIsOk()) {
         connect(m_sourceFile, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
+        connect(m_destFile, SIGNAL(bytesWritten(qint64)), this, SLOT(processReadyRead()));
         connect(m_sourceFile, SIGNAL(aboutToClose()), this, SLOT(processAboutToClose()));
         connect(m_destFile, SIGNAL(aboutToClose()), this, SLOT(processAboutToClose()));
     }
@@ -62,23 +63,15 @@ QStringList FileTransfer::errors() const
 
 void FileTransfer::processReadyRead()
 {
-//
-//    g_log->debug("after seeking to destFile pos");
-//    g_log->debug("sourceFile pos:"+QString::number(m_sourceFile->pos()));
-//    g_log->debug("sourceFile bytesAvailable:"+QString::number(m_sourceFile->bytesAvailable()));
-//    g_log->debug("sourceFile size:"+QString::number(m_sourceFile->size()));
-//    g_log->debug("fileinfo expected size:"+QString::number(m_fileInfo->size()));
-//    g_log->debug("bytes copied:"+QString::number(m_bytesWritten));
-    // seek to size of destFile?
-
     if (!m_sourceFile->isSequential()){
         m_sourceFile->seek(m_bytesWritten);
     }
-    if (everythingIsOk() && !m_complete && m_sourceFile->bytesAvailable()){
+    if (everythingIsOk() && !m_complete && m_sourceFile->bytesAvailable()
+        && (m_destFile->bytesToWrite() == 0)){
+        // we will expect to see bw bytes written before reading more from the source
         qint64 bw = m_destFile->write(m_sourceFile->read(256*1024));
         if (bw >= 0){
             m_bytesWritten += bw;
-//            g_log->debug("wrote "+QString::number(bw)+"to the temp file device");
         }else{
             // there was a problem
             g_log->debug("Problem writing bytes from source to dest");

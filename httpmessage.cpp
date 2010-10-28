@@ -1,5 +1,7 @@
 #include "httpmessage.h"
 #include <QRegExp>
+#include <QVariant>
+
 #include "output.h"
 
 QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
@@ -7,17 +9,13 @@ QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
 HttpMessage::HttpMessage(QObject* parent)
     :QObject(parent)
 {
-    m_contentType = "text/html; charset=utf-8";
-    m_contentLength = 0;
-    m_contentBytesTransferred = 0;
-    m_contentBytesSent = 0;
-    m_headersReady = false;
-    m_headersSent = false;
-    m_hasMultipleParts = false;
-    m_complete = false;
-    m_valid = true;
     m_protocol = "HTTP/1.1";
-    m_data.open(QBuffer::ReadWrite | QBuffer::Append);
+    m_contentBytesTransferred = 0;
+    m_contentDevice = 0;
+    m_headersFinished = false;
+    m_hasMultipleParts = false;
+    m_valid = true;
+    m_complete = false;
 }
 
 HttpMessage::~HttpMessage()
@@ -25,47 +23,7 @@ HttpMessage::~HttpMessage()
     foreach(HttpMessage* message, m_childMessages){
         message->deleteLater();
     }
-}
-
-QByteArray HttpMessage::protocol() const
-{
-    return m_protocol;
-}
-
-QByteArray HttpMessage::setProtocol(QByteArray protocol)
-{
-    m_protcol = protocol;
-}
-
-bool HttpMessage::hasHeader(QByteArray key) const
-{
-    return m_headers.contains(key.toLower());
-}
-
-//private
-void HttpMessage::setHeader(QByteArray key, QByteArray value)
-{
-    m_headers.insert(key.trimmed().toLower(), value.trimmed());
-}
-
-void HttpMessage::setContentType(QByteArray contentType)
-{
-    m_contentType = contentType;
-}
-
-qint64 HttpMessage::contentLength() const
-{
-    return m_contentLength;
-}
-
-void HttpMessage::setContentLength(quint64 size)
-{
-    m_contentLength = size;
-}
-
-qint64 HttpMessage::contentBytesTransferred() const
-{
-    return m_contentBytesTransferred;
+    // also delete the content device
 }
 
 bool HttpMessage::isValid() const
@@ -84,7 +42,59 @@ bool HttpMessage::isComplete() const
     return m_complete;
 }
 
-QIODevice* HttpMessage::contentDevice()
+void HttpMessage::setComplete()
+{
+    m_complete = true;
+    emit complete(m_contentBytesTransferred);
+    emit finished();
+}
+
+QByteArray HttpMessage::protocol() const
+{
+    return m_protocol;
+}
+
+bool HttpMessage::hasHeader(QByteArray key) const
+{
+    return m_headers.contains(key.toLower());
+}
+
+QVariant HttpMessage::header(QByteArray key) const
+{
+    return m_headers.value(key.toLower());
+}
+
+QByteArray HttpMessage::headers() const
+{
+    QByteArray text;
+    QMap<QByteArray, QVariant>::const_iterator i;
+    for(i = m_headers.begin(); i != m_headers.end(); ++i){
+        text += i.key()+": "+i.value().toByteArray()+"\r\n";
+    }
+    text += "\r\n";
+    return text;
+}
+
+void HttpMessage::setContent(QByteArray body)
+{
+    QByteArray* nb = new QByteArray(body);
+    QIODevice* d = (QIODevice*) new QBuffer(nb);
+    d->open(QIODevice::ReadOnly);
+    setContentDevice(d);
+    setHeader("Content-Length", body.size());
+}
+
+qint64 HttpMessage::contentLength() const
+{
+    return m_contentLength;
+}
+
+qint64 HttpMessage::contentBytesTransferred() const
+{
+    return m_contentBytesTransferred;
+}
+
+QIODevice* HttpMessage::contentDevice() const
 {
     return m_contentDevice;
 }
@@ -94,84 +104,29 @@ void HttpMessage::setContentDevice(QIODevice *file)
     m_contentDevice = file;
 }
 
-QList<HttpMessage*> HttpMessage::childMessages() const
+void HttpMessage::parseLine(QByteArray line)
 {
-    return m_childMessages;
-}
-
-QByteArray HttpMessage::formFieldName() const
-{
-    return m_formFieldName;
-}
-
-QByteArray HttpMessage::formFieldFileName() const
-{
-    return m_formFieldFileName;
-}
-
-void HttpMessage::setComplete()
-{
-    m_complete = true;
-    emit complete(m_contentBytesTransferred);
-    emit finished();
-}
-
-void HttpMessage::parseHeaders()
-{
-    // read the content-disposition header (probably only found in a multipart message
-    if (m_headers.contains("content-disposition")){
-        QList<QByteArray> tokens = m_headers.value("content-disposition").split(';');
-        QRegExp kvrx("([^=]+)=[\"']?([^\"']+)[\"']?"); // match key="value" type bits
-        foreach(QByteArray token, tokens){
-            if (kvrx.exactMatch(token.trimmed())){
-                QString key = kvrx.cap(1);
-                QString value = kvrx.cap(2);
-                if (key == "name"){
-                    g_log->debug("matched name:"+value);
-                    m_formFieldName = value.toAscii();
-                }else if (key == "filename"){
-                    g_log->debug("matched filename:"+value);
-                    m_formFieldFileName = value.toAscii();
-                }else{
-                    g_log->debug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
-                }
-            }
+    if (!m_headersFinished){
+        QRegExp header_rx("([^:]+):(.+)\r\n");
+        if (line == "\r\n"){
+            // empty line. normal end of headers
+            m_headersFinished = true;
+            emit headersFinished();
+        }else if (header_rx.exactMatch(line)){
+            // read the header
+            setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2));
+        }else{
+            // header is invalid.. termate loop
+            setInvalid();
         }
-    }
-
-    if (m_headers.contains("content-type")){
-        QRegExp form_data_rx("multipart/form-data; boundary=(.*)");
-        form_data_rx.setCaseSensitivity(Qt::CaseInsensitive);
-        if (form_data_rx.exactMatch(header("content-type"))){
-            m_hasMultipleParts = true;
-            m_formDataBoundry = form_data_rx.cap(1).toUtf8().trimmed();
-        }
-    }
-
-    if (hasHeader("content-length")){
-        m_contentLength = header("content-length").toLongLong();
-    }
-
-    m_headersReady = true;
-
-    if (!m_formFieldFileName.isEmpty()){
-        emit isFileUpload();
-    }
-    emit headersReady();
-}
-
-void HttpMessage::readData(QByteArray data)
-{
-    if (!m_headersReceived){
-        parseHeaderLine(data);
     }else{
-        m_contentBytesTransferred += data.size();
+        m_contentBytesTransferred += line.size();
 
         if (m_hasMultipleParts){
             // read lines at a time
-            parseMultiPartContentLine(data);
+            parseMultiPartContentLine(line);
         }else{
-            m_data.write(data);
+            m_contentDevice->write(line);
         }
 
         if (hasHeader("content-length")){
@@ -186,21 +141,42 @@ void HttpMessage::readData(QByteArray data)
     }
 }
 
-void HttpMessage::parseHeaderLine(QByteArray line)
+// protected
+void HttpMessage::setHeader(QByteArray key, QVariant value)
 {
-    QRegExp header_rx("([^:]+):(.+)\r\n");
-    if (line == "\r\n"){
-        // empty line. normal end of headers
-        parseHeaders();
-    }else if (header_rx.exactMatch(line)){
-        // read the header
-        setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).toAscii());
-    }else{
-        // header is invalid.. termate loop
-        setInvalid();
+    key = key.trimmed().toLower();
+    m_headers.insert(key, value);
+
+    // read the content-disposition header (probably only found in a multipart message
+    if (key == "content-disposition"){
+        QList<QByteArray> tokens = value.toByteArray().split(';');
+        QRegExp kvrx("([^=]+)=[\"']?([^\"']+)[\"']?"); // match key="value" type bits
+        foreach(QByteArray token, tokens){
+            if (kvrx.exactMatch(token.trimmed())){
+                QString key = kvrx.cap(1);
+                QString value = kvrx.cap(2);
+                if (key == "name"){
+                    m_formFieldName = value.toAscii();
+                }else if (key == "filename"){
+                    m_formFieldFileName = value.toAscii();
+                }else{
+                    g_log->debug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
+                }
+            }
+        }
+    }else if (key == "content-type"){
+        QRegExp form_data_rx("multipart/form-data; boundary=(.*)");
+        form_data_rx.setCaseSensitivity(Qt::CaseInsensitive);
+        if (form_data_rx.exactMatch(value.toByteArray())){
+            m_hasMultipleParts = true;
+            m_formDataBoundry = form_data_rx.cap(1).toUtf8().trimmed();
+        }
+    }else if (key == "content-length"){
+        m_contentLength = value.toLongLong();
     }
 }
 
+// protected
 void HttpMessage::parseMultiPartContentLine(QByteArray line)
 {
     if (line ==  "--"+m_formDataBoundry+"\r\n"){
@@ -223,11 +199,26 @@ void HttpMessage::parseMultiPartContentLine(QByteArray line)
         m_currentMessage = 0;
         this->setComplete();
     }else if (m_currentMessage){
-        m_currentMessage->readData(line);
+        m_currentMessage->parseLine(line);
     }else{
         g_log->debug("no m_current message.. very strange:"+line);
         setInvalid();
     }
+}
+
+bool HttpMessage::isMultiPart() const
+{
+    return m_hasMultipleParts;
+}
+
+QByteArray HttpMessage::formFieldName() const
+{
+    return m_formFieldName;
+}
+
+QByteArray HttpMessage::formFieldFileName() const
+{
+    return m_formFieldFileName;
 }
 
 void HttpMessage::processIsFileUpload()
@@ -249,21 +240,8 @@ HttpMessage*  HttpMessage::getNextFileUploadMessage()
 
 void HttpMessage::printHeaders()
 {
-    QMap<QByteArray, QByteArray>::const_iterator i = m_headers.begin();
-    for(; i != m_headers.end(); ++i){
-        g_log->debug(i.key()+":"+i.value());
+    QMap<QByteArray, QVariant>::const_iterator i;
+    for(i = m_headers.begin(); i != m_headers.end(); ++i){
+        g_log->debug(i.key()+":"+i.value().toByteArray());
     }
-
-    if (m_hasMultipleParts){
-        g_log->debug("m_formDataBoundry: "+m_formDataBoundry);
-        g_log->debug("m_formFieldName: "+m_formFieldName);
-        g_log->debug("m_formFieldFileName: "+m_formFieldFileName);
-    }
-    if (m_complete) g_log->debug("complete message");
-    if (!m_valid) g_log->debug("invalid message");
-}
-
-bool HttpMessage::isMultiPart() const
-{
-    return m_hasMultipleParts;
 }

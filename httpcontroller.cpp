@@ -1,24 +1,28 @@
 #include "httpcontroller.h"
 #include "repo.h"
+#include "output.h"
+#include <QUrl>
 
 HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
-    HttpServer(parent), m_socket(socket)
+    QObject(parent), m_socket(socket), m_server(parent)
 {
     // need to hookup the repoModel and transferManager..
-    m_repoModel = parent->repoModel();
+    m_repoModel = m_server->repoModel();
+    m_transferManager = m_server->transferManager();
 
-    m_request = new HttpRequest(this);
-    connect(m_request, SIGNAL(headersReady()), this, SLOT(respondToRequest()));
-    connect(m_request, SIGNAL(finished()), parent, SLOT(requestFinished()));
+    m_request = new HttpRequest(this, m_socket);
+    connect(m_request, SIGNAL(headersFinished()), this, SLOT(respondToRequest()));
+    connect(m_request, SIGNAL(finished()), this, SLOT(processRequestFinished()));
     connect(m_socket,  SIGNAL(readyRead()), m_request, SLOT(processReadyRead()));
 
-    m_response = new HttpResponse(this);
-    m_responseReady = false;
+    m_response = new HttpResponse(this, m_socket);
+    // the ready signal lines the response up to be sent by the controller
     connect(m_response, SIGNAL(ready()), this, SLOT(processResponseReady()));
-
+    connect(m_response, SIGNAL(finished()), this, SLOT(processResponseFinished()));
     connect(this, SIGNAL(responseReady(QTcpSocket*)),
-            parent, SLOT(processResponseReady(QTcpSocket*)));
+            m_server, SLOT(processResponseReady(QTcpSocket*)));
 
+    // this kicks it all off...
     m_request->processReadyRead();
 }
 
@@ -28,25 +32,59 @@ HttpController::~HttpController()
     delete m_response;
 }
 
+// when the request has received its headers.. it signals headersFinished()
+// which is our queue to respond to the request
 void HttpController::respondToRequest()
 {
     if (m_request->isValid()){
         routeRequestToAction();
     }else{
-        m_response->send("400 Bad Request", "HTTP Request is invalid");
+        m_response->setResponse("400 Bad Request", "HTTP Request is invalid");
     }
 }
 
+// when a request is finished, another request may come in on the existing
+// socket.. we need to let the httpserver know that we dont want anymore request data
+// on this socket
+void HttpController::processRequestFinished()
+{
+    disconnect(m_socket,  SIGNAL(readyRead()), m_request, SLOT(processReadyRead()));
+    emit requestFinished(m_socket);
+}
+
+// when the response signals it is ready to be sent back to the client
+// the http server maintains the correct order of responses.. so we must
+// signal that we are ready and wait to be told to send our response.
 void HttpController::processResponseReady()
 {
-    // let the parent server know that this socket needs shuffling
-    m_responseReady = true;
     emit responseReady(m_socket);
 }
 
 bool HttpController::responseIsReady() const
 {
-    return m_responseReady;
+    return m_response->isReady();
+}
+
+void HttpController::sendResponse()
+{
+    // send the response headers then use filetransfer to move the body
+    // no need to wait for a signal .. just fill the buffer with body
+    // we may need to fake or make a file_info for the body
+
+    // write the header from the response, then its body to the socket.
+    m_socket->write(m_response->headers());
+    FileTransfer*  ft = m_transferManager->copy("not sure source", m_response->contentDevice(),
+                            m_socket->peerAddress().toString(), m_socket, m_response->fileInfo());
+    connect(ft, SIGNAL(finished()), m_response, SIGNAL(finished()));
+}
+
+void HttpController::processResponseFinished()
+{
+    emit responseFinished(m_socket);
+    //  close if its http 1.0
+    if (m_response->protocol() == "HTTP/1.0"){
+        m_socket->close();
+    }
 }
 
 void HttpController::routeRequestToAction()
@@ -104,7 +142,7 @@ void HttpController::routeRequestToAction()
             for(int i = 1; i <= regex.captureCount(); ++i){
                 // argument names start at 0 (from the string split)
                 // argument values start at 1 (from the regex)
-                m_params.insert(keys[(i-1)], regex.cap(i));
+                m_params.insert(keys[(i-1)].toAscii(), regex.cap(i).toAscii());
             }
 
             if (key == "root"){
@@ -120,9 +158,9 @@ void HttpController::routeRequestToAction()
             }else if (key == "browse"){
                 actionBrowseRequest();
             }else if (key == "ping"){
-                m_response->send("pong");
+                m_response->send("200 OK", "pong");
             }else if (key == "naked"){
-                if (request->method() == "POST"){
+                if (m_request->method() == "POST"){
                     // this is a file upload (via web form) to a repo/path
                     actionUploadRequest();
                 }else{
@@ -180,7 +218,7 @@ void HttpController::processFileUploadStarted()
             QString source_name = m_socket->peerAddress().toString();
             QString dest_name = repo->name();
             QIODevice* dest_file = repo->putFile(fi);
-            FileTransfer* ft = transferManager->copy(source_name, source_file,
+            FileTransfer* ft = m_transferManager->copy(source_name, source_file,
                                                      dest_name, dest_file, fi);
             m_transfers << ft;
         }else{
@@ -205,27 +243,20 @@ void HttpController::processFileUploadFinished()
         body += ft->statusLine()+"<br />";
     }
 
-    body += "messages: <br />";
-    foreach(HttpMessage* message, m_request->childMessages()){
-        body += message->formFieldName() + QString::number(message->contentBytesReceived()) + "<br />";
-    }
-
-    m_response->send("200 OK", body.toAscii());
+    m_response->setResponse("200 OK", body.toAscii());
 }
 
 void HttpController::actionFaviconRequest()
 {
     QFile *f  = new QFile(":/icons/dino1.png");
     if(f->open(QIODevice::ReadOnly)){
-        m_response->setMaxAge(60*60*24);
-        m_response->setResponseCode("200 OK");
-        m_response->setContentType("image/png");
+        m_response->setResponse("200 OK");
+        m_response->setHeader("Content-Type", "image/png");
         m_response->setContentLength(f->size());
         m_response->setContentDevice(f);
     }else{
-        m_response->setResponseCode("404 Not Found", "could not open the favicon file");
+        m_response->setResponse("404 Not Found", "could not open the favicon file");
     }
-    m_response->send();
 }
 
 void HttpController::actionFileRequestByFileName()
@@ -236,12 +267,11 @@ void HttpController::actionFileRequestByFileName()
             FileInfo* file_info = repo->fileInfoByFilePath(m_params["file_path"]);
             setFileResponse(repo, file_info);
         }else{
-            m_response->setResponseCode("404 Not Found");
+            m_response->setResponse("404 Not Found");
         }
     }else{
-        m_response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        m_response->setResponse("500 Internal Server Error", "Could not open repo");
     }
-    m_response->send();
 }
 
 
@@ -250,50 +280,36 @@ void HttpController::actionFileRequestByFingerprint()
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
         if (repo->hasFileInfoByFingerPrint(m_params["fingerprint"])){
             FileInfo* file_info = repo->fileInfoByFingerPrint(m_params["fingerprint"]);
-            setFileResponse(repo, file_info);
+            // need to call hasFile here
+            m_response->setResponseFile(repo, file_info);
         }else{
-            m_response->setResponseCode("404 Not Found");
+            m_response->setResponse("404 Not Found");
         }
     }else{
-        m_response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        m_response->setResponse("500 Internal Server Error", "Could not open repo");
     }
-    m_response->send();
-}
-
-void HttpController::setFileResponse(Repo* repo, FileInfo* file_info)
-{
-    QIODevice *file = repo->getFile(file_info);
-    m_response->setLastModified(file_info->lastModified());
-    m_response->setCacheNeverExpires();
-    m_response->setContentType(file_info->mimeType());
-    m_response->setContentLength(file_info->size());
-    m_response->setContentDevice(file);
 }
 
 void HttpController::actionHistoryRequest()
 {
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-        m_response->setResponseCode("200 OK");
-        m_response->setBody(repo->state()->logger()->logNames().join("\n").toUtf8());
+        m_response->setResponse("200 OK", repo->state()->logger()->logNames().join("\n").toUtf8());
     }else{
-        m_response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        m_response->setResponse("500 Internal Server Error", "Could not open repo");
     }
-    m_response->send();
 }
 
 void HttpController::actionCommitRequest()
 {
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
         if (repo->state()->logger()->hasLogFile(m_params["commit_name"])){
-            m_response->setResponseCode("200 OK");
-            m_response->setBody(repo->state()->logger()->openLog(m_params["commit_name"]));
+            m_response->setResponse("200 OK", repo->state()->logger()->openLog(m_params["commit_name"]));
         }else{
-            m_response->setResponseCode("404 Not Found");
+            m_response->setResponse("404 Not Found");
         }
     }else{
-        m_response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        m_response->setResponse("500 Internal Server Error", "Could not open repo");
     }
-    m_response->send();
 }
 
 void HttpController::actionBrowseRequest()
@@ -302,25 +318,22 @@ void HttpController::actionBrowseRequest()
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
         QStringList path_tokens;
         path_tokens << m_params["repo_name"];
-        if (path.trimmed().length() > 0)
+        if (m_params["path"].trimmed().length() > 0)
             path_tokens << path.split("/");
         // add the title (with nav breadcrumb)
         QByteArray body;
         body.append(QString("<h1>%1</h1>\n").arg(browseBreadCrumb(path_tokens)));
         // add the list of subdirs
-        QStringList sub_dirs = repo->state()->subDirs(path);
+        QStringList sub_dirs = repo->state()->subDirs(m_params["path"]);
         body.append(browseDirIndex(path_tokens, sub_dirs));
         // list the files in the directory
         QList<FileInfo*> matches = repo->state()->filesInDir(path);
         body.append(browseFileIndex(m_params["repo_name"], matches));
         body.append(browseUploadForm(m_params["repo_name"]+"/"+path));
-        m_response->setResponseCode("200 OK");
-        m_response->setBody(body);
-        m_response->setMaxAge(60*15);
+        m_response->setResponse("200 OK", body);
     }else{
-        m_response->setResponseCode("500 Internal Server Error", "Could not open repo");
+        m_response->setResponse("500 Internal Server Error", "Could not open repo");
     }
-    m_response->send();
 }
 
 QString HttpController::cleanPath(QString path)

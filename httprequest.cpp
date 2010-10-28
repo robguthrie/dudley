@@ -5,12 +5,9 @@
 #include "httprequest.h"
 #include "output.h"
 
-HttpRequest::HttpRequest(QObject* parent)
-    : HttpMessage(parent)
-
+HttpRequest::HttpRequest(QObject* parent, QIODevice* device)
+    : HttpMessage(parent), m_device(device)
 {
-    m_currentMessage = 0;
-    m_method = "";
 }
 
 QByteArray HttpRequest::uri() const
@@ -21,11 +18,6 @@ QByteArray HttpRequest::uri() const
 QByteArray HttpRequest::method() const
 {
     return m_method;
-}
-
-QByteArray HttpRequest::protocol() const
-{
-    return m_protocol;
 }
 
 //void HttpRequest::accept()
@@ -42,30 +34,30 @@ QByteArray HttpRequest::protocol() const
 void HttpRequest::processReadyRead()
 {
     // on construction m_validRequest == true and m_headersFinished == false
-    QIODevice* device = (QIODevice*) sender();
     QByteArray line;
-    while(m_valid && !isComplete() && device->canReadLine()){
-        line = device->readLine();
+    while(m_valid && !m_complete && m_device->canReadLine()){
+        line = m_device->readLine();
         if (m_method == ""){
             parseRequestLine(line);
         }else{
-            readData(line);
+            parseLine(line);
         }
     }
 
     // what if the rest of the data does not end in a line?
-    if (m_valid && headersFinished() && !isComplete()){
+    // horriffic thought..
+    if (m_valid && m_headersFinished && !m_complete){
         if (method() == "GET"){
             setComplete();
         }
 
         if (method() == "POST" &&
-            !device->canReadLine() &&
+            !m_device->canReadLine() &&
             !isMultiPart() &&
             hasHeader("content-length") &&
-            (device->bytesAvailable() == m_contentLength - m_contentBytesTransferred))
+            (m_device->bytesAvailable() == m_contentLength - m_contentBytesTransferred))
         {
-            readData(device->readAll());
+            parseLine(m_device->readAll());
             setComplete();
         }
     }
@@ -73,8 +65,7 @@ void HttpRequest::processReadyRead()
 
 void HttpRequest::parseRequestLine(QByteArray line)
 {
-    if ((m_valid) && (m_method == "") && (!m_headersReceived)){
-        // first line is the request string
+    if ((m_valid) && (m_method == "") && (!m_headersFinished)){
         QRegExp request_rx("(GET|POST|PUT|HEAD|DELETE|OPTIONS|TRACE|CONNECT) (\\S+) (\\S+)");
         line = line.trimmed();
         if (request_rx.exactMatch(line)){

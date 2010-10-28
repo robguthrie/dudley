@@ -7,17 +7,25 @@
 #include <QDateTime>
 #include <httpmessage.h>
 
+class Repo;
+class FileInfo;
+
 class HttpResponse : public HttpMessage
 {
     Q_OBJECT
 public:
-    HttpResponse(QObject* parent);
-    ~HttpResponse();
+    HttpResponse(QObject* parent, QIODevice* device);
 
-    void setResponseCode(QByteArray code, QByteArray error_message = "");
+    bool isReady() const;
+    QByteArray headers() const;
+    void setResponse(QByteArray code, QByteArray body = "");
+    void setResponseFile(Repo* repo, FileInfo* file_info);
     void setLastModified(QDateTime d);
-    void setCacheNeverExpires();
-    void setMaxAge(qint64 m);
+    FileInfo* fileInfo();
+
+signals:
+    void ready();  // when we want to be eligible to be sent
+    void failed();
 
 public slots:
     void send();
@@ -25,15 +33,14 @@ public slots:
     void send(QByteArray body);
 
 private:
-    QByteArray   header();
-    QDateTime    m_lastModified;
+    void         setReady();
+    bool         m_ready; // response is ready to be sent
+    bool         m_failed; // sending the response has failed
     QByteArray   m_responseCode;
-
-    bool         m_headersSent;
-
-    QByteArray   m_protocol;
+    QDateTime    m_lastModified;
     qint64       m_maxAge;
-
+    QIODevice*   m_device;
+    FileInfo*    m_fileInfo;
 };
 
 #endif // HTTPRESPONSE_H
