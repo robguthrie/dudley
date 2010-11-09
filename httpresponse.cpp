@@ -3,56 +3,39 @@
 #include "fileinfo.h"
 #include "repo.h"
 
-HttpResponse::HttpResponse(QObject* parent, QIODevice* device)
-: HttpMessage(parent), m_device(device)
+HttpResponse::HttpResponse(QObject* parent)
+: HttpMessage(parent)
 {
-    m_ready = false;
     m_responseCode = "200 OK";
     setHeader("Content-Type", "text/html; charset=utf-8");
-    setHeader("Keep-Alive", "timeout=300");
+//    setHeader("Keep-Alive", "timeout=300");
     setHeader("Date", QDateTime::currentDateTime().toString(dateFormat));
 }
 
-bool HttpResponse::isReady() const
-{
-    return m_ready;
-}
-
-void HttpResponse::setReady()
-{
-    m_ready = true;
-    emit ready();
-}
-
-void HttpResponse::setResponse(QByteArray code, QByteArray body){
+void HttpResponse::setResponseCode(QByteArray code){
     m_responseCode = code.trimmed();
-    setContent(body);
-    if (!body.isEmpty()){
-        setContent(code+": "+body);
-        setReady();
+}
+
+QByteArray HttpResponse::responseCode() const
+{
+    return m_responseCode;
+}
+
+// this function is used like this
+// r->setResponse("404 Not Found", "my dogs ran away");
+// or just like this
+// r->setResponse("here are my puppies: <img src='dogs.jpg' />");
+// the latter will use the default response code of 200 OK
+void HttpResponse::setResponse(QByteArray code_or_content, QByteArray content){
+    if (content.isEmpty()){
+        setContent(code_or_content);
+    }else{
+        m_responseCode = code_or_content;
+        setContent(content);
     }
+    setState(Finished);
 }
 
-void HttpResponse::setResponseFile(Repo* repo, FileInfo* file_info)
-{
-    m_fileInfo = file_info;
-    QIODevice *file = repo->getFile(file_info);
-    setLastModified(file_info->lastModified());
-    setHeader("Content-Type", file_info->mimeType());
-    setHeader("Content-Length", file_info->size());
-    setContentDevice(file);
-}
-
-
-void HttpResponse::setLastModified(QDateTime d)
-{
-    setHeader("Last-Modified", d.toString(dateFormat));
-}
-
-FileInfo* HttpResponse::fileInfo()
-{
-    return m_fileInfo;
-}
 
 QByteArray HttpResponse::headers() const
 {

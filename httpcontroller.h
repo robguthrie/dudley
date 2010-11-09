@@ -3,47 +3,79 @@
 
 #include <QObject>
 #include <QHash>
-#include <httpserver.h>
 #include <httprequest.h>
 #include <httpresponse.h>
 #include <repo.h>
 #include <repomodel.h>
 #include <filetransfermanager.h>
 
+/*
+ controller states enum?
+
+ start
+ reading_request - until request finished
+                     request_headers_finished
+                     request_upload_started
+                     request_finished
+ response ready
+ response sent
+
+ */
+class HttpServer;
 class HttpController : public QObject
 {
     Q_OBJECT
+
 public:
+
+    enum States{
+        BeforeStart,
+        ReadingRequest,
+        RoutingRequest,
+        RoutedRequest,
+        ConnectingUploadContentDevice,
+        RequestFinished,
+        ActioningRequest,
+        ResponseFinished,
+        ResponseWritten
+    };
+
     explicit HttpController(HttpServer *parent, QTcpSocket* socket);
-    ~HttpController();
-    bool responseIsReady() const;
     void sendResponse();
+    States state() const;
+    void start();
+    void actionName() const;
+    HttpRequest* request() const;
+    HttpResponse* response() const;
+    QTcpSocket* socket() const;
+
+    QByteArray statusReport() const;
+
 signals:
-    void requestFinished(QTcpSocket* socket);
-    void responseReady(QTcpSocket* socket);
-    void responseFinished(QTcpSocket* socket);
+    void requestFinished();
+    void responseFinished();
+    void responseWritten();
 
 private slots:
-    void respondToRequest();
-    void processFileUploadStarted();
-    void processFileUploadFinished();
+    void processReadyRead();
+    void routeRequest();
+    void processUploadStarted();
     void processRequestFinished();
-    void processResponseReady();
     void processResponseFinished();
 
-
 private:
-    void routeRequestToAction();
-    void actionRootRequest();
-    void actionFaviconRequest();
-    void actionUploadRequest();
-    void actionHistoryRequest();
-    void actionCommitRequest();
-    void actionBrowseRequest();
-    void actionFileRequestByFileName();
-    void actionFileRequestByFingerprint();
+    void setupRoutes();
+    void setState(States state);
+    void actionRoot();
+    void actionFavicon();
+    void actionBrowserUpload();
+    void actionHistory();
+    void actionCommit();
+    void actionBrowse();
+    void actionFileByFileName();
+    void actionFileByFingerprint();
 
-    void setFileResponse(Repo* repo, FileInfo* file_info);
+    void setResponseContentFromRepo(Repo* repo, FileInfo* file_info);
 
     QString browseUploadForm(QString path);
     QString browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos);
@@ -54,14 +86,21 @@ private:
     QString cleanPath(QString path);
 
     QHash<QByteArray, QByteArray> m_params;
-    QList<FileTransfer*>        m_transfers;
+    QList<FileTransfer*>        m_fileUploads;
     RepoModel*                  m_repoModel;
     FileTransferManager*        m_transferManager;
     HttpRequest*                m_request;
     HttpResponse*               m_response;
     QTcpSocket*                 m_socket;
     HttpServer*                 m_server;
+    States                      m_state;
+    QString                     m_route_key;
 
+    QMap<QString, QRegExp>      m_routes;
+    QHash<QString, QString>     m_route_args;
+
+    Repo*                       m_responseRepo;
+    FileInfo*                   m_responseFileInfo;
 };
 
 #endif // HTTPCONTROLLER_H

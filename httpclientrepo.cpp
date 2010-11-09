@@ -4,6 +4,7 @@
 #include "output.h"
 #include "repostate.h"
 #include "repostatelogger.h"
+#include <QBuffer>
 
 HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
     :Repo(parent, path, name)
@@ -79,12 +80,23 @@ QIODevice* HttpClientRepo::get(QUrl url)
     return reply;
 }
 
-void HttpClientRepo::putFileFinished(FileInfo* file_info, QIODevice *file)
+QIODevice* HttpClientRepo::putFile(QString file_name)
 {
-    QUrl url = urlFor("upload", file_info->filePath());
+    return new QBuffer();
+}
+
+void HttpClientRepo::putFileComplete(QIODevice *device, QString file_path)
+{
+    QUrl url = urlFor("upload", file_path);
     QNetworkRequest r(url);
-    m_manager->post(r, file);
-    g_log->debug("HttpClientRepo::putFileFinished beginning upload of:"+file_info->fileName());
+    m_manager->post(r, device);
+    g_log->debug("HttpClientRepo::putFileFinished beginning upload of:"+file_path);
+}
+
+void HttpClientRepo::putFileFailed(QIODevice *device)
+{
+    if (!device) device = (QBuffer*) sender();
+    device->deleteLater();
 }
 
 QString HttpClientRepo::temporaryFilePath(FileInfo* fileInfo)

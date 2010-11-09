@@ -16,17 +16,19 @@ public:
     void updateState(bool commit_changes = true);
     bool hasFile(FileInfo* file_info) const;
     QIODevice* getFile(FileInfo* fileInfo);
+    QIODevice* putFile(QString file_path);
+    void       putFileComplete(QIODevice *device, QString file_path);
+
+public slots:
+    void       putFileFailed(QIODevice *device = 0);
 
 private slots:
     void requestFinished(QNetworkReply* reply);
-//    void alertReadyRead();
-//    void alertDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
 
 private:
     void ping();
     QIODevice* get(QUrl url);
     QString temporaryFilePath(FileInfo *fileInfo);
-    void putFileFinished(FileInfo* file_info, QIODevice* file);
     QUrl fileUrl(FileInfo* fileInfo);
     QUrl urlFor(QString a, QString b = "", QString c = "", QString d = "");
     QString relativeFilePath(QString filePath);

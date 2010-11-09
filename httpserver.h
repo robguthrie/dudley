@@ -4,13 +4,13 @@
 #include <QTcpServer>
 #include "fileinfo.h"
 #include "httprequest.h"
+#include "httpcontroller.h"
 
 class RepoModel;
 class HttpResponse;
 class Repo;
 class FileTransfer;
 class FileTransferManager;
-class HttpController;
 
 class HttpServer : public QTcpServer
 {
@@ -19,17 +19,18 @@ public:
     HttpServer(QObject *parent, RepoModel* repoTableModel, FileTransferManager* ftm);
     RepoModel* repoModel() const;
     FileTransferManager* transferManager() const;
-    void printStatus(QString a = "");
+
+
 
 public slots:
+    void printStatus(QString a = "");
     void acceptConnection();
+    void processRequestFinished();
     void processReadyRead();
     void processDisconnected();
-    void processAboutToClose();
     void processError();
-    void responseFinished(QTcpSocket* socket);
-    void processRequestFinished(QTcpSocket* socket);
-    void processResponseReady(QTcpSocket* socket);
+    void processResponseFinished();
+    void processResponseWritten();
 
 private:
 
@@ -37,13 +38,7 @@ private:
     FileTransferManager* m_transferManager;
     // we must reply to requests in the order that we got them
     QHash<QTcpSocket*, QList<HttpController*> > m_controllers;
-    QSet<QTcpSocket*> m_handledSockets;
-    int m_socketsOpened;
-    int m_socketsClosed;
-    int m_requestsStarted;
-    int m_requestsFinished;
-    int m_responsesStarted;
-    int m_responsesFinished;
+    QSet<QTcpSocket*> m_openRequests;
 };
 
 

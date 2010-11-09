@@ -1,46 +1,77 @@
 #include "filetransfer.h"
+#include "repo.h"
 #include "output.h"
-FileTransfer::FileTransfer(QObject *parent, QString source_name,
-                           QIODevice* source_file, QString dest_name, QIODevice* dest_file,
-                           FileInfo* file_info) :
-    QObject(parent), m_sourceName(source_name), m_sourceFile(source_file),
-    m_destName(dest_name), m_destFile(dest_file), m_fileInfo(file_info)
-{
-    m_bytesWritten = 0;
-    m_complete = false;
 
+FileTransfer::FileTransfer(QObject *parent, QString file_path, qint64 file_size)
+    : QObject(parent)
+{
+    m_sourceName = "undefined";
+    m_sourceDevice = 0;
+    m_destName = "undefined";
+    m_destDevice = 0;
+    m_filePath = "undefined";
+    m_bytesWritten = 0;
+    m_destRepo = 0;
+    m_complete = false;
+    m_filePath = file_path;
+    m_fileSize = file_size;
+    m_finished = false;
+}
+
+bool FileTransfer::start()
+{
     if (everythingIsOk()) {
-        connect(m_sourceFile, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
-        connect(m_destFile, SIGNAL(bytesWritten(qint64)), this, SLOT(processReadyRead()));
-        connect(m_sourceFile, SIGNAL(aboutToClose()), this, SLOT(processAboutToClose()));
-        connect(m_destFile, SIGNAL(aboutToClose()), this, SLOT(processAboutToClose()));
+        if (m_sourceDevice){
+            connect(m_sourceDevice, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
+            processReadyRead();
+        }
+        return true;
+    }else{
+        return false;
+    }
+}
+
+void FileTransfer::setFinished()
+{
+    if (!m_finished){
+        if(m_sourceDevice){
+            disconnect(m_sourceDevice, SIGNAL(readyRead()), this, SLOT(processReadyRead()));
+        }
+
+        if(m_destRepo){
+            if (m_complete){
+                m_destRepo->putFileComplete(m_destDevice, m_filePath);
+            }else{
+                m_destRepo->putFileFailed(m_destDevice);
+            }
+        }
+
+        if (m_complete){
+            emit complete(m_fileSize);
+        }
+
+        m_finished = true;
+        emit finished();
     }
 }
 
 // check that everything is okkk
 bool FileTransfer::everythingIsOk()
 {
-    if (!m_sourceFile)
-        m_errors << "source file is null";
+    // beware the trecherous field of braces and blocks
+    if (m_sourceDevice){
+        if (!m_sourceDevice->isReadable()) m_errors << "source file is not readable";
+        if (!m_sourceDevice->isOpen())     m_errors << "source file is not open";
+    }
 
-    if (!m_destFile)
+    if (m_destDevice){
+        if (!m_destDevice->isOpen())       m_errors << "dest file is not open";
+        if (!m_destDevice->isWritable())   m_errors << "dest file is not writable";
+    }else{
         m_errors << "dest file is null";
+    }
 
-    if (!m_sourceFile->isReadable())
-        m_errors << "source file is not readable";
-
-    if (!m_sourceFile->isOpen())
-        m_errors << "source file is not open";
-
-    if (!m_destFile->isOpen())
-        m_errors << "dest file is not open";
-
-    if (!m_destFile->isWritable())
-        m_errors << "dest file is not writable";
-
-    if (m_fileInfo == 0)
-        m_errors << "fileinfo is null";
-    else if (m_fileInfo->size() == 0)
+    if (m_fileSize == 0)
         m_errors << "file size is 0 - we dont copy these (unknown size is -1)";
 
     // might be minimum requirements for fileinfo completeness ..
@@ -48,11 +79,45 @@ bool FileTransfer::everythingIsOk()
         return true;
     }else{
         printErrors();
-        if (!m_finished){
-            m_finished = true;
-            emit finished();
-        }
+        setFinished();
         return false;
+    }
+}
+
+void FileTransfer::processReadyRead()
+{
+    if (m_sourceDevice){
+        if (!m_sourceDevice->isSequential()){
+            m_sourceDevice->seek(m_bytesWritten);
+        }
+        while (everythingIsOk() && !m_complete && m_sourceDevice->bytesAvailable()
+    //        && (m_destDevice->bytesToWrite() == 0)){
+            ){
+            // we will expect to see bw bytes written before reading more from the source
+            qint64 bw = m_destDevice->write(m_sourceDevice->read(256*1024));
+            if (bw >= 0){
+                m_bytesWritten += bw;
+            }else{
+                // there was a problem
+                g_log->debug("Problem writing bytes from source to dest");
+                m_errors << "Problem writing bytes from source to dest";
+            }
+        }
+    }
+    checkIfFinished();
+}
+void FileTransfer::processBytesWritten(qint64 bw)
+{
+    m_bytesWritten += bw;
+    checkIfFinished();
+}
+
+void FileTransfer::checkIfFinished()
+{
+    if (m_bytesWritten == m_fileSize){
+        g_log->debug("file transfer finished: m_bytesWritten = "+QString::number(m_bytesWritten));
+        m_complete = true;
+        setFinished();
     }
 }
 
@@ -61,54 +126,9 @@ QStringList FileTransfer::errors() const
     return m_errors;
 }
 
-void FileTransfer::processReadyRead()
-{
-    if (!m_sourceFile->isSequential()){
-        m_sourceFile->seek(m_bytesWritten);
-    }
-    if (everythingIsOk() && !m_complete && m_sourceFile->bytesAvailable()
-        && (m_destFile->bytesToWrite() == 0)){
-        // we will expect to see bw bytes written before reading more from the source
-        qint64 bw = m_destFile->write(m_sourceFile->read(256*1024));
-        if (bw >= 0){
-            m_bytesWritten += bw;
-        }else{
-            // there was a problem
-            g_log->debug("Problem writing bytes from source to dest");
-            m_errors << "Problem writing bytes from source to dest";
-        }
-    }
-
-    // if the size is known
-    if (m_bytesWritten == m_fileInfo->size()){
-        g_log->debug("Wrote all the data! file transfer finished: m_bytesWritten = "+QString::number(m_bytesWritten));
-        m_complete = true;
-        m_finished = true;
-        m_destFile->close();
-        m_sourceFile->close();
-        emit finished();
-    }
-}
-
-void FileTransfer::processSourceComplete(qint64 contentBytesReceived)
-{
-    // the httpserver has read the complete upload.. phew
-    m_fileInfo->setSize(contentBytesReceived);
-    processReadyRead();
-}
-
-// if the files close.. this attempt at a transfer is over
-void FileTransfer::processAboutToClose()
-{
-    if (!m_complete) /*check*/ everythingIsOk(); // this reads very badly
-}
-
-
 void FileTransfer::printErrors() const
 {
-    foreach(QString error, m_errors){
-        g_log->error("FileTransfer:"+error);
-    }
+    g_log->error("ERRRROR! FileTransfer:"+errors().join(", "));
 }
 
 QString FileTransfer::status() const
@@ -120,10 +140,36 @@ QString FileTransfer::status() const
     else
         return "in progress";
 }
+
 QString FileTransfer::statusLine() const
 {
-   return m_fileInfo->fileName()+" "+humanSize(m_bytesWritten)+" of "+humanSize(m_fileInfo->size())+" "+status()+"<br />";
+    return m_filePath+" "+humanSize(m_bytesWritten)+"("+QString::number(m_bytesWritten)+") of "+humanSize(m_fileSize)+"("+QString::number(m_fileSize)+")  "+status()+"<br />";
 }
+
+
+void FileTransfer::setSource(QString name, QIODevice* source_device)
+{
+    m_sourceDevice = source_device;
+    m_sourceName = name;
+}
+
+void FileTransfer::setDest(QString name, QIODevice* dest_device)
+{
+    m_destDevice = dest_device;
+    m_destName = name;
+}
+
+void FileTransfer::setDestRepo(Repo* repo)
+{
+    m_destRepo = repo;
+}
+
+void FileTransfer::setFileSize(qint64 size)
+{
+    m_fileSize = size;
+    checkIfFinished();
+}
+
 QString FileTransfer::sourceName() const
 {
     return m_sourceName;
@@ -134,14 +180,19 @@ QString FileTransfer::destName() const
     return m_destName;
 }
 
-QIODevice* FileTransfer::sourceFile() const
+QString FileTransfer::filePath() const
 {
-    return m_sourceFile;
+    return m_filePath;
 }
 
-QIODevice* FileTransfer::destFile() const
+QIODevice* FileTransfer::sourceDevice() const
 {
-    return m_destFile;
+    return m_sourceDevice;
+}
+
+QIODevice* FileTransfer::destDevice() const
+{
+    return m_destDevice;
 }
 
 qint64 FileTransfer::bytesWritten() const
@@ -158,9 +209,3 @@ bool FileTransfer::isFinished() const
 {
     return m_finished;
 }
-
-FileInfo*   FileTransfer::fileInfo() const
-{
-    return m_fileInfo;
-}
-

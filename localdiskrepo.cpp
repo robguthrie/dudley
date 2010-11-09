@@ -113,45 +113,54 @@ QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
     }
 }
 
-// at this stage the device has already had the data written to it
-void LocalDiskRepo::putFileFinished(FileInfo* file_info, QIODevice* device)
+QIODevice* LocalDiskRepo::putFile(QString file_path)
 {
-    if (device->isOpen()){
-        device->close();
-    }
-    QString newFilePath = this->temporaryFilePath(file_info);
-    QFile *file = new QFile(newFilePath);
-    if (!file->open(QIODevice::ReadOnly)){
-        g_log->error("WorkingFileRepo::putFileComplete cant open newFilePath of putFile:"+newFilePath);
-    }
-    if (file->size() != file_info->size()){
-        g_log->error("WorkingFileRepo::putFileComplete new file is the wrong size. expected:"+
-                      QString::number(file_info->size())+
-                      " actual:"+QString::number(file->size()));
-    }
-
-    if (this->hasFile(file_info)){
-        g_log->error("existing file with same name as putFile") ;
+    QFile* f = new QFile(this->temporaryFilePath(file_path));
+    if (f->open(QIODevice::WriteOnly)){
+        return f;
     }else{
-        if (file->rename(absoluteFilePath(file_info))){
-            g_log->debug("renamed file to:"+absoluteFilePath(file_info));
-        }else{
-            g_log->debug("could not rename file to:"+absoluteFilePath(file_info));
-        }
+        g_log->error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(file_path));
+        return 0;
     }
-    file->close();
-
 }
 
-
-QString LocalDiskRepo::absoluteFilePath(FileInfo* fileInfo)
+void LocalDiskRepo::putFileComplete(QIODevice* device, QString file_path)
 {
-    return m_path+"/"+fileInfo->filePath();
+    g_log->debug("saving file");
+    disconnect(device, SIGNAL(aboutToClose()), this, SLOT(putFileFailed()));
+    QFile* f = (QFile*) device;
+    if (!QFile::exists(absoluteFilePath(file_path))){
+        g_log->debug("renaming writebuffer and closing");
+        f->rename(absoluteFilePath(file_path));
+    }else{
+        // keeping as temporary
+        g_log->error("file with file_path:"+file_path+" already exists");
+        f->close();
+   }
 }
 
-QString LocalDiskRepo::temporaryFilePath(FileInfo* fileInfo)
+void LocalDiskRepo::putFileFailed(QIODevice *device)
 {
-    return m_path+"/"+fileInfo->filePath()+".part";
+    g_log->warning("deleteing a writable buffer - presumably a put file has failed");
+    QFile* f;
+    if (!device){
+        f = (QFile*) sender();
+    }else{
+        f = (QFile*) device;
+    }
+
+    f->remove();
+    f->deleteLater();
+}
+
+QString LocalDiskRepo::absoluteFilePath(QString file_path)
+{
+    return m_path+"/"+file_path;
+}
+
+QString LocalDiskRepo::temporaryFilePath(QString file_path)
+{
+    return m_path+"/"+file_path+".part";
 }
 
 QStringList LocalDiskRepo::filesOnDisk()

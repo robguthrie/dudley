@@ -7,6 +7,20 @@ Repo::Repo(QObject *parent, QString path, QString name)
     // read the settings
 }
 
+bool Repo::initialize()
+{
+    if (this->canReadData()){
+        if (m_state->logger()->initialize()){
+            return true;
+        }else{
+            g_log->error("Cannot initialize history logger");
+        }
+    }else{
+        g_log->error(QString("Can't read data: ").append(m_path));
+    }
+    return false;
+}
+
 RepoState* Repo::state()
 {
     return m_state;
@@ -26,17 +40,6 @@ QString Repo::name() const
 {
     return m_name;
 }
-
-bool Repo::hasFileInfoByFilePath(QString file_name) const
-{
-    return m_state->containsFilePath(file_name);
-}
-
-bool Repo::hasFileInfoByFingerPrint(QString finger_print) const
-{
-    return m_state->containsFingerPrint(finger_print);
-}
-
 
 FileInfo* Repo::fileInfoByFingerPrint(QString finger_print) const
 {
@@ -69,75 +72,3 @@ bool Repo::isReady() const
     return this->canReadData() && this->m_state->logger()->isReady();
 }
 
-bool Repo::initialize()
-{
-    if (this->canReadData()){
-        if (m_state->logger()->initialize()){
-            return true;
-        }else{
-            g_log->error("Cannot initialize history logger");
-        }
-    }else{
-        g_log->error(QString("Can't read data: ").append(m_path));
-    }
-    return false;
-}
-
-
-// maybe a bit unrealistic
-//
-QIODevice* Repo::putFile(FileInfo *fileInfo)
-{
-    // start a temporary device to receive the file with
-    // when we have fileInfo->size bytes, we can close it
-
-    QIODevice* f = this->writableTempFile(fileInfo);
-    if (f && f->isOpen() && f->isWritable()){
-        m_incommingFiles.insert(f, fileInfo);
-        connect(f, SIGNAL(aboutToClose()), this, SLOT(putFileAboutToClose()));
-        return f;
-    }else{
-        g_log->error("temporary file device is null or not writable");
-        return 0;
-    }
-}
-
-void Repo::putFileAboutToClose()
-{
-    QIODevice* file = (QIODevice*) sender();
-    if (m_incommingFiles.contains(file)){
-        FileInfo* file_info = m_incommingFiles.value(file);
-        m_incommingFiles.remove(file);
-        g_log->debug("FileRepo::putFileAboutToClose file seems complete in size");
-        if (file->size() == file_info->size()){
-            this->putFileFinished(file_info, file);
-        }else{
-//            this->putFileFailed(file_info, file);
-            g_log->debug("putfile failed.. size of file is not what was expected");
-        }
-    }
-}
-
-QIODevice* Repo::writableTempFile(FileInfo* fileInfo)
-{
-    QFile* f = new QFile(this->temporaryFilePath(fileInfo));
-    if (f->open(QIODevice::WriteOnly)){
-        return f;
-    }else{
-        g_log->error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(fileInfo));
-        return 0;
-    }
-}
-
-bool Repo::discardWritableTempFile(QIODevice* device)
-{
-    device->close();
-    QFile* file = (QFile*) device;
-    return file->remove();
-}
-
-
-//void Repo::putFileFailed(FileInfo file_info, QIODevice* device)
-//{
-
-//}

@@ -7,18 +7,15 @@
 class HttpRequest : public HttpMessage {
 Q_OBJECT
 public:
-    HttpRequest(QObject* parent, QIODevice* device);
+    HttpRequest(QObject* parent);
     QByteArray uri() const;
     QByteArray method() const;
-
-public slots:
-    void processReadyRead();
+    void parseData(QIODevice *device);
 
 private:
     void parseRequestLine(QByteArray line);
     QByteArray m_method;
     QByteArray m_uri;
-    QIODevice* m_device;
 };
 
 #endif /* !_HTTP_REQUEST_ */

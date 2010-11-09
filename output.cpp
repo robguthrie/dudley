@@ -1,5 +1,7 @@
 #include "output.h"
 #include <QStringList>
+
+
 Output::Output(QString name, Output* parent) : QObject(parent){
     m_verbose = true;
     m_debug = true;
@@ -42,7 +44,7 @@ void Output::output(QString prefix, QString m)
     }
 }
 
-QByteArray humanSize(qint64 n)
+QByteArray humanSize(qint64 n, bool debug)
 {
     if (n == -1) return "unknown size";
     float num = (float) n;
@@ -57,5 +59,5 @@ QByteArray humanSize(qint64 n)
         unit = i.next();
         num /= 1024.0;
     }
-    return (QString().setNum(num,'f',2)+" "+unit).toAscii();
+    return (QString().setNum(num,'f',2)+" "+unit).toAscii()+" ("+QByteArray::number(n)+")";
 }

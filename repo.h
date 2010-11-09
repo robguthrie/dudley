@@ -23,29 +23,24 @@ public:
     virtual void updateState(bool commit_changes = true) = 0;
     virtual RepoState* state();
     virtual QMap<QString, QVariant> settings();
-    virtual bool hasFileInfoByFilePath(QString file_name) const;
-    virtual bool hasFileInfoByFingerPrint(QString finger_print) const;
+
     virtual FileInfo* fileInfoByFilePath(QString file_name) const;
     virtual FileInfo* fileInfoByFingerPrint(QString finger_print) const;
 //    virtual bool hasFile(FileInfo fileInfo) const = 0;
     // the returned file should be open
     virtual QIODevice* getFile(FileInfo* fileInfo) = 0;
-    virtual QIODevice* putFile(FileInfo* fileInfo);
 
-protected slots:
-    virtual void putFileAboutToClose();
+    virtual QIODevice* putFile(QString file_path) = 0;
+    virtual void putFileComplete(QIODevice* device, QString file_path) = 0;
+
+public slots:
+    virtual void putFileFailed(QIODevice *device = 0) = 0;
 
 protected:
-    virtual void putFileFinished(FileInfo* file_info, QIODevice* file) = 0;
-    virtual QIODevice* writableTempFile(FileInfo* fileInfo);
-    virtual bool discardWritableTempFile(QIODevice* device);
-    virtual QString temporaryFilePath(FileInfo* fileInfo) = 0;
     RepoState *m_state;
     QString m_path;
     QString m_name;
     QString m_log_path;
-
-    QHash<QIODevice*, FileInfo*> m_incommingFiles;
 };
 
 #endif // FILEREPO_H

@@ -5,9 +5,9 @@ FileTransferManager::FileTransferManager(QObject *parent) :
 {
 }
 
-FileTransfer* FileTransferManager::copy(QString source_name, QIODevice* source_file,
-                                        QString dest_name, QIODevice* dest_file, FileInfo* file_info)
+FileTransfer* FileTransferManager::copy(QString file_path, qint64 file_size)
 {
-    FileTransfer* ft = new FileTransfer(this, source_name, source_file, dest_name, dest_file, file_info);
+    FileTransfer* ft = new FileTransfer(this, file_path, file_size);
+    m_transfers.insert(ft);
     return ft;
 }

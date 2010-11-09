@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <QObject>
-
+#include <QMetaEnum>
+#include <QMetaObject>
+#define ENUM_NAME(o,e,v) (o::staticMetaObject.enumerator(o::staticMetaObject.indexOfEnumerator(#e)).valueToKey((v)))
 
 class Output : public QObject
 {
@@ -26,6 +28,5 @@ signals:
 };
 
 extern Output* g_log;
+QByteArray humanSize(qint64 n, bool debug = false);
 #endif // OUTPUT_H
-
-QByteArray humanSize(qint64 n);
