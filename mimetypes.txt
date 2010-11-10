@@ -533,3 +533,6 @@ webm video/webm
 wmv video/x-ms-wmv
 wma audio/x-ms-wma
 m4a audio/mp4
+nfo text/information
+dll application/x-msdownload
+mkv video/x-matroska

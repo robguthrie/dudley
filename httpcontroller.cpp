@@ -44,9 +44,6 @@ void HttpController::setState(States state)
 {
     m_state = state;
     switch(state){
-    case RoutedRequest:
-
-        break;
     case ResponseFinished:
         emit responseFinished();
         break;
@@ -184,11 +181,6 @@ void HttpController::processRequestFinished()
     }
 }
 
-
-
-// when the response signals it is ready to be sent back to the client
-// the http server maintains the correct order of responses.. so we must
-// signal that we are ready and wait to be told to send our response.
 void HttpController::processResponseFinished()
 {
     setState(ResponseFinished);

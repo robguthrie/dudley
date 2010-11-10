@@ -114,13 +114,10 @@ void HttpServer::processResponseWritten()
     g_log->debug("processResponseWritten");
     HttpController* controller = (HttpController*) sender();
     m_controllers[controller->socket()].removeAll(controller); // its really not removeAll
-//    controller->deleteLater();
-
+    controller->deleteLater();
     if (controller->request()->protocol() == "HTTP/1.0"){
         controller->socket()->close();
     }
-    //deeeeeeeebug
-    controller->socket()->close();
 }
 
 RepoModel* HttpServer::repoModel() const
