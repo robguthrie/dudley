@@ -81,7 +81,6 @@ void HttpServer::processReadyRead()
         }
 
         HttpController* controller = new HttpController(this, socket);
-
         m_controllers[socket].append(controller);
         controller->start();
     }
@@ -120,6 +119,8 @@ void HttpServer::processResponseWritten()
     if (controller->request()->protocol() == "HTTP/1.0"){
         controller->socket()->close();
     }
+    //deeeeeeeebug
+    controller->socket()->close();
 }
 
 RepoModel* HttpServer::repoModel() const

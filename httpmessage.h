@@ -15,7 +15,6 @@ class HttpMessage : public QObject
 public:
     enum State {
         Invalid,
-        BeforeStart,
         ReadFirstLine,
         ReadingHeaders,
         WaitingForContentDevice,
@@ -25,7 +24,7 @@ public:
     Q_ENUMS(State);
     HttpMessage(QObject* parent = 0, HttpMessage* parent_message = 0);
     ~HttpMessage();
-    State              state() const;
+    State               state() const;
     void                setState(State state, QByteArray message = "");
     QByteArray          protocol() const;
     bool                hasHeader(QByteArray key) const;
@@ -33,7 +32,7 @@ public:
     void                setHeader(QByteArray key, QVariant value);
     virtual QByteArray  headers() const;
 
-    virtual void        parseData(QIODevice* device);
+    virtual void        parseLine(QByteArray line);
     void                setContent(QByteArray body);
     qint64              contentLength() const;
     qint64              headerLength() const;
@@ -48,6 +47,7 @@ public:
     QByteArray          formFieldName() const;
     QByteArray          formFieldFileName() const;
     QList<HttpMessage*> childMessages() const;
+    virtual QString     inspect(bool show_headers = false) const;
 signals:
     void                headersFinished(); // when all the header block has arrived
     void                complete(qint64 contentBytesReceived); // when the whole thing has arrived and is valid
@@ -74,10 +74,6 @@ protected:
     qint64              writeContentBytes(QByteArray data);
     void                setInvalid(QByteArray error = "");
     void                setComplete();
-    bool                m_valid;
-    bool                m_complete;
-
-    bool                m_headersFinished;
 
     bool                m_isMultiPart; // true when this is a multipart message (not true for the child messages themselves)
     QByteArray          m_formFieldName;
@@ -92,8 +88,9 @@ private:
     QMap<QByteArray, QVariant> m_headers;
     HttpMessage*        m_currentMessage;
     bool                m_maybeLastLine;
-    QString             m_boundry;
-    QString             m_f_boundry;
+    QByteArray          m_boundry;
+    QByteArray          m_f_boundry;
+    QByteArray          m_line;
 };
 
 #endif // HTTPREQUESTCONTENT_H

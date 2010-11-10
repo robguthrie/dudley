@@ -49,7 +49,7 @@ public:
     HttpResponse* response() const;
     QTcpSocket* socket() const;
 
-    QByteArray statusReport() const;
+    QByteArray statusReport(bool show_headers = false) const;
 
 signals:
     void requestFinished();

@@ -21,7 +21,7 @@ public:
     QByteArray responseCode() const;
     void setResponseCode(QByteArray code);
     void setResponse(QByteArray code_or_body, QByteArray body = "");
-
+    QString inspect(bool show_headers) const;
 private:
     QByteArray   m_responseCode;
 };

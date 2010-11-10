@@ -66,7 +66,9 @@ HttpController::States HttpController::state() const
 
 void HttpController::processReadyRead()
 {
-    m_request->parseData(m_socket);
+    while (m_state < RequestFinished && m_socket->canReadLine()){
+        m_request->parseLine(m_socket->readLine());
+    }
 }
 
 void HttpController::setupRoutes()
@@ -230,18 +232,10 @@ void HttpController::processUploadStarted()
 {
     if (m_request->hasPendingFileUploads()){
         if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-            g_log->debug("beginning file upload");
+            g_log->debug("beginning file upload, bytes transferred: "+QByteArray::number(m_request->contentBytesTransferred()));
             HttpMessage* message = m_request->getNextFileUploadMessage();
             QString file_path = m_params["file_path"]+"/"+message->formFieldFileName();
-            FileTransfer* ft = m_transferManager->copy(file_path);
-            QString source_name = m_socket->peerAddress().toString();
             QIODevice* dest_device = repo->putFile(file_path);
-            ft->setSource(source_name);
-            ft->setDest(repo->name(), dest_device);
-            ft->setDestRepo(repo);
-            m_fileUploads << ft;
-            connect(message, SIGNAL(complete(qint64)), ft, SLOT(setFileSize(qint64)));
-            connect(message, SIGNAL(contentBytesWritten(qint64)), ft, SLOT(processBytesWritten(qint64)));
             message->setContentDevice(dest_device);
         }else{
             m_response->setResponse("500 Internal Server Error", "Could not open repo");
@@ -251,32 +245,7 @@ void HttpController::processUploadStarted()
 
 void HttpController::actionBrowserUpload()
 {
-    // oh my god there is still someone waiting for a response after that.
-    // well the clent's html form should use a background upload so we can just
-    // give the file stats for now.
-    // we only know its size and name and that we got to the end
-    // find the response object waiting for us in the fuc (heh)
-    // the sourceParent is the request object
-
-    // now return a status for all the uploads that occured in the request
-    QCoreApplication::processEvents();
-    QString body = "transfers:<br />";
-    QTextStream bs(&body);
-    foreach(FileTransfer* ft, m_fileUploads){
-        bs << ft->statusLine()+"<br />";
-    }
-    foreach(HttpMessage* message, m_request->childMessages()){
-        bs << "<p>field name: " << message->formFieldName() << "<br />";
-        bs << "filename: " << message->formFieldFileName() << "<br />";
-        bs << "contentLength: " << message->contentLength() << "<br />";
-        bs << "contentTransfered: " << message->contentBytesTransferred() << "<br />";
-        bs << "contentDeviceSize: " << message->contentDevice()->size() << "</p>";
-    }
-    bs << "<p>request:<br />";
-    bs << "request content length: " << m_request->contentLength() << "<br />";
-    bs << "request header length: " << m_request->headerLength() << "<br />";
-    bs << "request headers: " << m_request->headers().replace("\n", "<br />") <<"</p>";
-    m_response->setResponse("200 OK", body.toAscii());
+    m_response->setResponse("200 OK", "upload finished:\n"+statusReport().replace("  ","&nbsp;&nbsp;").replace("\n", "<br />"));
 }
 
 void HttpController::actionFavicon()
@@ -378,27 +347,10 @@ QString HttpController::cleanPath(QString path)
     return path;
 }
 
-QByteArray HttpController::statusReport() const
+QByteArray HttpController::statusReport(bool show_headers) const
 {
-    QByteArray s;
-
-    // client ip and controller action too
-    s = "req uri: "+m_request->uri()+"\n"
-        "req method: "+m_request->method()+"\n"
-        "req state: "+ENUM_NAME(HttpMessage, State, m_request->state())+"\n"
-        "req headerLength (counted): "+humanSize(m_request->headerLength(), true)+"\n"
-        "req contentLength (stated): "+humanSize(m_request->contentLength(), true)+"\n"
-        "req contentReceived (counted): "+humanSize(m_request->contentBytesTransferred(), true)+"\n"
-        "req bytesAvailable: "+humanSize(m_socket->bytesAvailable(), true)+"\n";
-    if (m_socket->bytesAvailable() == (m_request->contentLength() - m_request->contentBytesTransferred())){
-        s += "those bytes: "+m_socket->peek(m_socket->bytesAvailable())+"\n";
-    }
-       s += "res code: "+m_response->responseCode()+"\n";
-    if (m_response->contentDevice()){
-        s += "res contentLength: "+humanSize(m_response->contentLength(), true)+"\n"
-        "res contentBytesTransferred: "+humanSize(m_response->contentBytesTransferred(), true)+"\n"
-        "res bytesAvailable:"+humanSize(m_response->contentDevice()->bytesAvailable(), true)+"\n";
-    }
+    QByteArray s = m_request->inspect(show_headers).toAscii();
+    s += m_response->inspect(show_headers).toAscii();
     return s;
 }
 

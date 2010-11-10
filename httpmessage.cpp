@@ -2,7 +2,7 @@
 #include <QRegExp>
 #include <QVariant>
 #include <QCoreApplication>
-
+#include <QTextStream>
 #include "output.h"
 
 QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
@@ -10,13 +10,10 @@ QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
 HttpMessage::HttpMessage(QObject* parent, HttpMessage* parent_message)
     :QObject(parent)
 {
-    m_state = BeforeStart;
+    m_state = ReadingHeaders;
     m_parentMessage = parent_message;
 
     if (parent_message){
-        // this is for multipart child messages who dont have first lines
-        g_log->debug("created child message");
-        m_state = ReadingHeaders;
         connect(this, SIGNAL(isFileUpload()), m_parentMessage, SLOT(processIsFileUpload()));
     }
     m_protocol = "HTTP/1.1";
@@ -103,7 +100,12 @@ HttpMessage::State HttpMessage::state() const
 void HttpMessage::setState(State state, QByteArray message)
 {
     QString state_name = QLatin1String(ENUM_NAME(HttpMessage, State, state));
-    g_log->debug("setting message state:"+state_name);
+
+    if (m_parentMessage){
+        g_log->debug("setting child message state:"+state_name);
+    }else{
+        g_log->debug("setting message state:"+state_name);
+    }
 
     if (!message.isEmpty()){
         g_log->info(message);
@@ -117,7 +119,14 @@ void HttpMessage::setState(State state, QByteArray message)
 
     case ReadingHeaders:
         break;
+    case ReadingContent:
+        if (m_parentMessage){
+            g_log->debug("child message headers:\n"+headers());
+        }else{
+            g_log->debug("headers:\n"+headers());
+        }
 
+        break;
     case Finished:
         emit complete(m_contentLength);
         emit finished();
@@ -161,7 +170,6 @@ void HttpMessage::setHeader(QByteArray key, QVariant value)
         }
     }else if (key == "content-type"){
         QRegExp form_data_rx("multipart/form-data; boundary=(.*)");
-//        form_data_rx.setCaseSensitivity(Qt::CaseInsensitive);
         if (form_data_rx.exactMatch(value.toString())){
             m_isMultiPart = true;
             m_formDataBoundary = form_data_rx.cap(1).toAscii();
@@ -186,12 +194,11 @@ QByteArray HttpMessage::headers() const
     return text;
 }
 
-void HttpMessage::parseData(QIODevice* device)
+void HttpMessage::parseLine(QByteArray line)
 {
-    QByteArray line;
-    while (m_state == ReadingHeaders && device->canReadLine()){
+    // if device is 0 .. then no loop
+    if (m_state == ReadingHeaders) {
         QRegExp header_rx("([^:]+):(.+)\r\n");
-        line = device->readLine();
         m_headerLength += line.length();
         if (m_parentMessage){
             m_parentMessage->m_contentBytesTransferred += line.length();
@@ -211,7 +218,7 @@ void HttpMessage::parseData(QIODevice* device)
                     emit isFileUpload();
                 }else{
                     // this should be form field values
-                    g_log->debug("multipart child message");
+                    g_log->debug("multipart child nonfile message");
                     createOwnContentDevice();
                 }
             }else if (m_contentLength != 0){
@@ -221,7 +228,6 @@ void HttpMessage::parseData(QIODevice* device)
                 //g_log->debug("no content length, not multipart, no data expected, finsihed");
                 setState(Finished);
             }
-            break;
         }else if (header_rx.exactMatch(line)){
             // read the header
             setHeader(header_rx.cap(1).toAscii(), header_rx.cap(2).trimmed());
@@ -239,64 +245,51 @@ void HttpMessage::parseData(QIODevice* device)
         return;
 
     if (m_isMultiPart){
-        while(m_state == ReadingContent && device->canReadLine()){
-            if (device->peek(m_boundry.length()) == m_boundry){
-                device->readLine();
+        if (m_state == ReadingContent){
+            m_contentBytesTransferred += line.length();
+            if (line == m_boundry){
                 // this is the end of the content for the current part, or the frist cp
-                m_contentBytesTransferred += m_boundry.length();
-                g_log->debug("boundry line"); // throw away line
+                g_log->debug("boundry line. content bytes transferred:"+QByteArray::number(m_contentBytesTransferred));
                 if (m_currentMessage){
                     m_childMessages << m_currentMessage;
                     m_currentMessage->setState(Finished);
                 }
                 // prepare new content part for the following data
                 m_currentMessage = new HttpMessage(this, this);
-            }else if (device->peek(m_f_boundry.length()) == m_f_boundry){
-                device->readLine(); // throw away line
-                m_contentBytesTransferred += m_f_boundry.length();
-                g_log->debug("final boundry line"); // throw away line
+            }else if (line == m_f_boundry){
+                g_log->debug("final boundry line. content bytes transferred:"+QByteArray::number(m_contentBytesTransferred));
                 m_childMessages << m_currentMessage;
                 m_currentMessage->setState(Finished);
                 m_currentMessage = 0;
                 setState(Finished);
             }else if (m_currentMessage){
-                m_currentMessage->parseData(device);
+                m_currentMessage->parseLine(line);
             }else{
                 // this is treated as data for shitty clients that cant parse multipart
                 g_log->warning("multipart message contains fallback content. dropping");
-                device->readLine();
             }
         }
+
     }else if (m_parentMessage){
-        // only read one line at a time here... the parent messsage scans
-        // the lines first to check for boundrys
-        if (device->bytesAvailable()){
-            line = device->readLine();
-            QString data(line);
-            if (data.contains(m_parentMessage->m_formDataBoundary)){
-                g_log->debug("found a formDataBoundry within the child!!!");
-            }
-
-            m_parentMessage->m_contentBytesTransferred += line.length();
-            if (m_maybeLastLine){
-                // if this is true.. then what we thought might be the last line
-                // was just a crlf in the middle of the data
-                // so we need to put the crlf back into the data
-                m_maybeLastLine = false;
-                line.prepend("\r\n");
-            }
-
-            // any line could be your last
-            if (line.endsWith("\r\n")){
-                m_maybeLastLine = true;
-                line.chop(2);
-            }
-            writeContentBytes(line);
+        // the parent messsage scans the line first to check for boundrys
+        if (m_maybeLastLine){
+            // if this is true.. then what we thought might be the last line
+            // was just a crlf in the middle of the data
+            // so we need to put the crlf back into the data
+            m_maybeLastLine = false;
+            line.prepend("\r\n");
         }
+
+        // any line could be your last
+        if (line.endsWith("\r\n")){
+            m_maybeLastLine = true;
+            line.chop(2);
+        }
+        writeContentBytes(line);
     }else{
-        while(m_state == ReadingContent && device->bytesAvailable()){
-            qint64 max_size = (m_contentLength - m_contentBytesTransferred);
-            writeContentBytes(device->read(max_size));
+        g_log->debug("does not go here");
+        while(m_state == ReadingContent){
+            writeContentBytes(line);
             if (m_contentBytesTransferred == m_contentLength){
                 setState(Finished);
             }else if (m_contentBytesTransferred > m_contentLength){
@@ -310,9 +303,6 @@ qint64 HttpMessage::writeContentBytes(QByteArray data)
 {
 
     qint64 bw = m_contentDevice->write(data);
-    if (data.length() != bw){
-        g_log->error("HttpMessage::writeContentBytes bytes written not equal to data lenght");
-    }
     m_contentBytesTransferred += bw;
     emit contentBytesWritten(bw);
     return bw;
@@ -375,4 +365,30 @@ QByteArray HttpMessage::protocol() const
 QList<HttpMessage*> HttpMessage::childMessages() const
 {
     return m_childMessages;
+}
+
+QString HttpMessage::inspect(bool show_headers) const{
+    QString str;
+    QTextStream s(&str);
+
+    s << "state: " << ENUM_NAME(HttpMessage, State, m_state) <<"\n";
+
+    if (!m_formFieldName.isEmpty()){
+        s << "field name: " << m_formFieldName << "\n";
+    }
+    if (!m_formFieldFileName.isEmpty()){
+        s << "file name: " << m_formFieldFileName << "\n";
+    }
+    s << "content length: " << m_contentLength << "\n";
+    s << "content transferred: " << m_contentBytesTransferred << "\n";
+    if (m_contentDevice){
+       s << "contentDeviceSize: " << m_contentDevice->size() << "\n";
+    }
+    if (show_headers){
+        s << "request headers (trimmed): " << headers().trimmed();
+    }
+    foreach(HttpMessage* child, childMessages()){
+        s << child->inspect(show_headers).replace("\n", "\n  ");
+    }
+    return str;
 }

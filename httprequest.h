@@ -10,12 +10,13 @@ public:
     HttpRequest(QObject* parent);
     QByteArray uri() const;
     QByteArray method() const;
-    void parseData(QIODevice *device);
-
+    QByteArray requestLine() const;
+    void parseLine(QByteArray line);
+    QString inspect(bool show_headers) const;
 private:
-    void parseRequestLine(QByteArray line);
     QByteArray m_method;
     QByteArray m_uri;
+    QByteArray m_requestLine;
 };
 
 #endif /* !_HTTP_REQUEST_ */

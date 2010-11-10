@@ -6,10 +6,8 @@
 HttpResponse::HttpResponse(QObject* parent)
 : HttpMessage(parent)
 {
+    m_state = ReadFirstLine;
     m_responseCode = "200 OK";
-    setHeader("Content-Type", "text/html; charset=utf-8");
-//    setHeader("Keep-Alive", "timeout=300");
-    setHeader("Date", QDateTime::currentDateTime().toString(dateFormat));
 }
 
 void HttpResponse::setResponseCode(QByteArray code){
@@ -27,6 +25,8 @@ QByteArray HttpResponse::responseCode() const
 // r->setResponse("here are my puppies: <img src='dogs.jpg' />");
 // the latter will use the default response code of 200 OK
 void HttpResponse::setResponse(QByteArray code_or_content, QByteArray content){
+    setHeader("Content-Type", "text/html; charset=utf-8");
+    setHeader("Date", QDateTime::currentDateTime().toString(dateFormat));
     if (content.isEmpty()){
         setContent(code_or_content);
     }else{
@@ -44,4 +44,11 @@ QByteArray HttpResponse::headers() const
     text = m_protocol+" "+m_responseCode+"\r\n";
     text += HttpMessage::headers();
     return text;
+}
+
+QString HttpResponse::inspect(bool show_headers) const
+{
+    QString s = "Http Response: code="+m_responseCode+"\n";
+    s.append(HttpMessage::inspect(show_headers));
+    return s;
 }

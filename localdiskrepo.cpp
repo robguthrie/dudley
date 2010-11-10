@@ -116,7 +116,7 @@ QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
 QIODevice* LocalDiskRepo::putFile(QString file_path)
 {
     QFile* f = new QFile(this->temporaryFilePath(file_path));
-    if (f->open(QIODevice::WriteOnly)){
+    if (f->open(QIODevice::WriteOnly | QIODevice::Truncate)){
         return f;
     }else{
         g_log->error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(file_path));
