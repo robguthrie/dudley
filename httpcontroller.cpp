@@ -79,7 +79,7 @@ void HttpController::setupRoutes()
     m_routes["history"] = QRegExp("/(history)/(\\w+)/?");
     m_route_args["history"] = "action repo_name";
 
-    m_routes["commit"] = QRegExp("/(commit)/(\\w+)/([^/?*;{}\\\\]*)");
+    m_routes["commit"] = QRegExp("/(commit)/(\\w+)/([^/?*;{}\\\\]+)");
     m_route_args["commit"] = "action repo_name commit_name";
 
     m_routes["browse"] = QRegExp ("/(browse)/(\\w+)(/.*)?");

@@ -58,5 +58,6 @@ HEADERS += fileinfo.h \
 FORMS += mainwindow.ui \
     repodialog.ui
 OTHER_FILES += notes.txt \
-    uploadform.html
+    uploadform.html \
+    apinotes.txt
 RESOURCES += icon.qrc
