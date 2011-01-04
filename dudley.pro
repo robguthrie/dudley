@@ -9,8 +9,8 @@ CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfo.cpp \
-    repostate.cpp \
-    repostatelogger.cpp \
+    state.cpp \
+    statelogger.cpp \
     localdiskrepo.cpp \
     localstoragerepo.cpp \
     output.cpp \
@@ -26,14 +26,15 @@ SOURCES += main.cpp \
     filetransfermanager.cpp \
     httpmessage.cpp \
     repo.cpp \
-    readoncebuffer.cpp \
     httpcontroller.cpp \
-    httpview.cpp
+    httpview.cpp \
+    statediff.cpp \
+    statediffop.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
-    repostate.h \
-    repostatelogger.h \
+    state.h \
+    statelogger.h \
     localdiskrepo.h \
     localstoragerepo.h \
     output.h \
@@ -51,7 +52,9 @@ HEADERS += fileinfo.h \
     repo.h \
     readoncebuffer.h \
     httpcontroller.h \
-    httpview.h
+    httpview.h \
+    statediff.h \
+    statediffop.h
 
 # filetransfer.h
 # filerepomanager.h

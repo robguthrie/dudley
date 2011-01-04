@@ -37,11 +37,9 @@ QString RepoDialog::type()
 
 void RepoDialog::selectDirectory()
 {
-    ui->localPathLineEdit->setText(QFileDialog::getExistingDirectory(this,
-                                                                     tr("Open Directory"),
-                                                                     "/home",
-                                                                     QFileDialog::ShowDirsOnly
-                                                                     | QFileDialog::DontResolveSymlinks));
+    ui->localPathLineEdit->setText(
+        QFileDialog::getExistingDirectory(this, tr("Open Directory"), "/home",
+                                         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks));
 }
 
 void RepoDialog::changeEvent(QEvent *e)

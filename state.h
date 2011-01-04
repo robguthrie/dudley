@@ -7,33 +7,18 @@
 #include <QDateTime>
 #include "fileinfo.h"
 
-class RepoStateLogger;
+class StateLogger;
 
-class RepoState : public QObject
+class State : public QObject
 {
     Q_OBJECT
 public:
-    RepoState(QObject* parent = 0);
-    RepoState(QObject* parent, QString logs_dir);
-    ~RepoState();
-    void reload();
-    RepoStateLogger* logger();
-    void setLogger(RepoStateLogger* logger);
-    void importLog(QString name, QString body);
-    bool commitChanges();
+    State(QObject* parent = 0);
     bool containsFileInfo(FileInfo* file_info);
     bool containsFilePath(QString file_path);
     bool containsFingerPrint(QString finger_print);
     FileInfo* fileInfoByFilePath(QString file_path);
     FileInfo* fileInfoByFingerPrint(QString sha1);
-
-    // manipulation
-    void addFile(FileInfo* file_info);
-    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    void modifyFile(FileInfo* file_info);
-    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    bool removeFile(QString filePath);
-    bool renameFile(QString filePath, QString newFilePath);
 
     // query
     QList<FileInfo*> filesInDir(QString path);
@@ -44,9 +29,18 @@ public:
     QStringList missingFilePaths(QStringList found_files);
     QStringList knownFilePaths(QStringList found_files);
     QStringList unknownFilePaths(QStringList found_files);
+    friend class StateLogger;
 
-private:
-    RepoStateLogger* m_logger;
+protected:
+    // manipulation
+    void addFile(FileInfo* file_info);
+    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void modifyFile(FileInfo* file_info);
+    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    bool removeFile(QString filePath);
+    bool renameFile(QString filePath, QString newFilePath);
+
+    StateLogger* m_logger;
     QHash<QString, FileInfo*> m_files;
     QHash<QString, FileInfo*> m_fingerprints;
     bool m_logChanges;

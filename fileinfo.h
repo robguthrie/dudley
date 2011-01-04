@@ -7,7 +7,7 @@
 #include "mimetypefinder.h"
 
 
-class RepoState;
+class State;
 
 class FileInfo : public QObject
 {

@@ -1,5 +1,5 @@
 #include "repo.h"
-#include "repostate.h"
+#include "state.h"
 #include "localdiskrepo.h"
 #include <QCryptographicHash>
 #include <QCoreApplication>
@@ -11,9 +11,8 @@ LocalDiskRepo::LocalDiskRepo(QObject *parent, QString path, QString name)
     :Repo(parent, path, name)
 {
     m_log_path = m_path + "/.dudley/logs";
-    m_state = new RepoState(this, m_log_path);
+    m_logger = new StateLogger(this, m_log_path);
 }
-
 
 bool LocalDiskRepo::canReadData() const
 {
@@ -23,7 +22,7 @@ bool LocalDiskRepo::canReadData() const
 
 QString LocalDiskRepo::type() const
 {
-    return QString("WorkingFileRepo");
+    return QString("LocalDisk");
 }
 
 /*
@@ -37,20 +36,21 @@ QString LocalDiskRepo::type() const
     then turn remaining missing files into deleted
 
 */
-void LocalDiskRepo::updateState(bool commit_changes)
+void LocalDiskRepo::updateState()
 {
+    State state = m_logger->state();
     QStringList found_files = filesOnDisk();
 
     // a missing file is in the collection but not on the disk
     // checking for files which have gone missing
-    QStringList missing_file_paths = m_state->missingFilePaths(found_files);
+    QStringList missing_file_paths = state->missingFilePaths(found_files);
 
     // checking for files which are unrecognised
     // an unknown file is on the disk but not in the collection
-    QStringList unknown_found_file_paths = m_state->unknownFilePaths(found_files);
+    QStringList unknown_found_file_paths = state->unknownFilePaths(found_files);
 
     // checking for known files
-    QStringList known_found_file_paths = m_state->knownFilePaths(found_files);
+    QStringList known_found_file_paths = state->knownFilePaths(found_files);
 
     // scanning known files for modifications
     QString file_path;
@@ -59,12 +59,12 @@ void LocalDiskRepo::updateState(bool commit_changes)
         // check if that file has been modified
         // to save effort we dont call newFileInfo as that reads the sha1
         // and we only want to read the sha1 if the mtime has changed
-        FileInfo *stored_fi = m_state->fileInfoByFilePath(file_path);
+        FileInfo *stored_fi = state->fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
         if (!stored_fi->seemsIdenticalTo(qfi)){
             // file has changed on disk but filename is the same.
             // record the new values for the file
-            m_state->modifyFile(file_path, qfi.size(), qfi.lastModified(),
+            m_logger->modifyFile(file_path, qfi.size(), qfi.lastModified(),
                                 readFingerPrint(file_path));
         }
     }
@@ -75,29 +75,27 @@ void LocalDiskRepo::updateState(bool commit_changes)
         FileInfo *unknown_fi = newFileInfo(file_path);
         foreach(QString missing_file_path, missing_file_paths){
             QCoreApplication::processEvents();
-            FileInfo *missing_fi = m_state->fileInfoByFilePath(missing_file_path);
+            FileInfo *missing_fi = state->fileInfoByFilePath(missing_file_path);
             if (missing_fi->isIdenticalTo(unknown_fi)){
                 // this unknown file is actually a missing file renamed
                 file_was_renamed = true;
                 missing_file_paths.removeAll(missing_file_path);
                 unknown_found_file_paths.removeAll(file_path);
-                m_state->renameFile(missing_file_path, file_path);
+                m_logger->renameFile(missing_file_path, file_path);
             }
         }
 
         // add the file as new to the collection
-        if (!file_was_renamed) m_state->addFile(unknown_fi);
+        if (!file_was_renamed) m_logger->addFile(unknown_fi);
     }
 
     // deleted sweep
-    foreach(file_path, missing_file_paths) m_state->removeFile(file_path);
+    foreach(file_path, missing_file_paths) m_logger->removeFile(file_path);
 
-    if (commit_changes){
-        m_state->commitChanges();
-    }
+    m_logger->commitChanges();
 }
 
-bool LocalDiskRepo::hasFile(FileInfo* file_info) const
+bool LocalDiskRepo::fileExists(FileInfo* file_info) const
 {
     // need to actually check the disk here..
     return QFile::exists( m_path +"/"+ file_info->filePath());
@@ -108,9 +106,7 @@ QIODevice* LocalDiskRepo::getFile(FileInfo* fileInfo)
     QFile *f = new QFile(m_path +"/"+ fileInfo->filePath());
     if (f->open(QIODevice::ReadOnly)){
         return f;
-    }else{
-        return 0;
-    }
+    }else return 0;
 }
 
 QIODevice* LocalDiskRepo::putFile(QString file_path)
@@ -141,7 +137,7 @@ void LocalDiskRepo::putFileComplete(QIODevice* device, QString file_path)
 
 void LocalDiskRepo::putFileFailed(QIODevice *device)
 {
-    g_log->warning("deleteing a writable buffer - presumably a put file has failed");
+    g_log->warning("deleting a writable buffer - presumably a put file has failed");
     QFile* f;
     if (!device){
         f = (QFile*) sender();

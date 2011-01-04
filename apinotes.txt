@@ -1,26 +1,48 @@
-query options
-format [html|js|plain]. default is html. other options are js or plain
-
-repo state api
-    history/(repo_name)/
+Dudley REST API
+---------------
+GET history/(repo_name)/
         get returns list of commits
-    history/:repo_name/:commit_name
+GET history/:repo_name/:commit_name
         get returns commit
-    repos/
+GET repos/
         list repos
-
-file api
-    find/
-        query params with: file_path, sha1, size to reduce result set
-        need way to pass many sha1s to test against.. comma seperated sha1s param would be fine
-        returns list of json fileinfo objects which we have copies of.
-    file/:sha1/:size/:filename
+GET file/:sha1/:size/:filename
         returns file contents or error
         filename is not matched it is just to make the urls more readable
 
+Repo Update Notification
+-------------------
+When a repo has a new commit it should notify another dudley node of the change
+
+the client will
+POST history./:repo_name/:commit_name.:format
+with commit body in the request
+
+the server will respond with:
+accepted    if the commit was successfully accepted
+ignored     if the commit had already been accepted
+rejected    if the commit conflicts with an existing commit
+
+Repo Commit Message Format
+--------------------------
+should have the
+created_at  a datetime of the commit
+node_id     the author node id where the changes where made
+operations  the list of changes represented by the commit:
+            add, modify, remove, rename and their parameters
+
+we have a state object.. but we need a change object..
+which can serialize into json
 
 
+StateDiff
+---------
+created_at  a datetime of the commit
+node_id     the author node id where the changes where made
+operations  the list of changes represented by the commit:
+            add, modify, remove, rename and their parameters
 
-
-define format of a commit
-json list of objects representing fileinfos
+StateDiffOp
+-----------
+name
+params

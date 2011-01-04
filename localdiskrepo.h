@@ -3,8 +3,8 @@
 
 #include <QFile>
 #include <QFileInfo>
-#include "repostatelogger.h"
-#include "repostate.h"
+#include "statelogger.h"
+#include "state.h"
 #include "repo.h"
 
 class LocalDiskRepo : public Repo
@@ -14,8 +14,8 @@ public:
     LocalDiskRepo(QObject *parent, QString path, QString name);
     QString type() const;
     bool canReadData() const;
-    void updateState(bool commit_changes = true);
-    bool hasFile(FileInfo* fileInfo) const;
+    void updateState();
+    bool fileExists(FileInfo* fileInfo) const;
     QIODevice* getFile(FileInfo* fileInfo);
     QIODevice* putFile(QString file_name);
     void putFileComplete(QIODevice* device, QString file_name);
@@ -33,8 +33,5 @@ private:
     QString relativeFilePath(QString file_path);
     QString temporaryFilePath(QString file_path);
 };
-
-
-
 
 #endif // WORKINGFILEREPO_H

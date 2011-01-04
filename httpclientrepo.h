@@ -1,7 +1,7 @@
 #ifndef HTTPCLIENTFILEREPO_H
 #define HTTPCLIENTFILEREPO_H
 
-#include "repostate.h"
+#include "state.h"
 #include "repo.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -14,7 +14,7 @@ public:
     QString type() const;
     bool canReadData() const;
     void updateState(bool commit_changes = true);
-    bool hasFile(FileInfo* file_info) const;
+    bool fileExists(FileInfo* file_info) const;
     QIODevice* getFile(FileInfo* fileInfo);
     QIODevice* putFile(QString file_path);
     void       putFileComplete(QIODevice *device, QString file_path);

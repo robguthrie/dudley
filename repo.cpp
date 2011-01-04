@@ -1,16 +1,17 @@
 #include "repo.h"
-#include "repostatelogger.h"
+#include "statelogger.h"
 #include "output.h"
 Repo::Repo(QObject *parent, QString path, QString name)
     :QObject(parent), m_path(path), m_name(name)
 {
     // read the settings
+
 }
 
 bool Repo::initialize()
 {
     if (this->canReadData()){
-        if (m_state->logger()->initialize()){
+        if (m_logger->initialize()){
             return true;
         }else{
             g_log->error("Cannot initialize history logger");
@@ -21,9 +22,9 @@ bool Repo::initialize()
     return false;
 }
 
-RepoState* Repo::state()
+StateLogger* Repo::logger()
 {
-    return m_state;
+    return m_logger;
 }
 
 QString Repo::path() const
@@ -39,16 +40,6 @@ QString Repo::logPath()
 QString Repo::name() const
 {
     return m_name;
-}
-
-FileInfo* Repo::fileInfoByFingerPrint(QString finger_print) const
-{
-    return m_state->fileInfoByFingerPrint(finger_print);
-}
-
-FileInfo* Repo::fileInfoByFilePath(QString file_path) const
-{
-    return m_state->fileInfoByFilePath(file_path);
 }
 
 // read actual values from the instance
@@ -69,6 +60,5 @@ QMap<QString, QVariant> Repo::settings()
 
 bool Repo::isReady() const
 {
-    return this->canReadData() && this->m_state->logger()->isReady();
+    return this->canReadData() && m_logger && m_logger->isReady();
 }
-

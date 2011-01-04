@@ -4,35 +4,34 @@
 #include <QFile>
 #include <QTextStream>
 #include "fileinfo.h"
-#include "repostate.h"
+#include "state.h"
 
-class RepoStateLogger
+class StateLogger : public QObject
 {
-
+    Q_OBJECT
 public:
-    RepoStateLogger(QString logsDir);
-    bool initialize();
+    StateLogger(QObject* parent, QString logsDir);
+    bool initialize() const;
     bool isReady() const;
-    QString logsDir();
-//    FileRepoState loadState();
-    void loadState(RepoState* state);
+    State state() const;
     QString logsDir() const;
     bool commitChanges();
-    void playAllLogs(RepoState* state);
+    void playAllLogs(State* state);
     QByteArray openLog(QString name);
-    void playLogFile(QString name, RepoState* state);
+    void playLogFile(QString name, State* state);
     bool writeLogFile(QString commit_name, QString body);
     void printChanges();
-    void logAddFile(FileInfo* fi);
-    void logAddFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    void logModifyFile(FileInfo* fi);
-    void logModifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    void logRemoveFile(QString file_path);
-    void logRenameFile(QString file_path, QString new_file_path);
+    void addFile(FileInfo* fi);
+    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void modifyFile(FileInfo* fi);
+    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void removeFile(QString file_path);
+    void renameFile(QString file_path, QString new_file_path);
     QStringList logNames();
     bool hasLogFile(QString name);
 
 private:
+    State* m_state;
     QStringList pendingLogLines();
     QString joinLogLine(QStringList tokens);
     QStringList splitLogLine(QString line);

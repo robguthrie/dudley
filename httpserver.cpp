@@ -11,7 +11,7 @@
 #include "httpresponse.h"
 #include "repo.h"
 #include "repomodel.h"
-#include "repostatelogger.h"
+#include "statelogger.h"
 #include "filetransfer.h"
 #include "filetransfermanager.h"
 #include "fileinfo.h"
@@ -21,9 +21,6 @@ HttpServer::HttpServer(QObject *parent, RepoModel* model, FileTransferManager* f
     :QTcpServer(parent), m_repoModel(model), m_transferManager(ftm)
 {
     connect(this, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
-//    QTimer *timer = new QTimer(this);
-//    connect(timer, SIGNAL(timeout()), this, SLOT(printStatus()));
-//    timer->start(3000);
 }
 
 void HttpServer::printStatus(QString a)

@@ -2,8 +2,8 @@
 #include <QDesktopServices>
 #include <QTextStream>
 #include "output.h"
-#include "repostate.h"
-#include "repostatelogger.h"
+#include "state.h"
+#include "statelogger.h"
 #include <QBuffer>
 
 HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
@@ -11,18 +11,18 @@ HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
 {
     g_log->debug("constructed HttpClientRepo on path: "+path);
     m_pendingLogDownloads = 0;
+    m_log_path = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
+    m_log_path.append(QString("/logs/%1/%2").arg(this->type(), this->name()));
+    g_log->debug("logs data location:"+m_log_path);
+    m_logger = new StateLogger(this, m_log_path);
+
     // path is something like http://localhost:54573/music
     // where the node is serving the repo "music" at http://localhost:54573
     QRegExp valid_repo_url("^(http://[^/]+)/(\\w+)/?$");
     if (valid_repo_url.exactMatch(path)){
         m_host_url = valid_repo_url.cap(1);
         m_host_repo_name = valid_repo_url.cap(2);
-        m_log_path = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
-        m_log_path.append(QString("/logs/%1/%2").arg(this->type(), this->name()));
-        g_log->debug("logs data location:"+m_log_path);
-        m_state = new RepoState(this, m_log_path);
     }else{
-        m_state = new RepoState(this);
         g_log->error("invalid repo url: "+path);
     }
 
@@ -35,7 +35,7 @@ HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
 
 QString HttpClientRepo::type() const
 {
-    return QString("HttpClientRepo");
+    return QString("HttpClient");
 }
 
 bool HttpClientRepo::canReadData() const
@@ -57,7 +57,7 @@ void HttpClientRepo::updateState(bool commit_changes)
     this->get(urlFor(QString("history"), m_host_repo_name));
 }
 
-bool HttpClientRepo::hasFile(FileInfo* file_info) const
+bool HttpClientRepo::fileExists(FileInfo* file_info) const
 {
     return m_state->containsFileInfo(file_info);
 }
@@ -151,18 +151,18 @@ void HttpClientRepo::requestFinished(QNetworkReply* reply)
             g_log->debug(bodystr);
             m_pendingLogDownloads = 0;
             foreach(QString commit_name, commit_list){
-                if (!m_state->logger()->hasLogFile(commit_name)){
+                if (!m_logger->hasLogFile(commit_name)){
                     m_pendingLogDownloads++;
                     this->get(urlFor("commit", m_host_repo_name, commit_name));
                 }
             }
         }else if (action == "commit"){
             // this is a commit log..
-            this->state()->importLog(file_path, body);
+            m_logger->writeLogFile(file_path, body);
             m_pendingLogDownloads--;
             if (m_pendingLogDownloads == 0){
                 // we can reload the state now..
-                m_state->reload();
+                m_logger->reload();
             }
         }else if (action == "upload"){
             g_log->debug("upload request finished");

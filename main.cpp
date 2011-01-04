@@ -8,8 +8,8 @@
 #include <QSettings>
 
 #include "repo.h"
-#include "repostate.h"
-#include "repostatelogger.h"
+#include "state.h"
+#include "statelogger.h"
 #include "localdiskrepo.h"
 #include "output.h"
 #include "mainwindow.h"
