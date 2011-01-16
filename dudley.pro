@@ -6,6 +6,8 @@ QT += gui \
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle
+LIBS += -L/home/rob/src/qjson/lib -lqjson
+INCLUDEPATH = /home/rob/src/qjson/src
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfo.cpp \

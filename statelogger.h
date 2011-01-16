@@ -27,8 +27,8 @@ public:
     void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void removeFile(QString file_path);
     void renameFile(QString file_path, QString new_file_path);
-    QStringList logNames();
-    bool hasLogFile(QString name);
+    QStringList logNames() const;
+    bool hasLogFile(QString name) const;
 
 private:
     State* m_state;

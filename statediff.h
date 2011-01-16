@@ -7,12 +7,13 @@
 class StateDiff : public QObject
 {
     Q_OBJECT
+
 public:
     StateDiff();
-
+    void parseJson(QByteArray json_ba);
 private:
-    QString name;
-    QList<StateDiffOp> changes;
+    QString m_name;
+    QList<StateDiffOp*> m_diffOps;
 };
 
 #endif // STATEDIFF_H

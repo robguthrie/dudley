@@ -11,7 +11,7 @@ StateLogger::StateLogger(QObject* parent, QString logsDir)
     m_state = new State(this);
 }
 
-bool StateLogger::initialize()
+bool StateLogger::initialize() const
 {
     QDir dir;
     return dir.mkpath(m_logsDir);
@@ -28,7 +28,7 @@ QString StateLogger::logsDir() const
     return m_logsDir;
 }
 
-QStringList StateLogger::logNames()
+QStringList StateLogger::logNames() const
 {
     QDir dir(m_logsDir);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
@@ -37,12 +37,14 @@ QStringList StateLogger::logNames()
     QStringList lognames;
     QRegExp valid_rx("(\\d+)\\.log");
     foreach(QString name, filenames){
-        if (valid_rx.exactMatch(name)) lognames << valid_rx.cap(1);
+        if (valid_rx.exactMatch(name)){
+            lognames << valid_rx.cap(1);
+        }
     }
     return lognames;
 }
 
-bool StateLogger::hasLogFile(QString name)
+bool StateLogger::hasLogFile(QString name) const
 {
     return QFile::exists(logFilePath(name));
 }
