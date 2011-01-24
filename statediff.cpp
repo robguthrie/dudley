@@ -2,32 +2,45 @@
 #include "parser.h"
 #include "json_scanner.h"
 #include "json_parser.hh"
+#include "serializer.h"
+#include "qobjecthelper.h"
 
-StateDiff::StateDiff()
+#include <QVariantMap>
+StateDiff::StateDiff(QObject* parent)
+    :QObject(parent)
 {
 }
 
-bool StateDiff::parseJson(QByteArray json_ba)
+QString StateDiff::name() const
 {
-    QJson::Parser parser;
-    bool ok;
-    QVariantMap obj = parser.parse(json_ba, &ok).toMap();
-    if (!ok){
-        qDebug << "Oh no failed to parse json_ba in StateDiff";
-    }else{
-        m_name = obj["name"].toString();
-        QVariantList diff_ops = obj["diff_ops"].toList();
-        QList<QVariant>::const_iterator i;
-        foreach(QVariant diff_op, diff_ops){
-            StateDiffOp *op = new StateDiffOp();
-            op->parseVariant(diff_op);
-            m_diffOps.append(op);
-        }
+    return m_name;
+}
+
+void StateDiff::appendOp(StateDiffOp* op)
+{
+    m_diffOps.append(op);
+}
+
+QVariantList StateDiff::diffOps() const
+{
+    QVariantList list;
+    foreach(StateDiffOp* op, m_diffOps){
+        list.append(QJson::QObjectHelper::qobject2qvariant(op));
     }
-    return ok;
+
+    return list;
 }
 
-QByteArray StateDiff::toJson()
+void StateDiff::setName(QString name)
 {
+    m_name = name;
+}
 
+void StateDiff::setDiffOps(QVariantList list)
+{
+    foreach(QVariant v, list){
+        StateDiffOp *op = new StateDiffOp();
+        QJson::QObjectHelper::qvariant2qobject(v.toMap(), op);
+        m_diffOps.append(op);
+    }
 }

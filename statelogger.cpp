@@ -90,6 +90,9 @@ QByteArray StateLogger::openLog(QString name)
 */
 void StateLogger::playLogFile(QString name)
 {
+    /*
+     so we are going to open this file.. containing a statediff object..
+     */
     QTextStream in(openLog(name));
     while (!in.atEnd()){
         //  operation, filepath

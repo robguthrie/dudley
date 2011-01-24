@@ -1,41 +1,37 @@
 #include "statediffop.h"
 
-void StateDiffOp::parseVariant(QVariant op)
+StateDiffOp::StateDiffOp(QObject* parent)
+    :QObject(parent)
 {
-    QVariantMap map = op.toMap();
-    setAction(map["name"].toString());
-    setFilePath(map["filePath"].toString());
-    setSize(map["size"].toLongLong());
-    setLastModified(map["lastModified"].toDateTime());
-    setFingerPrint(map["fingerPrint"].toString());
+
 }
 
-QString StateDiffOp::action()
+StateDiffOp::Action StateDiffOp::action() const
 {
     return m_action;
 }
 
-QString StateDiffOp::filePath()
+QString StateDiffOp::filePath() const
 {
     return m_filePath;
 }
 
-qint64 StateDiffOp::size()
+qint64 StateDiffOp::size() const
 {
     return m_size;
 }
 
-QDateTime StateDiffOp::lastModified()
+QDateTime StateDiffOp::lastModified() const
 {
     return m_lastModified;
 }
 
-QString StateDiffOp::fingerPrint()
+QString StateDiffOp::fingerPrint() const
 {
     return m_fingerPrint;
 }
 
-void StateDiffOp::setAction(QString action)
+void StateDiffOp::setAction(Action action)
 {
     m_action = action;
 }

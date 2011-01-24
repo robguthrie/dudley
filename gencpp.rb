@@ -28,6 +28,15 @@ def set_name(name)
   "set"+name.camelize
 end
 
+def constructor_declaration(class_name)
+  "    #{class_name}::#{class_name}(QObject* parent = 0);\n"
+end
+
+def constructor_definition(class_name)
+  "#{class_name}::#{class_name}(QObject* parent = 0)\n    :QObject(parent)\n{\n}\n"
+end
+
+
 def get_declaration(type, name)
   "    #{type} #{get_name(name)}() const;\n"
 end
@@ -37,7 +46,7 @@ def set_declaration(type, name)
 end
 
 def get_definition(class_name, type, name)
-  "#{type} #{class_name}::#{get_name(name)}()\n{\n    return #{m_name(name)};\n}\n\n"
+  "#{type} #{class_name}::#{get_name(name)}() const\n{\n    return #{m_name(name)};\n}\n\n"
 end
 
 def set_definition(class_name, type, name)
@@ -56,13 +65,15 @@ def header_file(class_name, properties)
   r = ""
   r << "#ifndef #{def_name(class_name)}\n"
   r << "#define #{def_name(class_name)}\n"
-  r << "class #{class_name} : public QObject\n{\n    Q_OBJECT\n\npublic:\n"
+  r << "class #{class_name} : public QObject\n{\n    Q_OBJECT\n"
 
+  
   properties.each do |pair|
     type, name = pair
     r << q_property(type, name)
   end
-  
+  r << "\npublic:\n"
+  r << constructor_declaration(class_name)
   properties.each do |pair|
     type, name = pair
     r << get_declaration(type, name)
@@ -85,6 +96,7 @@ end
 
 def body_file(class_name, properties)
   r = "#include \"#{header_filename(class_name)}\"\n"
+  r << constructor_definition(class_name)
   properties.each do |pair|
     type, name = pair
     r << get_definition(class_name, type, name)
