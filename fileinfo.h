@@ -34,7 +34,7 @@ public:
     QString   toString()     const;
 
     bool isIdenticalTo(FileInfo *fi);
-    bool seemsIdenticalTo(QFileInfo q);
+    bool seemsIdenticalTo(QDateTime lastModified, qint64 size);
 
 public slots:
     void update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);

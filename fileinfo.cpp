@@ -49,21 +49,15 @@ void FileInfo::rename(QString newFilePath)
 // are is the file (namelessly) identical to another
 bool FileInfo::isIdenticalTo(FileInfo *fi)
 {
-    if (this->size() == fi->size()){
-        if (this->fingerPrint() == fi->fingerPrint()){
-            return true;
-        }else{
-            return false;
-        }
-    }
-    return false;
+   return ((m_size == fi->size()) &&
+           (m_sha1 == fi->fingerPrint()));
 }
 
 // try to cheaply detect change in a file
 // we just compare mtime and size....
-bool FileInfo::seemsIdenticalTo(QFileInfo q){
-    return (this->lastModified().toString(Qt::ISODate) == q.lastModified().toString(Qt::ISODate)) &&
-           (this->size() == q.size());
+bool FileInfo::seemsIdenticalTo(QDateTime lastModified, qint64 size){
+    return (m_modifiedAt.toString(Qt::ISODate) == lastModified.toString(Qt::ISODate)) &&
+           (m_size == size);
 }
 
 QDateTime FileInfo::lastModified() const

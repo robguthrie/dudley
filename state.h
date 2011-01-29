@@ -19,7 +19,6 @@ public:
     bool containsFingerPrint(QString finger_print);
     FileInfo* fileInfoByFilePath(QString file_path);
     FileInfo* fileInfoByFingerPrint(QString sha1);
-
     // query
     QList<FileInfo*> filesInDir(QString path);
     QStringList subDirs(QString path);
@@ -40,10 +39,8 @@ protected:
     bool removeFile(QString filePath);
     bool renameFile(QString filePath, QString newFilePath);
 
-    StateLogger* m_logger;
     QHash<QString, FileInfo*> m_files;
     QHash<QString, FileInfo*> m_fingerprints;
-    bool m_logChanges;
 };
 
 #endif // FILEREPOSTATE_H

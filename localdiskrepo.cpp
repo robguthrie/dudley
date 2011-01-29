@@ -25,75 +25,6 @@ QString LocalDiskRepo::type() const
     return QString("LocalDisk");
 }
 
-/*
-    updateState updates the m_state object to represent the current state
-
-    first, determine missing files
-    then split found files (ie: the whole list) into known and unknown files
-    then split known into modified and unchanged
-    at this stage we wanna read sha1's for modified and unknown files
-    then split unknown into renamed (removing them from missing) and new
-    then turn remaining missing files into deleted
-
-*/
-void LocalDiskRepo::updateState()
-{
-    State state = m_logger->state();
-    QStringList found_files = filesOnDisk();
-
-    // a missing file is in the collection but not on the disk
-    // checking for files which have gone missing
-    QStringList missing_file_paths = state->missingFilePaths(found_files);
-
-    // checking for files which are unrecognised
-    // an unknown file is on the disk but not in the collection
-    QStringList unknown_found_file_paths = state->unknownFilePaths(found_files);
-
-    // checking for known files
-    QStringList known_found_file_paths = state->knownFilePaths(found_files);
-
-    // scanning known files for modifications
-    QString file_path;
-    foreach(file_path, known_found_file_paths){
-        QCoreApplication::processEvents();
-        // check if that file has been modified
-        // to save effort we dont call newFileInfo as that reads the sha1
-        // and we only want to read the sha1 if the mtime has changed
-        FileInfo *stored_fi = state->fileInfoByFilePath(file_path);
-        QFileInfo qfi(m_path+'/'+file_path);
-        if (!stored_fi->seemsIdenticalTo(qfi)){
-            // file has changed on disk but filename is the same.
-            // record the new values for the file
-            m_logger->modifyFile(file_path, qfi.size(), qfi.lastModified(),
-                                readFingerPrint(file_path));
-        }
-    }
-
-    // scanning unknown files
-    foreach(file_path, unknown_found_file_paths){
-        bool file_was_renamed = false;
-        FileInfo *unknown_fi = newFileInfo(file_path);
-        foreach(QString missing_file_path, missing_file_paths){
-            QCoreApplication::processEvents();
-            FileInfo *missing_fi = state->fileInfoByFilePath(missing_file_path);
-            if (missing_fi->isIdenticalTo(unknown_fi)){
-                // this unknown file is actually a missing file renamed
-                file_was_renamed = true;
-                missing_file_paths.removeAll(missing_file_path);
-                unknown_found_file_paths.removeAll(file_path);
-                m_logger->renameFile(missing_file_path, file_path);
-            }
-        }
-
-        // add the file as new to the collection
-        if (!file_was_renamed) m_logger->addFile(unknown_fi);
-    }
-
-    // deleted sweep
-    foreach(file_path, missing_file_paths) m_logger->removeFile(file_path);
-
-    m_logger->commitChanges();
-}
 
 bool LocalDiskRepo::fileExists(FileInfo* file_info) const
 {
@@ -159,7 +90,7 @@ QString LocalDiskRepo::temporaryFilePath(QString file_path)
     return m_path+"/"+file_path+".part";
 }
 
-QStringList LocalDiskRepo::filesOnDisk()
+QStringList LocalDiskRepo::readFilePaths()
 {
     QStringList found_files;
     findAllFiles(m_path, &found_files);
@@ -201,11 +132,17 @@ QString LocalDiskRepo::relativeFilePath(QString filePath){
     }
 }
 
-FileInfo* LocalDiskRepo::newFileInfo(QString filePath)
+FileInfo* LocalDiskRepo::readFileInfo(QString filePath)
 {
     QFileInfo *qfi = new QFileInfo(m_path+"/"+filePath);
     return new FileInfo(this, filePath, qfi->size(),
                         qfi->lastModified(), readFingerPrint(filePath));
+}
+
+FileInfo* LocalDiskRepo::readFileInfoCheap(QString filePath)
+{
+    QFileInfo *qfi = new QFileInfo(m_path+"/"+filePath);
+    return new FileInfo(this, filePath, qfi->size(), qfi->lastModified(), "");
 }
 
 QString LocalDiskRepo::readFingerPrint(QString filePath)

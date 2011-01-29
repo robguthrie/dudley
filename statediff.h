@@ -4,6 +4,8 @@
 #include <QList>
 #include <statediffop.h>
 
+class FileInfo;
+
 class StateDiff : public QObject
 {
     Q_OBJECT
@@ -15,10 +17,16 @@ public:
 
     QString name() const;
     QVariantList diffOps() const;
-    void appendOp(StateDiffOp* op);
+    QList<StateDiffOp*> diffOpPtrs() const;
     void setName(QString name);
     void setDiffOps(QVariantList diffOps);
 
+    void addFile(FileInfo* fi);
+    void modifyFile(FileInfo* fi);
+    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
+    void removeFile(QString file_path);
+    void renameFile(QString file_path, QString new_file_path);
 private:
     QString m_name;
     QList<StateDiffOp*> m_diffOps;

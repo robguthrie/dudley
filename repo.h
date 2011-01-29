@@ -20,7 +20,12 @@ public:
     virtual bool initialize();
     virtual bool canReadData() const = 0;
     virtual bool fileExists(FileInfo* file_info) const = 0;
-    virtual void updateState(bool commit_changes = true) = 0;
+    virtual void updateState();
+    virtual FileInfo* readFileInfo(QString filePath) = 0;
+    virtual FileInfo* readFileInfoCheap(QString filePath) = 0;
+    virtual QStringList readFilePaths() = 0;
+    virtual QString readFingerPrint(QString filePath) = 0;
+
     virtual StateLogger* logger();
     virtual QMap<QString, QVariant> settings();
 
