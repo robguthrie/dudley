@@ -9,21 +9,13 @@
 
 class State;
 
-class FileInfo : public QObject
+class FileInfo
 {
-    Q_OBJECT
-    Q_PROPERTY(QString filePath READ filePath WRITE setFilePath)
-    Q_PROPERTY(qint64 size READ size WRITE setSize)
-    Q_PROPERTY(QString fingerPrint READ fingerPrint WRITE setFingerPrint)
-    Q_PROPERTY(QDateTime lastModified READ lastModified WRITE setLastModified)
-    Q_PROPERTY(QString mimeType READ mimeType)
-
     static MimeTypeFinder mimeTypeFinder;
 public:
-    FileInfo(QObject* parent = 0);
-    FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes = -1);
-    FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    FileInfo(const FileInfo &f);
+    FileInfo();
+    FileInfo(QString filePath, qint64 size = -1);
+    FileInfo(QString filePath, qint64 size, QDateTime modifiedAt, QString sha1);
 
     QString   filePath()     const;
     QString   fileName()     const;
@@ -33,10 +25,10 @@ public:
     QString   mimeType()     const;
     QString   toString()     const;
 
-    bool isIdenticalTo(FileInfo *fi);
-    bool seemsIdenticalTo(QDateTime lastModified, qint64 size);
+    bool isIdenticalTo(FileInfo fi) const;
+    bool sameModifiedAtAndSize(QDateTime lastModified, qint64 size) const;
 
-public slots:
+public:
     void update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
     void rename(QString newFilePath);
     void setFilePath(QString file_path);
@@ -47,7 +39,7 @@ public slots:
 
 private:
     QDateTime m_modifiedAt; // last modification date of file
-    qint64 m_sizeInBytes;
+    qint64 m_size;
     QString m_filePath;
     QString m_sha1;
 };

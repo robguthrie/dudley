@@ -99,7 +99,7 @@ void FileTransfer::processReadyRead()
                 m_bytesWritten += bw;
             }else{
                 // there was a problem
-                g_log->debug("Problem writing bytes from source to dest");
+                qDebug("Problem writing bytes from source to dest");
                 m_errors << "Problem writing bytes from source to dest";
             }
         }
@@ -115,7 +115,7 @@ void FileTransfer::processBytesWritten(qint64 bw)
 void FileTransfer::checkIfFinished()
 {
     if (m_bytesWritten == m_fileSize){
-        g_log->debug("file transfer finished: m_bytesWritten = "+QString::number(m_bytesWritten));
+        qDebug("file transfer finished: m_bytesWritten = "+QString::number(m_bytesWritten));
         m_complete = true;
         setFinished();
     }
@@ -128,7 +128,7 @@ QStringList FileTransfer::errors() const
 
 void FileTransfer::printErrors() const
 {
-    g_log->error("ERRRROR! FileTransfer:"+errors().join(", "));
+    qCritical("ERRRROR! FileTransfer:"+errors().join(", "));
 }
 
 QString FileTransfer::status() const

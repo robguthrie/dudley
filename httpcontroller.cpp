@@ -34,8 +34,8 @@ HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
 
 void HttpController::start()
 {
-    g_log->debug("start controller");
-    g_log->debug(statusReport());
+    qDebug("start controller");
+    qDebug(statusReport());
     setState(ReadingRequest);
     processReadyRead();
 }
@@ -188,7 +188,7 @@ void HttpController::processResponseFinished()
 
 void HttpController::sendResponse()
 {
-    g_log->debug("sending response now");
+    qDebug("sending response now");
     FileTransfer* ft;
     if (m_responseFileInfo && m_responseRepo){
         // the response is a file from a repo
@@ -224,7 +224,7 @@ void HttpController::processUploadStarted()
 {
     if (m_request->hasPendingFileUploads()){
         if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-            g_log->debug("beginning file upload, bytes transferred: "+QByteArray::number(m_request->contentBytesTransferred()));
+            qDebug("beginning file upload, bytes transferred: "+QByteArray::number(m_request->contentBytesTransferred()));
             HttpMessage* message = m_request->getNextFileUploadMessage();
             QString file_path = m_params["file_path"]+"/"+message->formFieldFileName();
             QIODevice* dest_device = repo->putFile(file_path);
@@ -256,7 +256,7 @@ void HttpController::actionFavicon()
 
 void HttpController::actionFileByFileName()
 {
-    g_log->debug("actionfilerequestbyfilename:"+m_params["repo_name"]+" "+m_params["file_path"]);
+    qDebug("actionfilerequestbyfilename:"+m_params["repo_name"]+" "+m_params["file_path"]);
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
         if (FileInfo* file_info = repo->fileInfoByFilePath(m_params["file_path"])){
             setResponseContentFromRepo(repo, file_info);
@@ -321,7 +321,7 @@ void HttpController::actionBrowse()
 {
     QString file_path = m_params["file_path"];
     QString repo_name = m_params["repo_name"];
-    g_log->debug("browse repo name:"+repo_name+" dir name: "+file_path);
+    qDebug("browse repo name:"+repo_name+" dir name: "+file_path);
     if (Repo* repo = m_repoModel->repo(repo_name)){
         QList<FileInfo*> files = repo->state()->filesInDir(file_path);
         QStringList sub_dirs = repo->state()->subDirs(file_path);

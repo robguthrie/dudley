@@ -6,3 +6,5 @@ dudley
 moc_*
 Makefile*
 debug/
+*.moc
+*.pro.user*

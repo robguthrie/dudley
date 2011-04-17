@@ -6,15 +6,14 @@ QT += gui \
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle
-LIBS += -L/home/rob/src/qjson/lib -lqjson
-INCLUDEPATH = /home/rob/src/qjson/src
+LIBS += -L/Users/rob/src/qjson/src -lqjson
+INCLUDEPATH = qjson
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfo.cpp \
     state.cpp \
     statelogger.cpp \
     localdiskrepo.cpp \
-    localstoragerepo.cpp \
     output.cpp \
     httpserver.cpp \
     mainwindow.cpp \
@@ -30,15 +29,13 @@ SOURCES += main.cpp \
     repo.cpp \
     httpcontroller.cpp \
     httpview.cpp \
-    statediff.cpp \
-    statediffop.cpp
+    stateop.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
     state.h \
     statelogger.h \
     localdiskrepo.h \
-    localstoragerepo.h \
     output.h \
     httpserver.h \
     mainwindow.h \
@@ -55,8 +52,7 @@ HEADERS += fileinfo.h \
     readoncebuffer.h \
     httpcontroller.h \
     httpview.h \
-    statediff.h \
-    statediffop.h
+    stateop.h
 
 # filetransfer.h
 # filerepomanager.h

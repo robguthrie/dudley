@@ -26,14 +26,14 @@ QString StateDiff::name() const
 QVariantList StateDiff::diffOps() const
 {
     QVariantList list;
-    foreach(StateDiffOp* op, m_diffOps){
+    foreach(StateOp* op, m_diffOps){
         list << QVariant(op->toList());
     }
 
     return list;
 }
 
-QList<StateDiffOp*> StateDiff::diffOpPtrs() const
+QList<StateOp*> StateDiff::diffOpPtrs() const
 {
     return m_diffOps;
 }
@@ -46,7 +46,7 @@ void StateDiff::setName(QString name)
 void StateDiff::setDiffOps(QVariantList list)
 {
     foreach(QVariant v, list){
-        StateDiffOp *op = new StateDiffOp();
+        StateOp *op = new StateOp();
         op->fromList(v.toList());
         m_diffOps << op;
     }
@@ -64,28 +64,28 @@ void StateDiff::modifyFile(FileInfo* fi)
 
 void StateDiff::addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
-    StateDiffOp* op = new StateDiffOp(this);
+    StateOp* op = new StateOp(this);
     op->addFile(filePath, sizeInBytes, modifiedAt,  sha1);
     m_diffOps << op;
 }
 
 void StateDiff::modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
 {
-    StateDiffOp* op = new StateDiffOp(this);
+    StateOp* op = new StateOp(this);
     op->modifyFile(filePath, sizeInBytes, modifiedAt,  sha1);
     m_diffOps << op;
 }
 
 void StateDiff::removeFile(QString file_path)
 {
-    StateDiffOp* op = new StateDiffOp(m_diff);
+    StateOp* op = new StateOp(m_diff);
     op->removeFile(file_path);
     m_diffOps << op;
 }
 
 void StateDiff::renameFile(QString file_path, QString new_file_path)
 {
-    StateDiffOp* op = new StateDiffOp(m_diff);
+    StateOp* op = new StateOp(m_diff);
     op->renameFile(file_path, new_file_path);
     m_diffOps << op;
 }

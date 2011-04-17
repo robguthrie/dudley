@@ -44,11 +44,11 @@ void HttpMessage::createOwnContentDevice()
         m_ownContentDevice = true;
         QIODevice* d = (QIODevice*) new QBuffer();
         if (!d->open(QIODevice::ReadWrite | QIODevice::Append)){
-             g_log->debug("coul dnot open buffer for RW");
+             qDebug("coul dnot open buffer for RW");
         }
         setContentDevice(d);
     }else{
-        g_log->error("a contentDevice already exists!");
+        qCritical("a contentDevice already exists!");
     }
 }
 
@@ -73,10 +73,10 @@ void HttpMessage::setContentDevice(QIODevice *file)
                 setState(ReadingContent);
             }
         }else{
-            g_log->error("content device is not open/writable");
+            qCritical("content device is not open/writable");
         }
     }else{
-        g_log->error("already a content device on message.. and we are setting another");
+        qCritical("already a content device on message.. and we are setting another");
     }
 }
 
@@ -140,7 +140,7 @@ void HttpMessage::setHeader(QByteArray key, QVariant value)
                 }else if (key.toLower() == "filename"){
                     m_formFieldFileName = value.toAscii();
                 }else{
-                    g_log->debug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
+                    qDebug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
                 }
             }
         }
@@ -151,7 +151,7 @@ void HttpMessage::setHeader(QByteArray key, QVariant value)
             m_formDataBoundary = form_data_rx.cap(1).toAscii();
             m_boundry = "--"+m_formDataBoundary+"\r\n";
             m_f_boundry = "--"+m_formDataBoundary+"--\r\n";
-            g_log->debug("multipart message boundry: "+m_formDataBoundary);
+            qDebug("multipart message boundry: "+m_formDataBoundary);
         }
     }else if (key == "content-length"){
         m_contentLength = value.toLongLong();
@@ -189,14 +189,14 @@ void HttpMessage::parseLine(QByteArray line)
                     emit isFileUpload();
                 }else{
                     // this should be form field values
-                    g_log->debug("multipart child nonfile message");
+                    qDebug("multipart child nonfile message");
                     createOwnContentDevice();
                 }
             }else if (m_contentLength != 0){
-                g_log->debug("have a content length and dont know why. discarding");
+                qDebug("have a content length and dont know why. discarding");
                 setState(Finished);
             }else{
-                //g_log->debug("no content length, not multipart, no data expected, finsihed");
+                //qDebug("no content length, not multipart, no data expected, finsihed");
                 setState(Finished);
             }
         }else if (header_rx.exactMatch(line)){
@@ -254,7 +254,7 @@ void HttpMessage::parseLine(QByteArray line)
         }
         writeContentBytes(line);
     }else{
-        g_log->debug("does not go here");
+        qDebug("does not go here");
         writeContentBytes(line);
         if (m_contentBytesTransferred == m_contentLength){
             setState(Finished);

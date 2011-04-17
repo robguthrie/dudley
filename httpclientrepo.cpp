@@ -9,11 +9,11 @@
 HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
     :Repo(parent, path, name)
 {
-    g_log->debug("constructed HttpClientRepo on path: "+path);
+    qDebug("constructed HttpClientRepo on path: "+path);
     m_pendingLogDownloads = 0;
     m_log_path = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
     m_log_path.append(QString("/logs/%1/%2").arg(this->type(), this->name()));
-    g_log->debug("logs data location:"+m_log_path);
+    qDebug("logs data location:"+m_log_path);
     m_logger = new StateLogger(this, m_log_path);
 
     // path is something like http://localhost:54573/music
@@ -23,7 +23,7 @@ HttpClientRepo::HttpClientRepo(QObject *parent, QString path, QString name)
         m_host_url = valid_repo_url.cap(1);
         m_host_repo_name = valid_repo_url.cap(2);
     }else{
-        g_log->error("invalid repo url: "+path);
+        qCritical("invalid repo url: "+path);
     }
 
     // setup a recurring timer to ping the server and update the m_canReadData bool
@@ -70,13 +70,13 @@ QIODevice* HttpClientRepo::getFile(FileInfo* fileInfo)
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
 QIODevice* HttpClientRepo::get(QUrl url)
 {
-    g_log->debug("HttpClientRepo get:"+url.toString());
+    qDebug("HttpClientRepo get:"+url.toString());
     QString url_str = url.toString();
     QNetworkReply* reply = m_manager->get(QNetworkRequest(url));
-    if (!reply->isOpen()) g_log->debug("HttpClientRepo::get("+url_str+") reply is not open");
-    if (reply->error()) g_log->debug("HttpClientRepo::get("+url_str+") reply error: "+QString::number(reply->error())+" "+reply->errorString());
-    if (!reply->isReadable()) g_log->debug("HttpClientRepo::get("+url_str+") reply is not readable");
-    if (reply->isFinished()) g_log->debug("HttpClientRepo::get("+url_str+") reply is finished already!");
+    if (!reply->isOpen()) qDebug("HttpClientRepo::get("+url_str+") reply is not open");
+    if (reply->error()) qDebug("HttpClientRepo::get("+url_str+") reply error: "+QString::number(reply->error())+" "+reply->errorString());
+    if (!reply->isReadable()) qDebug("HttpClientRepo::get("+url_str+") reply is not readable");
+    if (reply->isFinished()) qDebug("HttpClientRepo::get("+url_str+") reply is finished already!");
     return reply;
 }
 
@@ -90,7 +90,7 @@ void HttpClientRepo::putFileComplete(QIODevice *device, QString file_path)
     QUrl url = urlFor("upload", file_path);
     QNetworkRequest r(url);
     m_manager->post(r, device);
-    g_log->debug("HttpClientRepo::putFileFinished beginning upload of:"+file_path);
+    qDebug("HttpClientRepo::putFileFinished beginning upload of:"+file_path);
 }
 
 void HttpClientRepo::putFileFailed(QIODevice *device)
@@ -109,14 +109,14 @@ void HttpClientRepo::requestFinished(QNetworkReply* reply)
 {
     if (reply->error()){
 
-        g_log->error("requestFinised reply error: "+QString::number(reply->error())+" "+reply->errorString());
+        qCritical("requestFinised reply error: "+QString::number(reply->error())+" "+reply->errorString());
         QList<QByteArray> headers = reply->rawHeaderList();
         foreach(QByteArray h, headers){
-            g_log->error(QTextStream(h).readAll());
+            qCritical(QTextStream(h).readAll());
         }
         return;
     }else{
-        g_log->debug("requestFinised successfully: "+reply->url().toString());
+        qDebug("requestFinised successfully: "+reply->url().toString());
     }
 
     // handle replies of commits, commitlists and files and pings
@@ -140,7 +140,7 @@ void HttpClientRepo::requestFinished(QNetworkReply* reply)
             // add the pong and its time to a limited length queue
             m_lastPingTime = QDateTime::currentDateTime();
         }else if (action == "file"){
-            g_log->debug(QString("HttpClientRepo::requestFinished() file %1 size: %2").arg(file_path, QString::number(reply->size())));
+            qDebug(QString("HttpClientRepo::requestFinished() file %1 size: %2").arg(file_path, QString::number(reply->size())));
             // files will be written as bytes are received.. so file should be written by now
         }else if (action == "history"){
             QStringList commit_list = bodystr.trimmed().split("\n");
@@ -148,7 +148,7 @@ void HttpClientRepo::requestFinished(QNetworkReply* reply)
             // and log files must be played in order
             // so we wait until all the commits have been downloaded until we
             // reload the state
-            g_log->debug(bodystr);
+            qDebug(bodystr);
             m_pendingLogDownloads = 0;
             foreach(QString commit_name, commit_list){
                 if (!m_logger->hasLogFile(commit_name)){
@@ -165,12 +165,12 @@ void HttpClientRepo::requestFinished(QNetworkReply* reply)
                 m_logger->reload();
             }
         }else if (action == "upload"){
-            g_log->debug("upload request finished");
+            qDebug("upload request finished");
         }else{
-            g_log->error("action not recognised: "+action);
+            qCritical("action not recognised: "+action);
         }
     }else{
-        g_log->error("could not parse request url: "+request_url);
+        qCritical("could not parse request url: "+request_url);
     }
 }
 
@@ -187,7 +187,7 @@ QUrl HttpClientRepo::urlFor(QString a, QString b, QString c, QString d)
     if (c.length() > 0) tokens << c;
     if (d.length() > 0) tokens << d;
     // might need to add authentication in here
-    g_log->debug("request url:"+tokens.join("/"));
+    qDebug("request url:"+tokens.join("/"));
     return QUrl(tokens.join("/"));
 }
 

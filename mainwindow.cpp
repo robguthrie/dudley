@@ -75,7 +75,7 @@ void MainWindow::refreshRepoButtonPressed()
     // get currently selected repo
     QModelIndex i = ui->repoTreeView->currentIndex();
     if (i.isValid()){
-        m_repoModel->repo(i)->updateState();
+        m_repoModel->repo(i)->detectChanges();
     }
 }
 
@@ -85,7 +85,7 @@ void MainWindow::addRepoButtonPressed()
 
 //    connect(repoDialog, SIGNAL(newSettings(QString)), this, SLOT(addRepo(QString)));
     if (repoDialog->exec()){
-        g_log->debug("hellooo? returned from addRepoDialog");
+        qDebug("hellooo? returned from addRepoDialog");
         addRepo(repoDialog->type(), repoDialog->path(), repoDialog->name());
     }
 }
@@ -107,10 +107,10 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
     Repo* repo = 0;
     g_log->info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
     if (type == "HttpClientFileRepo"){
-        g_log->debug("opening httpclientfilerepo");
+        qDebug("opening httpclientfilerepo");
         repo = new HttpClientRepo(this, path, name);
     }else if(type == "WorkingFileRepo"){
-        g_log->debug("opening workingfilerepo");
+        qDebug("opening workingfilerepo");
         repo = new LocalDiskRepo(this, path, name);
     }
 
@@ -123,7 +123,7 @@ bool MainWindow::addRepo(QString type, QString path, QString name)
             return repo->initialize();
         }
     }else{
-        g_log->debug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
+        qDebug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
         return false;
     }
 }

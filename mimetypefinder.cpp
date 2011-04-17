@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QStringList>
+#include <QDebug>
 #include "output.h"
 MimeTypeFinder::MimeTypeFinder()
 {
@@ -31,7 +32,7 @@ QString MimeTypeFinder::lookup(QString ext)
     if (m_mimes.contains(ext)){
         return m_mimes[ext];
     }else{
-        g_log->debug("no mimetype found for ext: "+ext);
+        qDebug() << "no mimetype found for ext: " << ext;
         return QString();
     }
 }

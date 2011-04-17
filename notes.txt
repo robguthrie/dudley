@@ -1,13 +1,28 @@
-use QUUID to give node a uid.
-consider the table holding all f
-build nodewide table of unique file ids, with frequency count,
+repo name is a dynamic sting assigned by the node...
+    nodename:path/to/repo/music
 
+node name is set on install
 
-ensure that httpclientfilerepo sorts the commitnames before loading them
-and ensure that filrepologger sorts them before loading them too
+seperate out functionality
+--------------------------
+journaler - scan repos for changes and update the log
+            need to record head state - current points to where the repo is at (ignoring local modifications).
 
-getFile and putFile should take offset and length and the http server needs to
-support range headers.. then we can resume downloads.. but i feel this is going
-to be a source of problems unless i get it right..
+webserver - serve file requests for mounted repos
+syncer - pull updated logs from the tracker
+         queue downloads for files
+         push new log files to the tracker
 
-test a big loop of httpclientfilerepos!!
+downloader - monitors the download queue and downloading files into repos
+
+get it compiling again..
+remove glog calls
+modularise functions so they communicate with signals and slots
+
+get tests finised for logger
+get tests written for webserverx
+write specs for syncer, downloader
+
+consider how to make both command line and gui modes
+
+consider node setup, daemons etc

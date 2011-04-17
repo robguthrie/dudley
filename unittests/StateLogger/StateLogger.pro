@@ -14,19 +14,22 @@ CONFIG   -= app_bundle
 
 TEMPLATE = app
 
-LIBS += -L/home/rob/src/qjson/lib -lqjson
-INCLUDEPATH = ../.. /home/rob/src/qjson/src
-
-
 SOURCES +=  ../../statelogger.cpp \
-            ../../statediffop.cpp \
-            ../../statediff.cpp \
-            ../../state.cpp
+            ../../stateop.cpp \
+            ../../state.cpp \
+            ../../fileinfo.cpp \
+            ../../mimetypefinder.cpp
 
 HEADERS += ../../statelogger.h \
-           ../../statediffop.h \
-           ../../statediff.h \
-           ../../state.h
+           ../../stateop.h \
+           ../../state.h \
+           ../../fileinfo.h \
+           ../../mimetypefinder.h
 
 SOURCES += tst_stateloggertest.cpp
 DEFINES += SRCDIR=\\\"$$PWD/\\\"
+
+unix:!symbian: LIBS += -L$$PWD/../../../qjson/build/lib/ -lqjson
+
+INCLUDEPATH += $$PWD/../../../qjson/src
+DEPENDPATH += $$PWD/../../../qjson/src

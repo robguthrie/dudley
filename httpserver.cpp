@@ -58,7 +58,7 @@ void HttpServer::processDisconnected()
 void HttpServer::processError()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
-    g_log->debug("Server::processError: "+socket->errorString());
+    qDebug("Server::processError: "+socket->errorString());
 }
 
 void HttpServer::processReadyRead()
@@ -85,7 +85,7 @@ void HttpServer::processReadyRead()
 
 void HttpServer::processRequestFinished()
 {
-    g_log->debug("processRequestFinished");
+    qDebug("processRequestFinished");
     printStatus();
     HttpController* controller = (HttpController*) sender();
     m_openRequests.remove(controller->socket());
@@ -108,7 +108,7 @@ void HttpServer::processResponseFinished()
 
 void HttpServer::processResponseWritten()
 {
-    g_log->debug("processResponseWritten");
+    qDebug("processResponseWritten");
     HttpController* controller = (HttpController*) sender();
     m_controllers[controller->socket()].removeAll(controller); // its really not removeAll
     controller->deleteLater();

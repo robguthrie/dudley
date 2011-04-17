@@ -8,36 +8,28 @@
 #include "mimetypefinder.h"
 
 MimeTypeFinder FileInfo::mimeTypeFinder = MimeTypeFinder();
-FileInfo::FileInfo(QObject* parent): QObject(parent) {}
 
-FileInfo::FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes)
-    :QObject(parent)
+FileInfo::FileInfo()
 {
-    m_filePath = filePath;
-    m_sizeInBytes = sizeInBytes;
 }
 
-FileInfo::FileInfo(QObject* parent, QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
-    :QObject(parent)
+FileInfo::FileInfo(QString filePath, qint64 size)
 {
     m_filePath = filePath;
-    update(sizeInBytes, modifiedAt, sha1);
+    m_size = size;
 }
 
-FileInfo::FileInfo(const FileInfo &f)
-    :QObject(f.parent())
+FileInfo::FileInfo(QString filePath, qint64 size, QDateTime modifiedAt, QString sha1)
 {
-    m_filePath = f.m_filePath;
-    m_modifiedAt = f.m_modifiedAt;
-    m_sizeInBytes = f.m_sizeInBytes;
-    m_sha1 = f.m_sha1;
+    m_filePath = filePath;
+    update(size, modifiedAt, sha1);
 }
 
 // we call this when updating collection from log file
-void FileInfo::update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
+void FileInfo::update(qint64 size, QDateTime modifiedAt, QString sha1)
 {
     m_modifiedAt = modifiedAt;
-    m_sizeInBytes = sizeInBytes;
+    m_size = size;
     m_sha1 = sha1;
 }
 
@@ -47,15 +39,15 @@ void FileInfo::rename(QString newFilePath)
 }
 
 // are is the file (namelessly) identical to another
-bool FileInfo::isIdenticalTo(FileInfo *fi)
+bool FileInfo::isIdenticalTo(FileInfo fi) const
 {
-   return ((m_size == fi->size()) &&
-           (m_sha1 == fi->fingerPrint()));
+   return (m_size == fi.size()) && (m_sha1 == fi.fingerPrint());
 }
 
 // try to cheaply detect change in a file
 // we just compare mtime and size....
-bool FileInfo::seemsIdenticalTo(QDateTime lastModified, qint64 size){
+bool FileInfo::sameModifiedAtAndSize(QDateTime lastModified, qint64 size) const
+{
     return (m_modifiedAt.toString(Qt::ISODate) == lastModified.toString(Qt::ISODate)) &&
            (m_size == size);
 }
@@ -98,18 +90,18 @@ QString FileInfo::fileName() const
 
 qint64 FileInfo::size() const
 {
-    return m_sizeInBytes;
+    return m_size;
 }
 
 void FileInfo::setSize(qint64 size)
 {
-    m_sizeInBytes = size;
+    m_size = size;
 }
 
 QString FileInfo::toString() const
 {
     QStringList list;
-    list << m_sha1 << QString::number(m_sizeInBytes) << m_filePath;
+    list << m_sha1 << QString::number(m_size) << m_filePath;
     return list.join(",");
 }
 

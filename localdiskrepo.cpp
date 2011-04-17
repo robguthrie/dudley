@@ -46,22 +46,22 @@ QIODevice* LocalDiskRepo::putFile(QString file_path)
     if (f->open(QIODevice::WriteOnly | QIODevice::Truncate)){
         return f;
     }else{
-        g_log->error("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(file_path));
+        qCritical("Could not open temporaryFileDevice on "+this->name()+": "+this->temporaryFilePath(file_path));
         return 0;
     }
 }
 
 void LocalDiskRepo::putFileComplete(QIODevice* device, QString file_path)
 {
-    g_log->debug("saving file");
+    qDebug("saving file");
     disconnect(device, SIGNAL(aboutToClose()), this, SLOT(putFileFailed()));
     QFile* f = (QFile*) device;
     if (!QFile::exists(absoluteFilePath(file_path))){
-        g_log->debug("renaming writebuffer and closing");
+        qDebug("renaming writebuffer and closing");
         f->rename(absoluteFilePath(file_path));
     }else{
         // keeping as temporary
-        g_log->error("file with file_path:"+file_path+" already exists");
+        qCritical("file with file_path:"+file_path+" already exists");
         f->close();
    }
 }
@@ -164,7 +164,7 @@ QString LocalDiskRepo::readFingerPrint(QFile* d)
         }
         return hash.result().toHex();
     }else{
-        g_log->error("could not open device to read fingerprint");
+        qCritical("could not open device to read fingerprint");
         return "";
     }
 }
