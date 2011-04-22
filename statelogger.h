@@ -20,7 +20,7 @@ public:
     void modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
     void removeFile(QString file_path);
     void renameFile(QString file_path, QString new_file_path);
-    bool acceptChanges();
+    int  acceptChanges();
     void reload();
 
 private:

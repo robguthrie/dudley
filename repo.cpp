@@ -1,6 +1,6 @@
 #include "repo.h"
 #include "statelogger.h"
-#include "output.h"
+#include <QCoreApplication>
 Repo::Repo(QObject *parent, QString path, QString name)
     :QObject(parent), m_path(path), m_name(name)
 {
@@ -26,22 +26,23 @@ bool Repo::isReady() const
     return canReadData() && m_logger && m_logger->isReady();
 }
 
-bool Repo::initialize()
+bool Repo::initialise()
 {
     if (canReadData()){
         if (m_logger->initialize()){
             return true;
         }else{
-            qCritical("Cannot initialize logger");
+            qCritical() << "Cannot initialize logger";
         }
     }else{
-        qCritical(QString("Can't read data: ").append(m_path));
+        qCritical() << "Can't read data: " << m_path;
     }
     return false;
 }
 
 void Repo::detectChanges()
 {
+    State* state = m_logger->state();
     QStringList found_files = readFilePaths();
 
     // checking for known files
@@ -67,7 +68,7 @@ void Repo::detectChanges()
         // and we only want to read the sha1 if the mtime has changed
         FileInfo stored_fi = state->fileInfoByFilePath(file_path);
         QFileInfo qfi(m_path+'/'+file_path);
-        if (!stored_fi->sameModifiedAtAndSize(qfi.lastModified(), qfi.size())){
+        if (!stored_fi.sameModifiedAtAndSize(qfi.lastModified(), qfi.size())){
             // file has changed on disk but filename is the same.
             // record the new values for the file
             m_logger->modifyFile(file_path, qfi.size(), qfi.lastModified(),
@@ -79,22 +80,23 @@ void Repo::detectChanges()
     bool file_was_renamed;
     foreach(file_path, unknown_file_paths){
         file_was_renamed = false;
-        FileInfo *unknown_fi = readFileInfo(file_path);
+        FileInfo unknown_fi = readFileInfo(file_path);
         foreach(QString missing_file_path, missing_file_paths){
             QCoreApplication::processEvents();
-            FileInfo *missing_fi = state->fileInfoByFilePath(missing_file_path);
-            if (missing_fi->isIdenticalTo(unknown_fi)){
+            FileInfo missing_fi = state->fileInfoByFilePath(missing_file_path);
+            if (missing_fi.isIdenticalTo(unknown_fi)){
                 // this unknown file is actually a missing file renamed
                 file_was_renamed = true;
                 missing_file_paths.removeAll(missing_file_path);
-                unknown_found_file_paths.removeAll(file_path);
+                unknown_file_paths.removeAll(file_path);
                 m_logger->renameFile(missing_file_path, file_path);
             }
         }
 
         // add the file as new to the collection
         if (!file_was_renamed){
-            m_logger->addFile(unknown_fi);
+            m_logger->addFile(unknown_fi.filePath(), unknown_fi.size(),
+                              unknown_fi.modifiedAt(), unknown_fi.fingerPrint());
         }
     }
 

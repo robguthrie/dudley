@@ -52,7 +52,7 @@ bool FileInfo::sameModifiedAtAndSize(QDateTime lastModified, qint64 size) const
            (m_size == size);
 }
 
-QDateTime FileInfo::lastModified() const
+QDateTime FileInfo::modifiedAt() const
 {
     return m_modifiedAt;
 }

@@ -1,11 +1,12 @@
 #ifndef FILEREPO_H
 #define FILEREPO_H
 
-#include "state.h"
 #include <QObject>
 #include <QString>
 #include <QIODevice>
 #include <QSettings>
+
+#include "state.h"
 
 class Repo : public QObject
 {
@@ -16,20 +17,20 @@ public:
     virtual QString path() const;
     virtual QString logPath();
     virtual bool isReady() const;
-    virtual bool initialize();
+    virtual bool initialise();
     void detectChanges();
     virtual StateLogger* logger();
     virtual QMap<QString, QVariant> settings();
     virtual QString type() const = 0;
     virtual bool canReadData() const = 0;
-    virtual bool fileExists(FileInfo* file_info) const = 0;
+    virtual bool fileExists(FileInfo file_info) const = 0;
     virtual FileInfo readFileInfo(QString filePath) = 0;
     virtual FileInfo readFileInfoCheap(QString filePath) = 0;
     virtual QStringList readFilePaths() = 0;
     virtual QString readFingerPrint(QString filePath) = 0;
     //    virtual bool hasFile(FileInfo fileInfo) const = 0;
     // the returned file should be open
-    virtual QIODevice* getFile(FileInfo* fileInfo) = 0;
+    virtual QIODevice* getFile(FileInfo fileInfo) = 0;
     virtual QIODevice* putFile(QString file_path) = 0;
     virtual void putFileComplete(QIODevice* device, QString file_path) = 0;
 

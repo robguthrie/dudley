@@ -134,13 +134,16 @@ void State::addFile(QString file_path, qint64 size, QDateTime modified_at, QStri
 void State::modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
 {
     if (m_files.contains(file_path)){
+        qDebug() << "called modify file with: " << file_path << sha1;
         // update existing without touching disk
         // likely (inevitable even) that the sha1 has changed.. so need to pull the old sha1 and insert the new
         FileInfo file_info = m_files.value(file_path);
         QString old_sha1 = file_info.fingerPrint();
         m_fingerprints.remove(old_sha1);
+        m_files.remove(file_path);
         file_info.update(size, modified_at, sha1);
         m_fingerprints.insert(sha1, file_info);
+        m_files.insert(file_path, file_info);
     }else{
         qCritical() << "modify state for fileinfo which does not exist: " << file_path << ", " << sha1;
     }
@@ -162,8 +165,10 @@ bool State::renameFile(QString file_path, QString new_file_path)
     if (m_files.contains(file_path)){
         FileInfo file_info = m_files.value(file_path);
         m_files.remove(file_path);
+        m_fingerprints.remove(file_info.fingerPrint());
         file_info.rename(new_file_path);
         m_files.insert(new_file_path, file_info);
+        m_fingerprints.insert(file_info.fingerPrint(), file_info);
         return true;
     }else{
         return false;

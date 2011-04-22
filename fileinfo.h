@@ -21,12 +21,12 @@ public:
     QString   fileName()     const;
     qint64    size()         const;
     QString   fingerPrint()  const;
-    QDateTime lastModified() const;
+    QDateTime modifiedAt() const;
     QString   mimeType()     const;
     QString   toString()     const;
 
     bool isIdenticalTo(FileInfo fi) const;
-    bool sameModifiedAtAndSize(QDateTime lastModified, qint64 size) const;
+    bool sameModifiedAtAndSize(QDateTime modifiedAt, qint64 size) const;
 
 public:
     void update(qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);

@@ -14,6 +14,7 @@ StateLogger::StateLogger(QObject* parent, QString logsDir)
     :QObject(parent), m_logsDir(logsDir)
 {
     m_state = new State(this);
+    reload();
 }
 
 StateLogger::~StateLogger()
@@ -91,19 +92,23 @@ void StateLogger::renameFile(QString file_path, QString new_file_path)
 }
 
 /* merge any changes into the state, and save a new diff log to disk */
-bool StateLogger::acceptChanges(){
-    if (m_stateOps.size() > 0){
-        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
+int StateLogger::acceptChanges(){
+    int num_changes = m_stateOps.size();
+    if (num_changes > 0){
         QByteArray body = serializeStateOps(m_stateOps);
+        QCryptographicHash hash(QCryptographicHash::Sha1);
+        hash.addData(body);
+        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
+        commit_name.append(hash.result().toHex());
         if (writeLogFile(commit_name, body)){
             preformChangesOnState(m_stateOps);
             m_stateOps.clear();
-            return true;
+            qDebug() << "wrote log file: " << commit_name;
         }else{
             qCritical() << "could not write log file: " << commit_name;
         }
     }
-    return false;
+    return num_changes;
 }
 
 /* reload the state from disk, and drop any changes */
@@ -210,7 +215,7 @@ QStringList StateLogger::logNames() const
     dir.setSorting(QDir::Name);
     QStringList filenames = dir.entryList();
     QStringList lognames;
-    QRegExp valid_rx("(\\d+)\\.log");
+    QRegExp valid_rx("(\\w+)\\.log");
     foreach(QString name, filenames){
         if (valid_rx.exactMatch(name)){
             lognames << valid_rx.cap(1);
