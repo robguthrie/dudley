@@ -14,12 +14,14 @@ StateLogger::StateLogger(QObject* parent, QString logsDir)
     :QObject(parent), m_logsDir(logsDir)
 {
     m_state = new State(this);
+    m_stateDiff = new StateDiff();
     reload();
 }
 
 StateLogger::~StateLogger()
 {
     delete m_state;
+    delete m_stateDiff;
 }
 
 /* create directory to store log files
@@ -58,7 +60,7 @@ void StateLogger::addFile(QString file_path, qint64 size, QDateTime modified_at,
     op.setSize(size);
     op.setModifiedAt(modified_at);
     op.setFingerPrint(sha1);
-    m_stateOps << op;
+    m_stateDiff->stateOps()->append(op);
 }
 
 /* call this to log that a file has been modified in a repo */
@@ -71,7 +73,7 @@ void StateLogger::modifyFile(QString file_path, qint64 size, QDateTime modified_
     op.setSize(size);
     op.setModifiedAt(modified_at);
     op.setFingerPrint(sha1);
-    m_stateOps << op;
+    m_stateDiff->stateOps()->append(op);
 }
 
 void StateLogger::removeFile(QString file_path)
@@ -79,7 +81,7 @@ void StateLogger::removeFile(QString file_path)
     StateOp op;
     op.setAction("RemoveFile");
     op.setFilePath(file_path);
-    m_stateOps << op;
+    m_stateDiff->stateOps()->append(op);
 }
 
 void StateLogger::renameFile(QString file_path, QString new_file_path)
@@ -88,21 +90,23 @@ void StateLogger::renameFile(QString file_path, QString new_file_path)
     op.setAction("RenameFile");
     op.setFilePath(file_path);
     op.setNewFilePath(new_file_path);
-    m_stateOps << op;
+    m_stateDiff->stateOps()->append(op);
 }
 
 /* merge any changes into the state, and save a new diff log to disk */
 int StateLogger::acceptChanges(){
-    int num_changes = m_stateOps.size();
+    int num_changes = m_stateDiff->stateOps()->size();
     if (num_changes > 0){
-        QByteArray body = serializeStateOps(m_stateOps);
+        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
+        m_stateDiff->setName(commit_name);
+        QByteArray body = m_stateDiff->serialize();
         QCryptographicHash hash(QCryptographicHash::Sha1);
         hash.addData(body);
-        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
         commit_name.append(hash.result().toHex());
         if (writeLogFile(commit_name, body)){
-            preformChangesOnState(m_stateOps);
-            m_stateOps.clear();
+            preformChangesOnState(m_stateDiff->stateOps());
+            delete m_stateDiff;
+            m_stateDiff = new StateDiff();
             qDebug() << "wrote log file: " << commit_name;
         }else{
             qCritical() << "could not write log file: " << commit_name;
@@ -118,15 +122,15 @@ void StateLogger::reload()
     QStringList log_names = logNames();
     foreach(QString name, log_names){
         QByteArray json_ba = readLogFile(name);
-        QList<StateOp> state_ops = deserializeStateOps(json_ba);
-        preformChangesOnState(state_ops);
+        StateDiff* state_diff = new StateDiff(json_ba);
+        preformChangesOnState(state_diff->stateOps());
     }
 }
 
-void StateLogger::preformChangesOnState(QList<StateOp> &state_ops)
+void StateLogger::preformChangesOnState(QList<StateOp> *state_ops)
 {
     StateOp op;
-    foreach(op, state_ops){
+    foreach(op, *state_ops){
         QString action = op.action();
         if (action == "AddFile"){
             m_state->addFile(op.filePath(), op.size(), op.modifiedAt(), op.fingerPrint());
@@ -138,39 +142,6 @@ void StateLogger::preformChangesOnState(QList<StateOp> &state_ops)
             m_state->removeFile(op.filePath());
         }
     }
-}
-
-QByteArray StateLogger::serializeStateOps(QList<StateOp> &state_ops) const
-{
-    QVariantList list;
-    StateOp op;
-    foreach(op, state_ops){
-        qDebug() << op.toString();
-        list << op.toVariant();
-    }
-    QVariant v(list);
-    QJson::Serializer serializer;
-    return serializer.serialize(v);
-}
-
-QList<StateOp> StateLogger::deserializeStateOps(QByteArray json_ba) const
-{
-    QJson::Parser parser;
-    bool ok;
-    QVariant vlist = parser.parse(json_ba, &ok).toList();
-    if (!ok) {
-        qFatal("An error occurred during logfile parsing");
-        exit(1);
-    }
-    QVariantList list = vlist.toList();
-    QList<StateOp> state_ops;
-    QVariant v;
-    foreach(v, list){
-        StateOp op;
-        op.fromVariant(v);
-        state_ops << op;
-    }
-    return state_ops;
 }
 
 QByteArray StateLogger::readLogFile(QString name) const

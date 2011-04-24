@@ -58,7 +58,7 @@ void HttpServer::processDisconnected()
 void HttpServer::processError()
 {
     QTcpSocket* socket = (QTcpSocket*) sender();
-    qDebug("Server::processError: "+socket->errorString());
+    qDebug() << "Server::processError: " << socket->errorString();
 }
 
 void HttpServer::processReadyRead()

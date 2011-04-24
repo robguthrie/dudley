@@ -11,7 +11,6 @@ public:
 private Q_SLOTS:
     void testInitialize();
     void testCreateLog();
-    void testModifications();
 };
 
 StateLoggerTest::StateLoggerTest()

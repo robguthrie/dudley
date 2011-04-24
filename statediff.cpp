@@ -8,9 +8,43 @@
 #include <QVariantMap>
 #include "fileinfo.h"
 
-StateDiff::StateDiff(QObject* parent)
-    :QObject(parent)
+StateDiff::StateDiff()
 {
+    m_stateOps = new QList<StateOp>;
+}
+
+StateDiff::StateDiff(QByteArray json_ba)
+{
+    m_stateOps = new QList<StateOp>;
+    QJson::Parser parser;
+    bool ok;
+    QVariantMap vmap = parser.parse(json_ba, &ok).toMap();
+    if (!ok) {
+        qFatal("An error occurred during logfile parsing");
+        exit(1);
+    }
+    QVariantList state_ops = vmap["state_ops"].toList();
+    qDebug() << state_ops;
+    QVariant v;
+    foreach(v, state_ops){
+        StateOp op;
+        op.fromVariant(v);
+        m_stateOps->append(op);
+    }
+}
+
+QByteArray StateDiff::serialize() const
+{
+    QVariantMap vmap;
+    vmap.insert("name", m_name);
+    QVariantList vlist;
+    StateOp op;
+    foreach(op, *m_stateOps){
+        vlist << op.toVariant();
+    }
+    vmap.insert("state_ops", vlist);
+    QJson::Serializer serializer;
+    return serializer.serialize(vmap);
 }
 
 QString StateDiff::name() const
@@ -18,74 +52,12 @@ QString StateDiff::name() const
     return m_name;
 }
 
-//void StateDiff::appendOp(StateDiffOp* op)
-//{
-//    m_diffOps.append(op);
-//}
-
-QVariantList StateDiff::diffOps() const
-{
-    QVariantList list;
-    foreach(StateOp* op, m_diffOps){
-        list << QVariant(op->toList());
-    }
-
-    return list;
-}
-
-QList<StateOp*> StateDiff::diffOpPtrs() const
-{
-    return m_diffOps;
-}
-
 void StateDiff::setName(QString name)
 {
     m_name = name;
 }
 
-void StateDiff::setDiffOps(QVariantList list)
+QList<StateOp>* StateDiff::stateOps() const
 {
-    foreach(QVariant v, list){
-        StateOp *op = new StateOp();
-        op->fromList(v.toList());
-        m_diffOps << op;
-    }
-}
-
-void StateDiff::addFile(FileInfo* fi)
-{
-    addFile(fi->filePath(), fi->size(), fi->lastModified(), fi->fingerPrint());
-}
-
-void StateDiff::modifyFile(FileInfo* fi)
-{
-    modifyFile(fi->filePath(), fi->size(), fi->lastModified(), fi->fingerPrint());
-}
-
-void StateDiff::addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
-{
-    StateOp* op = new StateOp(this);
-    op->addFile(filePath, sizeInBytes, modifiedAt,  sha1);
-    m_diffOps << op;
-}
-
-void StateDiff::modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1)
-{
-    StateOp* op = new StateOp(this);
-    op->modifyFile(filePath, sizeInBytes, modifiedAt,  sha1);
-    m_diffOps << op;
-}
-
-void StateDiff::removeFile(QString file_path)
-{
-    StateOp* op = new StateOp(m_diff);
-    op->removeFile(file_path);
-    m_diffOps << op;
-}
-
-void StateDiff::renameFile(QString file_path, QString new_file_path)
-{
-    StateOp* op = new StateOp(m_diff);
-    op->renameFile(file_path, new_file_path);
-    m_diffOps << op;
+    return m_stateOps;
 }

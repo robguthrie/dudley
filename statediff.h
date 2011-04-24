@@ -2,32 +2,24 @@
 #define STATEDIFF_H
 #include <QObject>
 #include <QList>
-#include <statediffop.h>
+#include "stateop.h"
 
 class FileInfo;
 
-class StateDiff : public QObject
+class StateDiff
 {
-    Q_OBJECT
-    Q_PROPERTY(QString name READ name WRITE setName);
-    Q_PROPERTY(QVariantList diffOps READ diffOps WRITE setDiffOps);
 
 public:
-    StateDiff(QObject* parent = 0);
-
+    StateDiff();
+    StateDiff(QByteArray json_ba);
     QString name() const;
-    QVariantList diffOps() const;
-    QList<StateOp*> diffOpPtrs() const;
     void setName(QString name);
-    void setDiffOps(QVariantList diffOps);
+    QByteArray serialize() const;
+    QList<StateOp>* stateOps() const;
 
-    void addFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    void modifyFile(QString filePath, qint64 sizeInBytes, QDateTime modifiedAt, QString sha1);
-    void removeFile(QString file_path);
-    void renameFile(QString file_path, QString new_file_path);
 private:
     QString m_name;
-    QList<StateOp*> m_diffOps;
+    QList<StateOp> *m_stateOps;
 };
 
 #endif // STATEDIFF_H

@@ -6,6 +6,7 @@
 #include "fileinfo.h"
 #include "state.h"
 #include "stateop.h"
+#include "statediff.h"
 class StateLogger : public QObject
 {
     Q_OBJECT
@@ -25,9 +26,7 @@ public:
 
 private:
     void playLogFile(QString name);
-    void preformChangesOnState(QList<StateOp> &state_ops);
-    QByteArray serializeStateOps(QList<StateOp> &state_ops) const;
-    QList<StateOp> deserializeStateOps(QByteArray json_ba) const;
+    void preformChangesOnState(QList<StateOp> *state_ops);
     QByteArray readLogFile(QString name) const;
     bool writeLogFile(QString name, QByteArray body) const;
     bool hasLogFile(QString name) const;
@@ -36,7 +35,7 @@ private:
 
     QString m_logsDir;
     State *m_state;
-    QList<StateOp> m_stateOps;
+    StateDiff *m_stateDiff;
 };
 
 

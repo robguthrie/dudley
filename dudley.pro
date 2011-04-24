@@ -6,8 +6,6 @@ QT += gui \
 TARGET = dudley
 CONFIG += console
 CONFIG -= app_bundle
-LIBS += -L/Users/rob/src/qjson/src -lqjson
-INCLUDEPATH = qjson
 TEMPLATE = app
 SOURCES += main.cpp \
     fileinfo.cpp \
@@ -29,7 +27,8 @@ SOURCES += main.cpp \
     repo.cpp \
     httpcontroller.cpp \
     httpview.cpp \
-    stateop.cpp
+    stateop.cpp \
+    statediff.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
@@ -52,7 +51,8 @@ HEADERS += fileinfo.h \
     readoncebuffer.h \
     httpcontroller.h \
     httpview.h \
-    stateop.h
+    stateop.h \
+    statediff.h
 
 # filetransfer.h
 # filerepomanager.h
@@ -62,3 +62,8 @@ OTHER_FILES += notes.txt \
     uploadform.html \
     apinotes.txt
 RESOURCES += icon.qrc
+
+unix:!symbian: LIBS += -L$$PWD/../qjson/build/lib/ -lqjson
+
+INCLUDEPATH += $$PWD/../qjson/src
+DEPENDPATH += $$PWD/../qjson/src
