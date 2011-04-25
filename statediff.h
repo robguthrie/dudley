@@ -13,12 +13,20 @@ public:
     StateDiff();
     StateDiff(QByteArray json_ba);
     QString name() const;
-    void setName(QString name);
-    QByteArray serialize() const;
+    bool isNew() const;
+    int numChanges() const;
+    QDateTime createdAt() const;
+    QByteArray stateOpsHash() const;
+    QByteArray serialize();
     QList<StateOp>* stateOps() const;
 
 private:
-    QString m_name;
+    QVariantList stateOpsVariantList() const;
+    QByteArray stateOpsHash(QVariantList &vlist) const;
+
+    QDateTime m_createdAt;
+    QDateTime m_serializedAt;
+    QByteArray m_stateOpsHash;
     QList<StateOp> *m_stateOps;
 };
 

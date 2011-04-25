@@ -17,20 +17,22 @@ public:
     bool isReady() const;
     QString logsDir() const;
     State* state() const;
+    StateDiff* stateDiff() const;
     void addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
     void modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
     void removeFile(QString file_path);
     void renameFile(QString file_path, QString new_file_path);
-    int  acceptChanges();
+    bool acceptChanges();
     void reload();
 
 private:
     void playLogFile(QString name);
     void preformChangesOnState(QList<StateOp> *state_ops);
     QByteArray readLogFile(QString name) const;
-    bool writeLogFile(QString name, QByteArray body) const;
+    bool writeLogFile(StateDiff* state_diff) const;
     bool hasLogFile(QString name) const;
     QString logFilePath(QString name) const;
+    QString tmpLogFilePath(QString name) const;
     QStringList logNames() const;
 
     QString m_logsDir;

@@ -50,7 +50,10 @@ State* StateLogger::state() const
 {
     return m_state;
 }
-
+StateDiff* StateLogger::stateDiff() const
+{
+    return m_stateDiff;
+}
 /* call this to log that a file has been added to a repo */
 void StateLogger::addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
 {
@@ -94,22 +97,13 @@ void StateLogger::renameFile(QString file_path, QString new_file_path)
 }
 
 /* merge any changes into the state, and save a new diff log to disk */
-int StateLogger::acceptChanges(){
-    int num_changes = m_stateDiff->stateOps()->size();
+bool StateLogger::acceptChanges(){
+    int num_changes = m_stateDiff->numChanges();
     if (num_changes > 0){
-        QString commit_name = QDateTime::currentDateTime().toString("yyyyMMddhhmmsszzz");
-        m_stateDiff->setName(commit_name);
-        QByteArray body = m_stateDiff->serialize();
-        QCryptographicHash hash(QCryptographicHash::Sha1);
-        hash.addData(body);
-        commit_name.append(hash.result().toHex());
-        if (writeLogFile(commit_name, body)){
+        if (writeLogFile(m_stateDiff)){
             preformChangesOnState(m_stateDiff->stateOps());
             delete m_stateDiff;
             m_stateDiff = new StateDiff();
-            qDebug() << "wrote log file: " << commit_name;
-        }else{
-            qCritical() << "could not write log file: " << commit_name;
         }
     }
     return num_changes;
@@ -156,13 +150,17 @@ QByteArray StateLogger::readLogFile(QString name) const
     return QByteArray();
 }
 
-bool StateLogger::writeLogFile(QString name, QByteArray body) const
+bool StateLogger::writeLogFile(StateDiff *state_diff) const
 {
-    QFile file(logFilePath(name));
+    QString name = state_diff->name();
+    QFile file(tmpLogFilePath(name));
     if (file.open(QIODevice::WriteOnly)){
-        file.write(body);
+        file.write(state_diff->serialize());
+        name = state_diff->name();
+        // yea confusing.. the name gets more informative after serialization
         file.close();
-        qDebug() << body.size() << " bytes written to logfile";
+        file.rename(logFilePath(name));
+        qDebug() << "wrote logfile: " << name;
         return true;
     }
     qCritical() << "could not write log: " << logFilePath(name);
@@ -179,6 +177,11 @@ QString StateLogger::logFilePath(QString name) const
     return QString(m_logsDir+"/"+name+".log");
 }
 
+QString StateLogger::tmpLogFilePath(QString name) const
+{
+    return QString(m_logsDir+"/"+name+".to_be_renamed");
+}
+
 QStringList StateLogger::logNames() const
 {
     QDir dir(m_logsDir);
@@ -186,9 +189,11 @@ QStringList StateLogger::logNames() const
     dir.setSorting(QDir::Name);
     QStringList filenames = dir.entryList();
     QStringList lognames;
-    QRegExp valid_rx("(\\w+)\\.log");
+    QRegExp valid_rx("(\\S+)\\.log");
     foreach(QString name, filenames){
+        qDebug() << name;
         if (valid_rx.exactMatch(name)){
+            qDebug() << "valid name";
             lognames << valid_rx.cap(1);
         }
     }

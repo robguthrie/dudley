@@ -8,3 +8,4 @@ Makefile*
 debug/
 *.moc
 *.pro.user*
+*.swp

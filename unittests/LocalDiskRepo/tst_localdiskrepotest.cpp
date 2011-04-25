@@ -39,7 +39,9 @@ void LocalDiskRepoTest::testCreateLocalDiskRepo()
     QVERIFY2(ldr.initialise(), "could not initialse test repo");
     QVERIFY2(ldr.isReady(), "Repo is not ready");
     ldr.detectChanges();
-    QVERIFY2(ldr.logger()->acceptChanges() == 2, "incorrect number of changes detected (add, add expected)");
+
+    QVERIFY2(ldr.logger()->stateDiff()->numChanges() == 2, "incorrect number of changes detected (add, add expected)");
+    QVERIFY2(ldr.logger()->acceptChanges(), "could not accept changes");
     QVERIFY2(ldr.canReadData(), "Cant read the repo dir");
 
     QFileInfo file1_qfi(file1_path);
@@ -60,12 +62,14 @@ void LocalDiskRepoTest::testCreateLocalDiskRepo()
     }
     commands.clear();
     ldr.detectChanges();
-    QVERIFY2(ldr.logger()->acceptChanges() == 2, "incorrect number of changes (modfiy, rename expected)");
+    QVERIFY2(ldr.logger()->stateDiff()->numChanges() == 2,"incorrect number of changes (modfiy, rename expected)");
+    QVERIFY2(ldr.logger()->acceptChanges(), "could not accept changes");
 
     command = QString("rm %1").arg(file1_path);
     system(command.toAscii().data());
     ldr.detectChanges();
-    QVERIFY2(ldr.logger()->acceptChanges()== 1, "delete not detected");
+    QVERIFY2(ldr.logger()->stateDiff()->numChanges() == 1, "delete not detected");
+    QVERIFY2(ldr.logger()->acceptChanges(), "changes not accepted");
 }
 
 QTEST_APPLESS_MAIN(LocalDiskRepoTest);

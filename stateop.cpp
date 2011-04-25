@@ -89,7 +89,7 @@ QVariant StateOp::toVariant() const
     if ((m_action == "AddFile") || (m_action == "ModifyFile")){
         list << QVariant(m_filePath)
              << QVariant(m_size)
-             << QVariant(m_modifiedAt)
+             << QVariant(m_modifiedAt.toString(Qt::ISODate))
              << QVariant(m_fingerPrint);
     }else if (m_action == "RemoveFile"){
         list << QVariant(m_filePath);
@@ -113,7 +113,7 @@ void StateOp::fromVariant(QVariant v)
         if (m_action == "AddFile" || m_action == "ModifyFile"){
             m_filePath = list.takeFirst().toString();
             m_size = list.takeFirst().toLongLong();
-            m_modifiedAt = list.takeFirst().toDateTime();
+            m_modifiedAt = QDateTime::fromString(list.takeFirst().toString(), Qt::ISODate);
             m_fingerPrint = list.takeFirst().toString();
         }else if(m_action == "RemoveFile"){
             m_filePath = list.takeFirst().toString();

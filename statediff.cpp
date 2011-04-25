@@ -6,11 +6,14 @@
 #include "qobjecthelper.h"
 
 #include <QVariantMap>
+#include <QCryptographicHash>
+#include <QDateTime>
 #include "fileinfo.h"
 
 StateDiff::StateDiff()
 {
     m_stateOps = new QList<StateOp>;
+    m_createdAt = QDateTime::currentDateTime();
 }
 
 StateDiff::StateDiff(QByteArray json_ba)
@@ -23,8 +26,11 @@ StateDiff::StateDiff(QByteArray json_ba)
         qFatal("An error occurred during logfile parsing");
         exit(1);
     }
+
+    m_createdAt = QDateTime::fromString(vmap["created_at"].toString(), Qt::ISODate);
+    m_serializedAt = QDateTime::fromString(vmap["serialized_at"].toString(), Qt::ISODate);
+    m_stateOpsHash = vmap["state_ops_hash"].toByteArray();
     QVariantList state_ops = vmap["state_ops"].toList();
-    qDebug() << state_ops;
     QVariant v;
     foreach(v, state_ops){
         StateOp op;
@@ -33,28 +39,61 @@ StateDiff::StateDiff(QByteArray json_ba)
     }
 }
 
-QByteArray StateDiff::serialize() const
+bool StateDiff::isNew() const
 {
+    return m_createdAt.isNull();
+}
+
+int StateDiff::numChanges() const
+{
+    return m_stateOps->size();
+}
+
+QString StateDiff::name() const
+{
+    return m_createdAt.toString(Qt::ISODate)+"_"+m_stateOpsHash;
+}
+
+QDateTime StateDiff::createdAt() const
+{
+    return m_createdAt;
+}
+
+QByteArray StateDiff::serialize()
+{
+    QVariantList state_ops = stateOpsVariantList();
+
+    m_serializedAt = QDateTime::currentDateTime();
+    m_stateOpsHash = stateOpsHash(state_ops);
     QVariantMap vmap;
-    vmap.insert("name", m_name);
+    vmap.insert("created_at", m_createdAt.toString(Qt::ISODate));
+    vmap.insert("serialized_at", m_serializedAt.toString(Qt::ISODate));
+    vmap.insert("state_ops_hash", m_stateOpsHash);
+    vmap.insert("state_ops", stateOpsVariantList());
+
+    QJson::Serializer serializer;
+    QByteArray body = serializer.serialize(vmap);
+    qDebug() << body;
+    return body;
+}
+
+
+QByteArray StateDiff::stateOpsHash(QVariantList &vlist) const
+{
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    QJson::Serializer serializer;
+    hash.addData(serializer.serialize(vlist));
+    return hash.result().toHex();
+}
+
+QVariantList StateDiff::stateOpsVariantList() const
+{
     QVariantList vlist;
     StateOp op;
     foreach(op, *m_stateOps){
         vlist << op.toVariant();
     }
-    vmap.insert("state_ops", vlist);
-    QJson::Serializer serializer;
-    return serializer.serialize(vmap);
-}
-
-QString StateDiff::name() const
-{
-    return m_name;
-}
-
-void StateDiff::setName(QString name)
-{
-    m_name = name;
+    return vlist;
 }
 
 QList<StateOp>* StateDiff::stateOps() const

@@ -15,6 +15,7 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 SOURCES +=  ../../statelogger.cpp \
+            ../../statediff.cpp \
             ../../stateop.cpp \
             ../../state.cpp \
             ../../fileinfo.cpp \
@@ -24,6 +25,7 @@ SOURCES +=  ../../statelogger.cpp \
             tst_localdiskrepotest.cpp
 
 HEADERS += ../../statelogger.h \
+           ../../statediff.h \
            ../../stateop.h \
            ../../state.h \
            ../../fileinfo.h \
