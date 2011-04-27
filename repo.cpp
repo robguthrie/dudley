@@ -1,14 +1,10 @@
 #include "repo.h"
 #include "statelogger.h"
 #include <QCoreApplication>
-Repo::Repo(QObject *parent, QString path, QString name)
-    :QObject(parent), m_path(path), m_name(name)
-{
-}
 
-QString Repo::name() const
+Repo::Repo(QObject *parent, QString path)
+    :QObject(parent), m_path(path)
 {
-    return m_name;
 }
 
 QString Repo::path() const
@@ -115,7 +111,6 @@ StateLogger* Repo::logger()
 QMap<QString, QVariant> Repo::settings()
 {
     QMap<QString, QVariant> m;
-    m["name"] = QVariant(this->name());
     m["path"] = QVariant(this->path());
     m["type"] = QVariant(this->type());
     return m;

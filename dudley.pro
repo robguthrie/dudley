@@ -28,7 +28,8 @@ SOURCES += main.cpp \
     httpcontroller.cpp \
     httpview.cpp \
     stateop.cpp \
-    statediff.cpp
+    statediff.cpp \
+    synchroniser.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
@@ -52,7 +53,8 @@ HEADERS += fileinfo.h \
     httpcontroller.h \
     httpview.h \
     stateop.h \
-    statediff.h
+    statediff.h \
+    synchroniser.h
 
 # filetransfer.h
 # filerepomanager.h

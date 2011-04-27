@@ -1,28 +1,30 @@
-repo name is a dynamic sting assigned by the node...
-    nodename:path/to/repo/music
+Synchroniser(repo, url)
+    local_lognames = repo->logger->logNames()
+    remote_lognames = get remote lognames from url
 
-node name is set on install
 
-seperate out functionality
---------------------------
-journaler - scan repos for changes and update the log
-            need to record head state - current points to where the repo is at (ignoring local modifications).
+    sync a repo
+        url to sync state against
+        sync state
+            QStringList server_state_diff_names
+            QList<StateDiff> pulled_state_diffs
+            pull
+                request list of statediffs from server
+                check for missing state diffs against repo state
+                request missing state diffs and instanciate into pull_state_diffs
+            push
+                push state_diffs not listed in server_state_diff_names
 
-webserver - serve file requests for mounted repos
-syncer - pull updated logs from the tracker
-         queue downloads for files
-         push new log files to the tracker
+            process pulled_state_diffs
+                if download queue is empty..
+                for oldest state_diff in pulled_state_diffs
+                    for each state_op
+                        if action == "add file" or "modify_file"
+                            copy state op to download queue
+                        if action =="rename"
+                            do it
+                        if action=="remove"
+                            do that too (youch!)
 
-downloader - monitors the download queue and downloading files into repos
-
-get it compiling again..
-remove glog calls
-modularise functions so they communicate with signals and slots
-
-get tests finised for logger
-get tests written for webserverx
-write specs for syncer, downloader
-
-consider how to make both command line and gui modes
-
-consider node setup, daemons etc
+    m_repos
+    for each repo

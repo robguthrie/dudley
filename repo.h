@@ -12,8 +12,7 @@ class Repo : public QObject
 {
     Q_OBJECT
 public:
-    Repo(QObject *parent = 0, QString path = "nopath", QString name = "noname");
-    virtual QString name() const;
+    Repo(QObject *parent = 0, QString path = "nopath");
     virtual QString path() const;
     virtual QString logPath();
     virtual bool isReady() const;
@@ -40,7 +39,6 @@ public slots:
 protected:
     StateLogger *m_logger;
     QString m_path;
-    QString m_name;
     QString m_log_path;
 };
 
