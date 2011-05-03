@@ -11,7 +11,7 @@ class LocalDiskRepo : public Repo
 {
     Q_OBJECT
 public:
-    LocalDiskRepo(QObject *parent, QString path, QString name);
+    LocalDiskRepo(QObject *parent, QString path);
     QString type() const;
     bool canReadData() const;
     bool fileExists(FileInfo fileInfo) const;

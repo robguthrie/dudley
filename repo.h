@@ -16,7 +16,7 @@ public:
     virtual QString path() const;
     virtual QString logPath();
     virtual bool isReady() const;
-    virtual bool initialise();
+    virtual bool initialize();
     void detectChanges();
     virtual StateLogger* logger();
     virtual QMap<QString, QVariant> settings();

@@ -22,7 +22,7 @@ bool Repo::isReady() const
     return canReadData() && m_logger && m_logger->isReady();
 }
 
-bool Repo::initialise()
+bool Repo::initialize()
 {
     if (canReadData()){
         if (m_logger->initialize()){

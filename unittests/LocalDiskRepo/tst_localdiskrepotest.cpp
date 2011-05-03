@@ -34,9 +34,9 @@ void LocalDiskRepoTest::testCreateLocalDiskRepo()
     }
     commands.clear();
 
-    LocalDiskRepo ldr(0, repo_dir, "testrepo");
+    LocalDiskRepo ldr(0, repo_dir);
     QVERIFY2(ldr.type()== "LocalDisk", "Wrong type of repo");
-    QVERIFY2(ldr.initialise(), "could not initialse test repo");
+    QVERIFY2(ldr.initialize(), "could not initialse test repo");
     QVERIFY2(ldr.isReady(), "Repo is not ready");
     ldr.detectChanges();
 

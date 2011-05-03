@@ -7,8 +7,8 @@
 #include "output.h"
 #include "filetransfer.h"
 
-LocalDiskRepo::LocalDiskRepo(QObject *parent, QString path, QString name)
-    :Repo(parent, path, name)
+LocalDiskRepo::LocalDiskRepo(QObject *parent, QString path)
+    :Repo(parent, path)
 {
     m_log_path = m_path + "/.dudley/logs";
     m_logger = new StateLogger(this, m_log_path);
@@ -46,8 +46,8 @@ QIODevice* LocalDiskRepo::putFile(QString file_path)
     if (f->open(QIODevice::WriteOnly | QIODevice::Truncate)){
         return f;
     }else{
-        qCritical() << "Could not open temporaryFileDevice on "
-                    << this->name() << ": " << this->temporaryFilePath(file_path);
+        qCritical() << "Could not open temporaryFileDevice on: "
+                    << this->temporaryFilePath(file_path);
         return 0;
     }
 }

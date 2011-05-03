@@ -3,10 +3,7 @@
 #include <iostream>
 #include <QCryptographicHash>
 #include <QDirIterator>
-#include "qobjecthelper.h"
-#include "serializer.h"
 #include "stateop.h"
-#include "parser.h"
 
 
 // logger is a file state history log
@@ -20,8 +17,8 @@ StateLogger::StateLogger(QObject* parent, QString logsDir)
 
 StateLogger::~StateLogger()
 {
-    delete m_state;
-    delete m_stateDiff;
+//    delete m_state;
+//    delete m_stateDiff;
 }
 
 /* create directory to store log files
@@ -100,8 +97,8 @@ void StateLogger::renameFile(QString file_path, QString new_file_path)
 bool StateLogger::acceptChanges(){
     int num_changes = m_stateDiff->numChanges();
     if (num_changes > 0){
-        if (writeLogFile(m_stateDiff)){
-            preformChangesOnState(m_stateDiff->stateOps());
+        if (saveStateDiff(m_stateDiff)){
+            preformChangesOnState(m_stateDiff);
             delete m_stateDiff;
             m_stateDiff = new StateDiff();
         }
@@ -115,14 +112,17 @@ void StateLogger::reload()
     m_state->clear();
     QStringList log_names = logNames();
     foreach(QString name, log_names){
-        QByteArray json_ba = readLogFile(name);
-        StateDiff* state_diff = new StateDiff(json_ba);
-        preformChangesOnState(state_diff->stateOps());
+        bool ok;
+        StateDiff sd = loadStateDiff(name, &ok);
+        if(ok){
+            preformChangesOnState(&sd);
+        }
     }
 }
 
-void StateLogger::preformChangesOnState(QList<StateOp> *state_ops)
+void StateLogger::preformChangesOnState(StateDiff *sd)
 {
+    QList<StateOp> *state_ops = sd->stateOps();
     StateOp op;
     foreach(op, *state_ops){
         QString action = op.action();
@@ -138,32 +138,30 @@ void StateLogger::preformChangesOnState(QList<StateOp> *state_ops)
     }
 }
 
-QByteArray StateLogger::readLogFile(QString name) const
+StateDiff StateLogger::loadStateDiff(QString name, bool *ok) const
 {
+    StateDiff sd;
+    *ok = false;
     if (hasLogFile(name)){
         QFile file(logFilePath(name));
         if (file.open(QIODevice::ReadOnly)) {
-           return file.readAll();
+            (*ok) = sd.fromJSON(file.readAll());
         }
     }
     qWarning() << "could not open file:" << logFilePath(name);
-    return QByteArray();
+    return sd;
 }
 
-bool StateLogger::writeLogFile(StateDiff *state_diff) const
+bool StateLogger::saveStateDiff(StateDiff *state_diff) const
 {
-    QString name = state_diff->name();
-    QFile file(tmpLogFilePath(name));
+    QFile file(tmpLogFilePath());
     if (file.open(QIODevice::WriteOnly)){
-        file.write(state_diff->serialize());
-        name = state_diff->name();
-        // yea confusing.. the name gets more informative after serialization
+        file.write(state_diff->toJSON());
+        file.rename(logFilePath(state_diff->name()));
         file.close();
-        file.rename(logFilePath(name));
-        qDebug() << "wrote logfile: " << name;
         return true;
     }
-    qCritical() << "could not write log: " << logFilePath(name);
+    qCritical() << "could not write log: ";
     return false;
 }
 
@@ -177,9 +175,9 @@ QString StateLogger::logFilePath(QString name) const
     return QString(m_logsDir+"/"+name+".log");
 }
 
-QString StateLogger::tmpLogFilePath(QString name) const
+QString StateLogger::tmpLogFilePath() const
 {
-    return QString(m_logsDir+"/"+name+".to_be_renamed");
+    return QString(m_logsDir+"/to_be_renamed.log");
 }
 
 QStringList StateLogger::logNames() const
@@ -191,10 +189,10 @@ QStringList StateLogger::logNames() const
     QStringList lognames;
     QRegExp valid_rx("(\\S+)\\.log");
     foreach(QString name, filenames){
-        qDebug() << name;
         if (valid_rx.exactMatch(name)){
-            qDebug() << "valid name";
             lognames << valid_rx.cap(1);
+        }else{
+            qDebug() << " invalid name log file name" << name;
         }
     }
     return lognames;

@@ -24,16 +24,16 @@ public:
     void renameFile(QString file_path, QString new_file_path);
     bool acceptChanges();
     void reload();
+    QStringList logNames() const;
+    StateDiff loadStateDiff(QString name, bool *ok) const;
 
 private:
     void playLogFile(QString name);
-    void preformChangesOnState(QList<StateOp> *state_ops);
-    QByteArray readLogFile(QString name) const;
-    bool writeLogFile(StateDiff* state_diff) const;
+    void preformChangesOnState(StateDiff *sd);
+    bool saveStateDiff(StateDiff* state_diff) const;
     bool hasLogFile(QString name) const;
     QString logFilePath(QString name) const;
-    QString tmpLogFilePath(QString name) const;
-    QStringList logNames() const;
+    QString tmpLogFilePath() const;
 
     QString m_logsDir;
     State *m_state;

@@ -11,23 +11,26 @@ class StateDiff
 
 public:
     StateDiff();
-    StateDiff(QByteArray json_ba);
+    bool fromJSON(QByteArray json);
+    bool fromVariant(QVariant v);
+    StateDiff(QVariant v);
+
     QString name() const;
     bool isNew() const;
     int numChanges() const;
     QDateTime createdAt() const;
     QByteArray stateOpsHash() const;
-    QByteArray serialize();
-    QList<StateOp>* stateOps() const;
-
+    QList<StateOp>* stateOps();
+    QVariant toVariant();
+    QByteArray toJSON();
 private:
     QVariantList stateOpsVariantList() const;
     QByteArray stateOpsHash(QVariantList &vlist) const;
 
+    QString m_name;
     QDateTime m_createdAt;
-    QDateTime m_serializedAt;
     QByteArray m_stateOpsHash;
-    QList<StateOp> *m_stateOps;
+    QList<StateOp> m_stateOps;
 };
 
 #endif // STATEDIFF_H
