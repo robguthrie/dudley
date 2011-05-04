@@ -76,10 +76,15 @@ void Synchronizer::loop()
                m_numPushes += 1;
                post("state_diffs", diff.toJSON());
            }else{
-               qCritical() << "failed to loadStateDiff";
+               qCritical() << "failed to loadStateDiff for push";
            }
        }else break;
     }
+
+    // if numPulls and numPushes == 0 and toPull and toPush == 0
+    // then presumably we have synchronized metadata
+    // now we want to compare the most recent state to the repo
+    // and see which files we need to download before we can recreate the state locally
 }
 
 QNetworkReply* Synchronizer::requestHistory()
