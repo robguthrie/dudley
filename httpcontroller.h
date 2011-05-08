@@ -69,13 +69,13 @@ private:
     void actionRoot();
     void actionFavicon();
     void actionBrowserUpload();
-    void actionHistory();
-    void actionCommit();
+//    void actionHistory();
+//    void actionCommit();
     void actionBrowse();
     void actionFileByFileName();
     void actionFileByFingerprint();
 
-    void setResponseContentFromRepo(Repo* repo, FileInfo* file_info);
+    void setResponseContentFromRepo(Repo* repo, FileInfo file_info);
 
     QString browseUploadForm(QString path);
     QString browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos);
@@ -100,7 +100,7 @@ private:
     QHash<QString, QString>     m_route_args;
 
     Repo*                       m_responseRepo;
-    FileInfo*                   m_responseFileInfo;
+    FileInfo                    m_responseFileInfo;
 };
 
 #endif // HTTPCONTROLLER_H

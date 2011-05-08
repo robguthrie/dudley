@@ -5,6 +5,22 @@
 #include <QList>
 
 #include "repo.h"
+#include "synchronizer.h"
+
+class RepoModelItem
+{
+public:
+    RepoModelItem(Synchronizer* sync, QString name);
+    QString name() const;
+    Synchronizer* s10r() const;
+    Synchronizer* synchronizer() const;
+    Repo* repo() const;
+
+private:
+    Synchronizer* m_synchronizer;
+    QString m_name;
+};
+
 /* a readonly model to display info about the locally mounted repos */
 class RepoModel : public QAbstractListModel
 {
@@ -17,21 +33,20 @@ public:
     QVariant headerData(int section,
                         Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const;
-    void insertRepo(Repo* repo);
-    bool addRepo(QString type, QString path, QString name);
-    void removeRepo(QModelIndex i);
-    bool hasRepo(QString name);
+    void insert(RepoModelItem rmi);
+    void remove(QModelIndex i);
+    bool hasRepo(QString name) const;
     Repo* repo(QString name) const;
     Repo* repo(QModelIndex i) const;
 
-    QStringList repoNames();
-    QList<Repo*> repoList();
+    QStringList names() const;
+    QList<RepoModelItem> list();
     void writeSettings(QSettings* s);
     void readSettings(QSettings* s);
 
 private:
     static QStringList columns;
-    QList<Repo*> m_repoList;
+    QList<RepoModelItem> m_list;
 
 };
 

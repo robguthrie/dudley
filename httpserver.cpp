@@ -4,6 +4,7 @@
 #include <QStringList>
 #include <QDateTime>
 #include <QUrl>
+#include <QNetworkInterface>
 #include <output.h>
 #include "httpserver.h"
 #include "httpcontroller.h"
@@ -23,13 +24,40 @@ HttpServer::HttpServer(QObject *parent, RepoModel* model, FileTransferManager* f
     connect(this, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
 }
 
+QString HttpServer::bestIpAddress() const
+{
+    QString ipAddress;
+    QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
+    // use the first non-localhost IPv4 address
+    for (int i = 0; i < ipAddressesList.size(); ++i) {
+        if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
+            ipAddressesList.at(i).toIPv4Address()) {
+            ipAddress = ipAddressesList.at(i).toString();
+            break;
+        }
+    }
+    // if we did not find one, use IPv4 localhost
+    if (ipAddress.isEmpty())
+        ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
+    return ipAddress;
+}
+
+QUrl HttpServer::url() const
+{
+   QString s("http://");
+   s += bestIpAddress();
+   s += ":";
+   s += QString::number(this->serverPort());
+   return QUrl(s);
+}
+
 void HttpServer::printStatus(QString a)
 {
-    g_log->info("server status: "+a);
-    g_log->info("Open Requests: "+QString::number(m_openRequests.size()));
+    qDebug() << "server status: " << a;
+    qDebug() << "Open Requests: " << m_openRequests.size();
     foreach(QList<HttpController*> list, m_controllers){
         foreach(HttpController* controller, list){
-            g_log->info(controller->statusReport());
+            qDebug() << controller->statusReport();
         }
     }
 }

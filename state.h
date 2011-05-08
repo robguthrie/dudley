@@ -6,33 +6,35 @@
 #include <QHash>
 #include <QDateTime>
 #include "fileinfo.h"
+#include "statediff.h"
 #include <QDebug>
-class StateLogger;
 
-class State : public QObject
+class State
 {
-    Q_OBJECT
 public:
-    State(QObject* parent = 0);
-    ~State();
-    QStringList filesInDir(QString path);
-    QStringList subDirectories(QString path);
-    bool knownFilePath(QString path);
-    bool knownFingerPrint(QString finger_print);
-    QStringList knownFilePaths(QStringList file_paths);
-    QStringList unknownFilePaths(QStringList file_paths);
-    QStringList missingFilePaths(QStringList file_paths);
-    FileInfo fileInfoByFilePath(QString file_path);
-    FileInfo fileInfoByFingerPrint(QString sha1);
-    friend class StateLogger;
+    QList<FileInfo> filesInDir(QString path) const;
+    QStringList subDirectories(QString path) const;
+    bool knownFilePath(QString path) const;
+    bool knownFingerPrint(QString finger_print) const;
+    QStringList knownFilePaths(QStringList file_paths) const;
+    QStringList unknownFilePaths(QStringList file_paths) const;
+    QStringList missingFilePaths(QStringList file_paths) const;
+    FileInfo fileInfoByFilePath(QString file_path) const;
+    FileInfo fileInfoByFingerPrint(QString sha1) const;
+    bool canPerformChanges(StateDiff &sd) const;
+    void performChanges(StateDiff &sd);
+    void clear();
 
 protected:
-    // manipulation
-    void clear();
+    bool canAddFile(QString file_path) const;
+    bool canModifyFile(QString file_path) const;
+    bool canRenameFile(QString file_path, QString new_file_path) const;
+    bool canRemoveFile(QString file_path) const;
+
     void addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
     void modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
-    bool removeFile(QString file_path);
-    bool renameFile(QString file_path, QString new_file_path);
+    void removeFile(QString file_path);
+    void renameFile(QString file_path, QString new_file_path);
 
     QHash<QString, FileInfo> m_files;
     QHash<QString, FileInfo> m_fingerprints;

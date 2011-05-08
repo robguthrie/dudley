@@ -14,9 +14,9 @@ private Q_SLOTS:
 private:
     QString setupEmptyDir(QString name) const;
     QString setupDirWithFiles(QString name) const;
-    QString startTracker() const;
+    QUrl startTracker() const;
     void waitAndListen(int secs) const;
-    int run(QString command) const;
+    void run(QString command) const;
 
 };
 
@@ -52,18 +52,22 @@ QString SynchronizerTest::setupDirWithFiles(QString name = "test_repo") const
     return dir;
 }
 
-QString SynchronizerTest::startTracker() const
+QUrl SynchronizerTest::startTracker() const
 {
     run("/usr/local/bin/mysql -uroot dudley_tracker_test < ../sqldumps/empty_state.sql");
     //    run("cd ../../../dudley_tracker/ && echo $PWD && RAILS_ENV=test /Users/rob/.rvm/gems/ruby-1.9.2-p180/bin/rails server -p 3456 &");
     //    QTest::qWait(4000);
-    return QString("http://localhost:3456/states/1");
+    return QUrl("http://localhost:3456/states/1");
 }
 
-int SynchronizerTest::run(QString command) const
+void SynchronizerTest::run(QString command) const
 {
-    qDebug() << command;
-    return system(command.toAscii().data());
+    if (system(command.toAscii().data()) == 0){
+        qDebug() << "success: " << command;
+    }else{
+        qDebug() << "failed: " << command;
+    }
+
 }
 
 void SynchronizerTest::waitAndListen(int secs = 1) const
@@ -103,14 +107,16 @@ void SynchronizerTest::testCase1()
        create localdir with files
        scan, accept changes, init synchronizer
        */
-    qDebug() << QDir::currentPath();
-    QString tracker_url = startTracker();
+    QUrl tracker_url = startTracker();
+    QUrl self_url = QUrl("http://localhost:54678/reponame");
     QString local_path = setupDirWithFiles();
-    LocalDiskRepo ldr(0, local_path);
-    ldr.initialize();
-    ldr.detectChanges();
-    ldr.logger()->acceptChanges();
-    Synchronizer sync(0, &ldr, tracker_url);
+    LocalDiskRepo repo(0, local_path);
+    repo.initialize();
+    StateDiff diff = repo.detectChanges();
+    QVERIFY2(diff.numChanges() == 2, "should have 2 changes");
+    QVERIFY2(repo.logger()->commitChanges(diff), "changes should be commited");
+
+    Synchronizer sync(0, &repo, tracker_url, self_url);
     QVERIFY2(sync.isReady(), "Synchronizer is not ready");
     QVERIFY2(!sync.isActive(), "Synchronizer should not be looping");
 
@@ -130,9 +136,6 @@ void SynchronizerTest::testCase1()
       */
     sync.loop();
     waitAndListen();
-    sync.loop();
-    sync.requestHistory();
-    waitAndListen();
 
     QVERIFY2(sync.stateDiffsToPush().count() == 0, "incorrect number of statediffs to push after loop");
     QVERIFY2(sync.stateDiffsToPull().count() == 0, "incorrect number of statediffs to pull affer loop");
@@ -142,17 +145,53 @@ void SynchronizerTest::testCase1()
       that we pushed earlier. lets try
       */
 
-    LocalDiskRepo nldr(0, setupEmptyDir("pull_repo"));
-    nldr.initialize();
-    nldr.detectChanges();
-    QVERIFY2(nldr.logger()->stateDiff()->numChanges() == 0, "new localdiskrepo should not have changes");
-    Synchronizer sync2(0, &nldr, tracker_url);
+    LocalDiskRepo repo2(0, setupEmptyDir("pull_repo"));
+    repo2.initialize();
+    diff = repo2.detectChanges();
+    QVERIFY2(diff.numChanges() == 0, "new localdiskrepo should not have changes");
+    QUrl self_url2("http://localhost:838383/notreal");
+    Synchronizer sync2(0, &repo2, tracker_url, self_url2);
     QVERIFY2(sync2.isReady(), "new syncer is not ready");
     sync2.requestHistory();
-    waitAndListen();
+    waitAndListen(); // wait for tacker response.. that will trigger historyrecieved
     QVERIFY2(sync2.stateDiffsToPull().count() == 1, "should have a statediff to pull");
     sync2.loop();
     waitAndListen();
+    QVERIFY2(sync2.stateDiffsToPull().count() == 0, "should have pulled statediff");
+
+
+    // check that we can registerSelf and also get peerlist
+    sync.registerSelf();
+    sync2.registerSelf();
+    waitAndListen();
+    sync.requestPeers();
+    waitAndListen();
+    qDebug() << sync.peerUrlStrings();
+    qDebug() << self_url2.toString();
+    QVERIFY2(sync.peerUrlStrings().contains(self_url2.toString()), "should have other sync as peer");
+
+
+    /*
+      ok so now there is a statediff to pull.. and it is going to tell us to download a couple
+      of files if we wanna be a cool kid.
+      WHAT TO DO?
+      well.. we need to get that statediff..
+      then we need to push the changes into the repo
+
+      if repo.detectChanges.size() == 0
+        if repo.state().canPerformChanges(diff)
+            repo.performChanges(diff)
+
+      that would work fine.. except for newfile source resolution..
+      when a repo wants to perform an addfile..
+      it needs to request the file from some service
+        FileFinder
+            tracker_url
+                get http://localhost:3456/urls_for/?file_path,size,fingerprint
+                returns json array of urls to find the file
+
+            requestFile(file_info,
+      */
 }
 
 QTEST_MAIN(SynchronizerTest);

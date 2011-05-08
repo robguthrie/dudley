@@ -16,7 +16,6 @@ HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
     m_repoModel = m_server->repoModel();
     m_transferManager = m_server->transferManager();
     m_responseRepo = 0;
-    m_responseFileInfo = 0;
     setupRoutes();
 
     m_request = new HttpRequest(this);
@@ -34,8 +33,8 @@ HttpController::HttpController(HttpServer *parent, QTcpSocket* socket) :
 
 void HttpController::start()
 {
-    qDebug("start controller");
-    qDebug(statusReport());
+    qDebug() << "start controller";
+    qDebug() << statusReport();
     setState(ReadingRequest);
     processReadyRead();
 }
@@ -91,7 +90,7 @@ void HttpController::setupRoutes()
     // naked is an overloaded nice looking route for each repo
     // it should give the most normal looking urls for your files
     // i mean overloaded in that it does not specify the action name in the path
-    QStringList repo_names = m_repoModel->repoNames();
+    QStringList repo_names = m_repoModel->names();
     m_routes["naked"] = QRegExp("/("+(repo_names.join("|"))+")(/.*)?");
     m_route_args["naked"] = "repo_name file_path";
 }
@@ -156,9 +155,9 @@ void HttpController::processRequestFinished()
     }else if (m_route_key == "file"){
         actionFileByFingerprint();
     }else if (m_route_key == "history"){
-        actionHistory();
+//        actionHistory();
     }else if (m_route_key == "commit"){
-        actionCommit();
+//        actionCommit();
     }else if (m_route_key == "browse"){
         actionBrowse();
     }else if (m_route_key == "ping"){
@@ -168,8 +167,8 @@ void HttpController::processRequestFinished()
             actionBrowserUpload();
         }else{
             // detect if this is a file or directory request before deciding action
-            if ((m_repoModel->hasRepo(m_params["repo_name"])) &&
-                 m_repoModel->repo(m_params["repo_name"])->fileInfoByFilePath(m_params["file_path"])){
+            if (m_repoModel->hasRepo(m_params["repo_name"]) &&
+                m_repoModel->repo(m_params["repo_name"])->state()->knownFilePath(m_params["file_path"])){
                 actionFileByFileName();
             }else{
                 actionBrowse();
@@ -190,10 +189,10 @@ void HttpController::sendResponse()
 {
     qDebug("sending response now");
     FileTransfer* ft;
-    if (m_responseFileInfo && m_responseRepo){
+    if (m_responseRepo){
         // the response is a file from a repo
-        ft = m_transferManager->copy(m_responseFileInfo->filePath(), m_responseFileInfo->size());
-        ft->setSource(m_responseRepo->name(), m_response->contentDevice());
+        ft = m_transferManager->copy(m_responseFileInfo.filePath(), m_responseFileInfo.size());
+        ft->setSource(m_responseRepo->path(), m_response->contentDevice());
         ft->setDest(m_socket->peerAddress().toString(), m_socket);
     }else{
         // the response is generated
@@ -211,7 +210,7 @@ void HttpController::sendResponse()
 void HttpController::actionRoot()
 {
     QByteArray body = "<h1>Dudley</h1>";
-    QStringList repo_names = m_repoModel->repoNames();
+    QStringList repo_names = m_repoModel->names();
     foreach(QString name, repo_names){
         body.append(QString("<a href='%1'>%1</a><br />").arg(name));
     }
@@ -224,7 +223,8 @@ void HttpController::processUploadStarted()
 {
     if (m_request->hasPendingFileUploads()){
         if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-            qDebug("beginning file upload, bytes transferred: "+QByteArray::number(m_request->contentBytesTransferred()));
+            qDebug() << "beginning file upload, bytes transferred: "
+                     << m_request->contentBytesTransferred();
             HttpMessage* message = m_request->getNextFileUploadMessage();
             QString file_path = m_params["file_path"]+"/"+message->formFieldFileName();
             QIODevice* dest_device = repo->putFile(file_path);
@@ -256,9 +256,13 @@ void HttpController::actionFavicon()
 
 void HttpController::actionFileByFileName()
 {
-    qDebug("actionfilerequestbyfilename:"+m_params["repo_name"]+" "+m_params["file_path"]);
+    qDebug() << "actionfilerequestbyfilename:"
+             << m_params["repo_name"]
+             << " "
+             << m_params["file_path"];
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-        if (FileInfo* file_info = repo->fileInfoByFilePath(m_params["file_path"])){
+        if (repo->state()->knownFilePath(m_params["file_path"])){
+            FileInfo file_info = repo->state()->fileInfoByFilePath(m_params["file_path"]);
             setResponseContentFromRepo(repo, file_info);
         }else{
             m_response->setResponse("404 Not Found", "");
@@ -271,7 +275,8 @@ void HttpController::actionFileByFileName()
 void HttpController::actionFileByFingerprint()
 {
     if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-        if (FileInfo* file_info = repo->fileInfoByFingerPrint(m_params["fingerprint"])){
+        if (repo->state()->knownFingerPrint(m_params["fingerprint"])){
+            FileInfo file_info = repo->state()->fileInfoByFingerPrint(m_params["fingerprint"]);
             // need to call hasFile here
             setResponseContentFromRepo(repo, file_info);
         }else{
@@ -282,49 +287,51 @@ void HttpController::actionFileByFingerprint()
     }
 }
 
-void HttpController::setResponseContentFromRepo(Repo* repo, FileInfo* file_info)
+void HttpController::setResponseContentFromRepo(Repo* repo, FileInfo file_info)
 {
 
     QIODevice *file = repo->getFile(file_info);
     m_responseRepo = repo;
     m_responseFileInfo = file_info;
-    m_response->setHeader("Last-Modified", file_info->lastModified());
-    m_response->setHeader("Content-Type", file_info->mimeType());
-    m_response->setHeader("Content-Length", file_info->size());
+    m_response->setHeader("Last-Modified", file_info.modifiedAt());
+    m_response->setHeader("Content-Type", file_info.mimeType());
+    m_response->setHeader("Content-Length", file_info.size());
     m_response->setContentDevice(file);
     m_response->setState(HttpMessage::Finished);
 }
 
-void HttpController::actionHistory()
-{
-    if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-        m_response->setResponse("200 OK", repo->state()->logger()->logNames().join("\n").toUtf8());
-    }else{
-        m_response->setResponse("500 Internal Server Error", "Could not open repo");
-    }
-}
+//void HttpController::actionHistory()
+//{
+//    if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
+//        // should be json.. actually unnecessary in current design.
+//        m_response->setResponse("200 OK", repo->logger()->logNames().join("\n").toUtf8());
+//    }else{
+//        m_response->setResponse("500 Internal Server Error", "Could not open repo");
+//    }
+//}
 
-void HttpController::actionCommit()
-{
-    if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
-        if (repo->state()->logger()->hasLogFile(m_params["commit_name"])){
-            m_response->setResponse("200 OK", repo->state()->logger()->openLog(m_params["commit_name"]));
-        }else{
-            m_response->setResponse("404 Not Found");
-        }
-    }else{
-        m_response->setResponse("500 Internal Server Error", "Could not open repo");
-    }
-}
+//void HttpController::actionCommit()
+//{
+//    if (Repo* repo = m_repoModel->repo(m_params["repo_name"])){
+//        if (repo->state()->logger()->hasLogFile(m_params["commit_name"])){
+//            m_response->setResponse("200 OK", repo->state()->logger()->openLog(m_params["commit_name"]));
+//        }else{
+//            m_response->setResponse("404 Not Found");
+//        }
+//    }else{
+//        m_response->setResponse("500 Internal Server Error", "Could not open repo");
+//    }
+//}
 
 void HttpController::actionBrowse()
 {
     QString file_path = m_params["file_path"];
     QString repo_name = m_params["repo_name"];
-    qDebug("browse repo name:"+repo_name+" dir name: "+file_path);
+    qDebug() << "browse repo name:" << repo_name
+             << " dir name: " << file_path;
     if (Repo* repo = m_repoModel->repo(repo_name)){
-        QList<FileInfo*> files = repo->state()->filesInDir(file_path);
-        QStringList sub_dirs = repo->state()->subDirs(file_path);
+        QList<FileInfo> files = repo->state()->filesInDir(file_path);
+        QStringList sub_dirs = repo->state()->subDirectories(file_path);
         m_response->setResponse("200 OK", HttpView::browse(repo_name, file_path, sub_dirs, files));
     }else{
         m_response->setResponse("500 Internal Server Error", "Could not open repo");

@@ -7,9 +7,6 @@
 #include "httpcontroller.h"
 
 class RepoModel;
-class HttpResponse;
-class Repo;
-class FileTransfer;
 class FileTransferManager;
 
 class HttpServer : public QTcpServer
@@ -19,7 +16,7 @@ public:
     HttpServer(QObject *parent, RepoModel* repoTableModel, FileTransferManager* ftm);
     RepoModel* repoModel() const;
     FileTransferManager* transferManager() const;
-
+    QUrl url() const;
 
 
 public slots:
@@ -33,7 +30,7 @@ public slots:
     void processResponseWritten();
 
 private:
-
+    QString bestIpAddress() const;
     RepoModel* m_repoModel;
     FileTransferManager* m_transferManager;
     // we must reply to requests in the order that we got them

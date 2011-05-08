@@ -1,10 +1,16 @@
 #include "repo.h"
 #include "statelogger.h"
+#include "synchronizer.h"
 #include <QCoreApplication>
 
 Repo::Repo(QObject *parent, QString path)
     :QObject(parent), m_path(path)
 {
+}
+
+State* Repo::state() const
+{
+    return m_logger->state();
 }
 
 QString Repo::path() const
@@ -36,9 +42,19 @@ bool Repo::initialize()
     return false;
 }
 
-void Repo::detectChanges()
+// what about passing a state object here instead?
+// prolly dont need to pass a state obj actually.. the default seems to work well
+// and returning a statediff object?
+// i like the idea of returning the sd obj
+// going via the logger actually serves no purpose at this point..
+// except the logger knows about the objects easily
+
+
+
+StateDiff Repo::detectChanges() const
 {
     State* state = m_logger->state();
+    StateDiff diff;
     QStringList found_files = readFilePaths();
 
     // checking for known files
@@ -54,7 +70,6 @@ void Repo::detectChanges()
     QStringList missing_file_paths = state->missingFilePaths(found_files);
 
 
-
     // scanning known files for modifications
     QString file_path;
     foreach(file_path, known_file_paths){
@@ -67,7 +82,7 @@ void Repo::detectChanges()
         if (!stored_fi.sameModifiedAtAndSize(qfi.lastModified(), qfi.size())){
             // file has changed on disk but filename is the same.
             // record the new values for the file
-            m_logger->modifyFile(file_path, qfi.size(), qfi.lastModified(),
+            diff.modifyFile(file_path, qfi.size(), qfi.lastModified(),
                                 readFingerPrint(file_path));
         }
     }
@@ -85,20 +100,60 @@ void Repo::detectChanges()
                 file_was_renamed = true;
                 missing_file_paths.removeAll(missing_file_path);
                 unknown_file_paths.removeAll(file_path);
-                m_logger->renameFile(missing_file_path, file_path);
+                diff.renameFile(missing_file_path, file_path);
             }
         }
 
         // add the file as new to the collection
         if (!file_was_renamed){
-            m_logger->addFile(unknown_fi.filePath(), unknown_fi.size(),
+            diff.addFile(unknown_fi.filePath(), unknown_fi.size(),
                               unknown_fi.modifiedAt(), unknown_fi.fingerPrint());
         }
     }
 
     // deleted sweep
     foreach(file_path, missing_file_paths){
-        m_logger->removeFile(file_path);
+        diff.removeFile(file_path);
+    }
+    return diff;
+}
+
+// then think about the reverse.. performChanges
+// we pass a state diff object and expect the repo to
+// preform the changes upon itself..
+// it would preform each change
+// foreach(op, stateops)
+//   if action
+//     each actions special stuff.. new repo private methods to match actions
+//     plus have a testing mode where we try to detect if it would have failed
+//     also check if we are preforming an action (such as delete) on a file in the dl_queue
+//          if so then remove it from the download queue? or atleast mention this in debug
+// downloads would be queued
+// then the statediff would be applied to the state
+void Repo::performChanges(StateDiff *state_diff, Synchronizer *synchronizer)
+{
+    /*
+      so check that the changes can be performed..
+      then queue up downloads, maybe pasing iodevices to synchronizer
+      download to tmp folder in repo then rename when finished signal happpens.
+      so for each AddFile,
+        open a writable file,
+        store the op and the iodevice* in m_incommingFiles hash
+        ask syncer to download to iodevice and connect to success and failure signals
+      */
+
+    QHash<QString, StateOp> dl_queue;
+    QList<StateOp> *state_ops = state_diff->stateOps();
+    foreach(StateOp op, *state_ops){
+        QString action = op.action();
+        if ((action == "AddFile") || (action == "ModifyFile")){
+            dl_queue[op.filePath()] = op;
+        }else if (action == "RenameFile"){
+            //rename file as instructed
+        }else if (action == "RemoveFile"){
+            //remove tha file
+        }
+
     }
 }
 

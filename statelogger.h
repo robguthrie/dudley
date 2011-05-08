@@ -7,37 +7,30 @@
 #include "state.h"
 #include "stateop.h"
 #include "statediff.h"
-class StateLogger : public QObject
+class StateLogger
 {
-    Q_OBJECT
 public:
-    StateLogger(QObject* parent, QString logsDir);
+    StateLogger(QString logsDir);
     ~StateLogger();
     bool initialize() const;
     bool isReady() const;
     QString logsDir() const;
     State* state() const;
-    StateDiff* stateDiff() const;
-    void addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
-    void modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1);
-    void removeFile(QString file_path);
-    void renameFile(QString file_path, QString new_file_path);
-    bool acceptChanges();
+    bool commitChanges(StateDiff &state_diff);
     void reload();
     QStringList logNames() const;
     StateDiff loadStateDiff(QString name, bool *ok) const;
 
 private:
     void playLogFile(QString name);
-    void preformChangesOnState(StateDiff *sd);
-    bool saveStateDiff(StateDiff* state_diff) const;
+    void preformChangesOnState(StateDiff &sd);
+    bool saveStateDiff(StateDiff &state_diff) const;
     bool hasLogFile(QString name) const;
     QString logFilePath(QString name) const;
     QString tmpLogFilePath() const;
 
     QString m_logsDir;
     State *m_state;
-    StateDiff *m_stateDiff;
 };
 
 

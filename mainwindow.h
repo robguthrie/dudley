@@ -29,16 +29,17 @@ private slots:
     void removeRepoButtonPressed();
     void addRepoButtonPressed();
     void editRepoButtonPressed();
-    bool addRepo(QString type, QString path, QString name);
+    bool addRepoModelItem(QString name, QString local_path, QString tracker_url);
 
 private:
+    QString m_selfUrl;
     Ui::MainWindow *ui;
-    HttpServer* server;
+    HttpServer* m_server;
     QString bestIpAddress();
     QSystemTrayIcon *trayIcon;
-    RepoModel* m_repoModel;
-    FileTransferManager* m_fileTransferManager;
+    RepoModel m_repoModel;
     QSettings* m_settings;
+    FileTransferManager* m_fileTransferManager;
     void writeSettings();
     void readSettings();
 };

@@ -12,9 +12,9 @@ class RepoDialog : public QDialog {
 public:
     RepoDialog(QWidget *parent = 0);
     ~RepoDialog();
-    QString path();
+    QString localPath();
     QString name();
-    QString type();
+    QString trackerUrl();
 signals:
     void newSettings(QString path);
 

@@ -28,5 +28,4 @@ signals:
 };
 
 extern Output* g_log;
-QByteArray humanSize(qint64 n, bool debug = false);
 #endif // OUTPUT_H

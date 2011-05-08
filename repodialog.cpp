@@ -15,25 +15,20 @@ RepoDialog::~RepoDialog()
     delete ui;
 }
 
-QString RepoDialog::path()
-{
-    return ui->localPathLineEdit->text();
-}
-
 QString RepoDialog::name()
 {
     return ui->nameLineEdit->text();
 }
 
-QString RepoDialog::type()
+QString RepoDialog::localPath()
 {
-    return ui->typeComboBox->currentText();
+    return ui->localPathLineEdit->text();
 }
 
-//void RepoDialog::emitSettings()
-//{
-//    emit newSettings(ui->localPathLineEdit->text());
-//}
+QString RepoDialog::trackerUrl()
+{
+    return ui->trackerUrlLineEdit->text();
+}
 
 void RepoDialog::selectDirectory()
 {

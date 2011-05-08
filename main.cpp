@@ -14,11 +14,9 @@
 #include "output.h"
 #include "mainwindow.h"
 
-Output* g_log = 0;
 // my master backup is on the internet
 int main(int argc, char *argv[])
 {
-    g_log = new Output();
     QStringList params;
     for(int i = 1; i < argc; ++i) params << argv[i];
     QApplication app(argc, argv);

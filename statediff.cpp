@@ -48,7 +48,7 @@ QVariant StateDiff::toVariant()
 {
     QVariantList state_ops_variant_list = stateOpsVariantList();
     m_stateOpsHash = stateOpsHash(state_ops_variant_list);
-    m_name = m_createdAt.toString(Qt::ISODate) +"_"+ m_stateOpsHash;
+    m_name = m_createdAt.toString("yyyyMMddhhmmsszzz") +"_"+ m_stateOpsHash.left(8);
 
     QVariantMap vmap;
     vmap.insert("name", m_name);
@@ -108,4 +108,46 @@ QVariantList StateDiff::stateOpsVariantList() const
 QList<StateOp>* StateDiff::stateOps()
 {
     return &m_stateOps;
+}
+
+/* call this to log that a file has been added to a repo */
+void StateDiff::addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
+{
+    StateOp op;
+    op.setAction("AddFile");
+    op.setFilePath(file_path);
+    op.setSize(size);
+    op.setModifiedAt(modified_at);
+    op.setFingerPrint(sha1);
+    m_stateOps.append(op);
+}
+
+/* call this to log that a file has been modified in a repo */
+/* TODO: check that the file exists in the state.. throw a critical or fatal if it does not */
+void StateDiff::modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
+{
+    StateOp op;
+    op.setAction("ModifyFile");
+    op.setFilePath(file_path);
+    op.setSize(size);
+    op.setModifiedAt(modified_at);
+    op.setFingerPrint(sha1);
+    m_stateOps.append(op);
+}
+
+void StateDiff::removeFile(QString file_path)
+{
+    StateOp op;
+    op.setAction("RemoveFile");
+    op.setFilePath(file_path);
+    m_stateOps.append(op);
+}
+
+void StateDiff::renameFile(QString file_path, QString new_file_path)
+{
+    StateOp op;
+    op.setAction("RenameFile");
+    op.setFilePath(file_path);
+    op.setNewFilePath(new_file_path);
+    m_stateOps.append(op);
 }

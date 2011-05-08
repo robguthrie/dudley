@@ -11,7 +11,7 @@ LocalDiskRepo::LocalDiskRepo(QObject *parent, QString path)
     :Repo(parent, path)
 {
     m_log_path = m_path + "/.dudley/logs";
-    m_logger = new StateLogger(this, m_log_path);
+    m_logger = new StateLogger(m_log_path);
 }
 
 bool LocalDiskRepo::canReadData() const
@@ -81,24 +81,24 @@ void LocalDiskRepo::putFileFailed(QIODevice *device)
     f->deleteLater();
 }
 
-QString LocalDiskRepo::absoluteFilePath(QString file_path)
+QString LocalDiskRepo::absoluteFilePath(QString file_path) const
 {
     return m_path+"/"+file_path;
 }
 
-QString LocalDiskRepo::temporaryFilePath(QString file_path)
+QString LocalDiskRepo::temporaryFilePath(QString file_path) const
 {
     return m_path+"/"+file_path+".part";
 }
 
-QStringList LocalDiskRepo::readFilePaths()
+QStringList LocalDiskRepo::readFilePaths() const
 {
     QStringList found_files;
     findAllFiles(m_path, &found_files);
     return found_files;
 }
 
-void LocalDiskRepo::findAllFiles(QString path, QStringList *found_files)
+void LocalDiskRepo::findAllFiles(QString path, QStringList *found_files) const
 {
     QCoreApplication::processEvents();
     QDir dir(path);
@@ -123,7 +123,8 @@ void LocalDiskRepo::findAllFiles(QString path, QStringList *found_files)
     }
 }
 
-QString LocalDiskRepo::relativeFilePath(QString filePath){
+QString LocalDiskRepo::relativeFilePath(QString filePath) const
+{
     if (filePath.startsWith(m_path+'/')){
         return filePath.remove(0, m_path.length()+1);
     }else{
@@ -131,29 +132,28 @@ QString LocalDiskRepo::relativeFilePath(QString filePath){
     }
 }
 
-FileInfo LocalDiskRepo::readFileInfo(QString filePath)
+FileInfo LocalDiskRepo::readFileInfo(QString filePath) const
 {
     QFileInfo qfi(m_path+"/"+filePath);
     return FileInfo(filePath, qfi.size(),
                     qfi.lastModified(), readFingerPrint(filePath));
 }
 
-FileInfo LocalDiskRepo::readFileInfoCheap(QString filePath)
+FileInfo LocalDiskRepo::readFileInfoCheap(QString filePath) const
 {
     QFileInfo qfi(m_path+"/"+filePath);
     return FileInfo(filePath, qfi.size(), qfi.lastModified(), "");
 }
 
-QString LocalDiskRepo::readFingerPrint(QString filePath)
+QString LocalDiskRepo::readFingerPrint(QString filePath) const
 {
     QFile file(m_path+'/'+filePath);
-    qDebug() << "reading fingerprint of " << filePath;
     QCryptographicHash hash(QCryptographicHash::Sha1);
     file.open(QIODevice::ReadOnly | QIODevice::Unbuffered);
     return readFingerPrint(&file);
 }
 
-QString LocalDiskRepo::readFingerPrint(QFile* d)
+QString LocalDiskRepo::readFingerPrint(QFile* d) const
 {
     QCryptographicHash hash(QCryptographicHash::Sha1);
     if (d->isOpen() && d->isReadable()) {

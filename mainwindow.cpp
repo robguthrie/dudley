@@ -10,26 +10,22 @@ MainWindow::MainWindow(QSettings* settings, QWidget *parent) :
     QMainWindow(parent),  ui(new Ui::MainWindow), m_settings(settings)
 {
     ui->setupUi(this);
-    m_repoModel = new RepoModel();
-    m_fileTransferManager = new FileTransferManager();
-    ui->repoTreeView->setModel(m_repoModel);
+    ui->repoTreeView->setModel(&m_repoModel);
     readSettings();
     setWindowTitle(tr("Dudley Server"));
     connect(ui->addRepoButton, SIGNAL(clicked()), this, SLOT(addRepoButtonPressed()));
     connect(ui->editRepoButton, SIGNAL(clicked()), this, SLOT(editRepoButtonPressed()));
     connect(ui->removeRepoButton, SIGNAL(clicked()), this, SLOT(removeRepoButtonPressed()));
-    connect(ui->refreshRepoButton, SIGNAL(clicked()), this, SLOT(refreshRepoButtonPressed()));
-    connect(g_log, SIGNAL(message(QString)), ui->outputTextEdit, SLOT(appendPlainText(QString)));
-    server = new HttpServer(this, m_repoModel, m_fileTransferManager);
-    if (!server->listen(QHostAddress::Any, 54573)){
-//    if (!server->listen(QHostAddress::Any)){
+
+    m_fileTransferManager = new FileTransferManager(this);
+    m_server = new HttpServer(this, &m_repoModel, m_fileTransferManager);
+    if (!m_server->listen(QHostAddress::Any, 54573)){
         QMessageBox::critical(this, tr("Dudley Server"),
-                              tr("Dudley unable to start server: %1.").arg(server->errorString()));
+                              tr("Dudley unable to start server: %1.").arg(m_server->errorString()));
         close();
         return;
     }
-    g_log->info(tr("The server is running on\n\nIP: %1\nport: %2\n\n")
-                         .arg(bestIpAddress()).arg(server->serverPort()));
+    qDebug() << "The server is running on " << m_server->url().toString();
     trayIcon = new QSystemTrayIcon(QIcon(":/icons/dino1.png"), this);
     trayIcon->show();
 
@@ -38,11 +34,10 @@ MainWindow::MainWindow(QSettings* settings, QWidget *parent) :
 void MainWindow::writeSettings()
 {
     m_settings->beginGroup("repos");
-    foreach(Repo* repo, m_repoModel->repoList()){
-        m_settings->beginGroup(repo->name());
-        m_settings->setValue("type", repo->type());
-        m_settings->setValue("path", repo->path());
-        m_settings->setValue("log_path", repo->logPath());
+    foreach(RepoModelItem rmi, m_repoModel.list()){
+        m_settings->beginGroup(rmi.name());
+        m_settings->setValue("tracker_url", rmi.s10r()->trackerUrl().toString());
+        m_settings->setValue("local_path", rmi.repo()->path());
         m_settings->endGroup();
     }
     m_settings->endGroup();
@@ -51,12 +46,11 @@ void MainWindow::writeSettings()
 void MainWindow::readSettings()
 {
     m_settings->beginGroup("repos");
-    foreach(QString repo_name, m_settings->childGroups()){
-        m_settings->beginGroup(repo_name);
-        QString type = m_settings->value("type").toString();
-        QString path = m_settings->value("path").toString();
-        QString log_path = m_settings->value("log_path").toString();
-        this->addRepo(type, path, repo_name);
+    foreach(QString name, m_settings->childGroups()){
+        m_settings->beginGroup(name);
+        QString local_path = m_settings->value("local_path").toString();
+        QString tracker_url = m_settings->value("tracker_url").toString();
+        addRepoModelItem(name, local_path, tracker_url);
         m_settings->endGroup();
     }
     m_settings->endGroup();
@@ -65,7 +59,7 @@ void MainWindow::readSettings()
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete server;
+    delete m_server;
     writeSettings();
     delete trayIcon;
 }
@@ -73,22 +67,23 @@ MainWindow::~MainWindow()
 void MainWindow::refreshRepoButtonPressed()
 {
     // get currently selected repo
-    QModelIndex i = ui->repoTreeView->currentIndex();
-    if (i.isValid()){
-        m_repoModel->repo(i)->detectChanges();
-    }
+//    QModelIndex i = ui->repoTreeView->currentIndex();
+//    if (i.isValid()){
+//        m_repoModel->repo(i)->detectChanges();
+//    }
 }
 
 void MainWindow::addRepoButtonPressed()
 {
     RepoDialog *repoDialog = new RepoDialog(this);
 
-//    connect(repoDialog, SIGNAL(newSettings(QString)), this, SLOT(addRepo(QString)));
     if (repoDialog->exec()){
-        qDebug("hellooo? returned from addRepoDialog");
-        addRepo(repoDialog->type(), repoDialog->path(), repoDialog->name());
+        addRepoModelItem(repoDialog->name(),
+                         repoDialog->localPath(),
+                         repoDialog->trackerUrl());
     }
 }
+
 void MainWindow::editRepoButtonPressed()
 {
     // nothing yet..
@@ -98,53 +93,29 @@ void MainWindow::removeRepoButtonPressed()
 {
     QModelIndex i = ui->repoTreeView->currentIndex();
     if (i.isValid()){
-        m_repoModel->removeRepo(i);
+        m_repoModel.remove(i);
     }
 }
 
-bool MainWindow::addRepo(QString type, QString path, QString name)
+bool MainWindow::addRepoModelItem(QString name, QString local_path, QString tracker_url_string)
 {
-    Repo* repo = 0;
-    g_log->info(QString("loadRepo: %1 %2 %3").arg(type, path,name));
-    if (type == "HttpClientFileRepo"){
-        qDebug("opening httpclientfilerepo");
-        repo = new HttpClientRepo(this, path, name);
-    }else if(type == "WorkingFileRepo"){
-        qDebug("opening workingfilerepo");
-        repo = new LocalDiskRepo(this, path, name);
+    Repo* repo = new LocalDiskRepo(this, local_path);
+    if (!repo->isReady()){
+        repo->initialize();
+    }
+    QUrl self_url = m_server->url();
+    self_url.setPath(name);
+    QUrl tracker_url(tracker_url_string);
+    Synchronizer* s10r = new Synchronizer(this, repo, tracker_url, self_url);
+    if (s10r->isReady()){
+        m_repoModel.insert(RepoModelItem(s10r, name));
+        return true;
     }
 
-    if (repo){
-        m_repoModel->insertRepo(repo);
-
-        if (repo->isReady()){
-            return true;
-        }else{
-            return repo->initialize();
-        }
-    }else{
-        qDebug(QString("repo failed to create: %1 %2 %3").arg(type, name, path));
-        return false;
-    }
+    qDebug() << "Failed to add s10r and repo" << name << local_path << tracker_url;
+    return false;
 }
 
-QString MainWindow::bestIpAddress()
-{
-    QString ipAddress;
-    QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-    // use the first non-localhost IPv4 address
-    for (int i = 0; i < ipAddressesList.size(); ++i) {
-        if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
-            ipAddressesList.at(i).toIPv4Address()) {
-            ipAddress = ipAddressesList.at(i).toString();
-            break;
-        }
-    }
-    // if we did not find one, use IPv4 localhost
-    if (ipAddress.isEmpty())
-        ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-    return ipAddress;
-}
 
 void MainWindow::changeEvent(QEvent *e)
 {

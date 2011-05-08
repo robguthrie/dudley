@@ -16,7 +16,8 @@ class Synchronizer : public QObject
     Q_OBJECT
 public:
     //explicit Synchronizer(QObject *parent = 0);
-    Synchronizer(QObject *parent, Repo *repo, QString tracker_url);
+    Synchronizer(QObject *parent, Repo *repo, QUrl tracker_url, QUrl self_url);
+    QUrl trackerUrl() const;
     bool isReady() const;
     bool isActive() const;
     void start();
@@ -24,6 +25,11 @@ public:
     QStringList stateDiffsToPush() const;
     QStringList stateDiffsToPull() const;
     QNetworkReply* requestHistory();
+    QNetworkReply* registerSelf();
+    QNetworkReply* requestPeers();
+    QStringList peerUrlStrings() const;
+
+    Repo* repo() const;
 
 signals:
 
@@ -34,20 +40,27 @@ private slots:
     void requestFinished(QNetworkReply *reply);
 
 private:
+    void selfRegistered(QByteArray body);
+    void peersReceived(QByteArray body);
     void historyReceived(QByteArray body);
     void stateDiffPulled(QByteArray body);
-    QNetworkReply* post(QString action, QByteArray body);
-    QNetworkReply* get(QString action);
-    QNetworkRequest request(QString action);
+    QNetworkReply* post(QUrl base_url, QString action, QByteArray body);
+    QNetworkReply* get(QUrl base_url, QString action);
+    QNetworkRequest request(QUrl base_url, QString action);
     void debugNetworkReply(QNetworkReply* reply);
 
     QIODevice* get() const;
     Repo* m_repo;
-    QString m_trackerUrl;
+    QUrl m_trackerUrl;
+    QUrl m_selfUrl;
+
     QDateTime m_lastReplyAt;
     QDateTime m_historyRequestedAt;
     QDateTime m_historyReceivedAt;
+    QDateTime m_peersReceivedAt;
+    QDateTime m_selfUrlRegisteredAt;
 
+    QStringList m_peerUrlStrings;
     QStringList m_remoteStateDiffNames;
     QStringList m_localStateDiffNames;
     QStringList m_stateDiffsToPull;

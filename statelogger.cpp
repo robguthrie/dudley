@@ -7,18 +7,16 @@
 
 
 // logger is a file state history log
-StateLogger::StateLogger(QObject* parent, QString logsDir)
-    :QObject(parent), m_logsDir(logsDir)
+StateLogger::StateLogger(QString logsDir)
+    :m_logsDir(logsDir)
 {
-    m_state = new State(this);
-    m_stateDiff = new StateDiff();
+    m_state = new State();
     reload();
 }
 
 StateLogger::~StateLogger()
 {
-//    delete m_state;
-//    delete m_stateDiff;
+    delete m_state;
 }
 
 /* create directory to store log files
@@ -47,63 +45,17 @@ State* StateLogger::state() const
 {
     return m_state;
 }
-StateDiff* StateLogger::stateDiff() const
-{
-    return m_stateDiff;
-}
-/* call this to log that a file has been added to a repo */
-void StateLogger::addFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
-{
-    StateOp op;
-    op.setAction("AddFile");
-    op.setFilePath(file_path);
-    op.setSize(size);
-    op.setModifiedAt(modified_at);
-    op.setFingerPrint(sha1);
-    m_stateDiff->stateOps()->append(op);
-}
-
-/* call this to log that a file has been modified in a repo */
-/* TODO: check that the file exists in the state.. throw a critical or fatal if it does not */
-void StateLogger::modifyFile(QString file_path, qint64 size, QDateTime modified_at, QString sha1)
-{
-    StateOp op;
-    op.setAction("ModifyFile");
-    op.setFilePath(file_path);
-    op.setSize(size);
-    op.setModifiedAt(modified_at);
-    op.setFingerPrint(sha1);
-    m_stateDiff->stateOps()->append(op);
-}
-
-void StateLogger::removeFile(QString file_path)
-{
-    StateOp op;
-    op.setAction("RemoveFile");
-    op.setFilePath(file_path);
-    m_stateDiff->stateOps()->append(op);
-}
-
-void StateLogger::renameFile(QString file_path, QString new_file_path)
-{
-    StateOp op;
-    op.setAction("RenameFile");
-    op.setFilePath(file_path);
-    op.setNewFilePath(new_file_path);
-    m_stateDiff->stateOps()->append(op);
-}
 
 /* merge any changes into the state, and save a new diff log to disk */
-bool StateLogger::acceptChanges(){
-    int num_changes = m_stateDiff->numChanges();
-    if (num_changes > 0){
-        if (saveStateDiff(m_stateDiff)){
-            preformChangesOnState(m_stateDiff);
-            delete m_stateDiff;
-            m_stateDiff = new StateDiff();
+bool StateLogger::commitChanges(StateDiff &state_diff)
+{
+    if (m_state->canPerformChanges(state_diff)){
+        if (saveStateDiff(state_diff)){
+            m_state->performChanges(state_diff);
+            return true;
         }
     }
-    return num_changes;
+    return false;
 }
 
 /* reload the state from disk, and drop any changes */
@@ -115,25 +67,7 @@ void StateLogger::reload()
         bool ok;
         StateDiff sd = loadStateDiff(name, &ok);
         if(ok){
-            preformChangesOnState(&sd);
-        }
-    }
-}
-
-void StateLogger::preformChangesOnState(StateDiff *sd)
-{
-    QList<StateOp> *state_ops = sd->stateOps();
-    StateOp op;
-    foreach(op, *state_ops){
-        QString action = op.action();
-        if (action == "AddFile"){
-            m_state->addFile(op.filePath(), op.size(), op.modifiedAt(), op.fingerPrint());
-        }else if (action == "ModifyFile"){
-            m_state->modifyFile(op.filePath(), op.size(), op.modifiedAt(), op.fingerPrint());
-        }else if (action == "RenameFile"){
-            m_state->renameFile(op.filePath(), op.newFilePath());
-        }else if (action == "RemoveFile"){
-            m_state->removeFile(op.filePath());
+            m_state->performChanges(sd);
         }
     }
 }
@@ -152,12 +86,12 @@ StateDiff StateLogger::loadStateDiff(QString name, bool *ok) const
     return sd;
 }
 
-bool StateLogger::saveStateDiff(StateDiff *state_diff) const
+bool StateLogger::saveStateDiff(StateDiff &state_diff) const
 {
     QFile file(tmpLogFilePath());
     if (file.open(QIODevice::WriteOnly)){
-        file.write(state_diff->toJSON());
-        file.rename(logFilePath(state_diff->name()));
+        file.write(state_diff.toJSON());
+        file.rename(logFilePath(state_diff.name()));
         file.close();
         return true;
     }

@@ -115,7 +115,8 @@ void FileTransfer::processBytesWritten(qint64 bw)
 void FileTransfer::checkIfFinished()
 {
     if (m_bytesWritten == m_fileSize){
-        qDebug("file transfer finished: m_bytesWritten = "+QString::number(m_bytesWritten));
+        qDebug() << "file transfer finished: m_bytesWritten = "
+                 << m_bytesWritten;
         m_complete = true;
         setFinished();
     }
@@ -128,7 +129,7 @@ QStringList FileTransfer::errors() const
 
 void FileTransfer::printErrors() const
 {
-    qCritical("ERRRROR! FileTransfer:"+errors().join(", "));
+    qCritical() << "ERRRROR! FileTransfer:" << errors().join(", ");
 }
 
 QString FileTransfer::status() const

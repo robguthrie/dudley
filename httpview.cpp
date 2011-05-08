@@ -3,7 +3,7 @@
 #include "fileinfo.h"
 #include "output.h"
 
-QByteArray HttpView::browse(QString repo_name, QString path, QStringList sub_dirs, QList<FileInfo*> files)
+QByteArray HttpView::browse(QString repo_name, QString path, QStringList sub_dirs, QList<FileInfo> files)
 {
     QStringList path_tokens;
     path_tokens << repo_name;
@@ -37,12 +37,12 @@ QString HttpView::browseDirIndex(QStringList path_tokens, QStringList sub_dirs)
 }
 
 // need to merge in with
-QString HttpView::browseFileIndex(QString repo_name, QList<FileInfo*> fileInfos)
+QString HttpView::browseFileIndex(QString repo_name, QList<FileInfo> fileInfos)
 {
     QString table;
-    foreach(FileInfo* f, fileInfos){
+    foreach(FileInfo f, fileInfos){
         QString link = linkToFile(repo_name, f);
-        QString row = QString("<tr><td>%1</td><td>%2</td><td>%3</td></tr>\n").arg(link, humanSize(f->size()), f->mimeType());
+        QString row = QString("<tr><td>%1</td><td>%2</td><td>%3</td></tr>\n").arg(link, humanSize(f.size()), f.mimeType());
         table.append(row);
     }
     return QString("<table>%1</table>").arg(table);
@@ -75,10 +75,10 @@ QString HttpView::browseBreadCrumb(QStringList dirs)
 }
 
 
-QString HttpView::linkToFile(QString repo_name, FileInfo* f)
+QString HttpView::linkToFile(QString repo_name, FileInfo f)
 {
     QString str("<a href=\"/%1/%2\">%4</a>");
-    return str.arg(repo_name, f->filePath(), f->fileName());
+    return str.arg(repo_name, f.filePath(), f.fileName());
 }
 
 QString HttpView::uploadForm(QString path)

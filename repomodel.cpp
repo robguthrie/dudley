@@ -2,21 +2,15 @@
 #include <QStringList>
 #include "output.h"
 
-QStringList RepoModel::columns = QString("Name Path Items Size").split(' ');
+QStringList RepoModel::columns = QString("Name LocalPath TrackerUrl").split(' ');
 
 RepoModel::RepoModel(QObject *parent)
-    : QAbstractListModel(parent)
-{
+    : QAbstractListModel(parent) {}
 
-}
-//QModelIndex RepoModel::index(int row, int column, const QModelIndex & parent) const
-//{
-//    return createIndex(rpw, column, )
-//}
 int RepoModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return m_repoList.size();
+    return m_list.size();
 }
 
 int RepoModel::columnCount(const QModelIndex &parent) const
@@ -31,35 +25,23 @@ QVariant RepoModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    if (Repo *repo = m_repoList.at(index.row())){
+    if (m_list.size() > index.row()){
+        RepoModelItem rmi = m_list.at(index.row());
         if (role == Qt::DisplayRole){
             switch(index.column()){
             case 0:
-                // name
-                return repo->name();
+                return rmi.name();
                 break;
             case 1:
-                // path
-                return repo->path();
+                return rmi.repo()->path();
                 break;
             case 2:
-                // items
-                return QString("twenty or so");
-                break;
-            case 3:
-                // size
-                return QString("sizeable");
-                break;
-            default:
-                return "unknown ....";
+                return rmi.synchronizer()->trackerUrl();
                 break;
             }
-        }else{
-            return QVariant();
         }
-    }else{
-        return QString("invalid row int");
     }
+    return QString("invalid row int");
 }
 
 QVariant RepoModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -76,34 +58,32 @@ QVariant RepoModel::headerData(int section, Qt::Orientation orientation, int rol
         return QString("Row %1").arg(section);
 }
 
-void RepoModel::insertRepo(Repo* repo)
+void RepoModel::insert(RepoModelItem rmi)
 {
-    beginInsertRows(QModelIndex(), m_repoList.size(), m_repoList.size());
-    m_repoList.append(repo);
+    beginInsertRows(QModelIndex(), m_list.size(), m_list.size());
+    m_list.append(rmi);
     endInsertRows();
 }
 
-void RepoModel::removeRepo(QModelIndex i)
+void RepoModel::remove(QModelIndex i)
 {
-    Repo* repo;
     beginRemoveRows(QModelIndex(), i.row(), i.row());
-    repo = m_repoList.at(i.row());
-    repo->deleteLater();
-    m_repoList.removeAt(i.row());
+    RepoModelItem rmi = m_list.at(i.row());
+    rmi.synchronizer()->deleteLater();
+    m_list.removeAt(i.row());
     endRemoveRows();
 }
 
-bool RepoModel::hasRepo(QString name)
+bool RepoModel::hasRepo(QString name) const
 {
-    return repoNames().contains(name);
+    return names().contains(name);
 }
 
 Repo* RepoModel::repo(QString name) const
 {
-    for (int i =0; i < m_repoList.size(); i++){
-        if (m_repoList.at(i)->name() == name){
-//            qDebug("RepoTableModel loading reponame: "+name);
-            return m_repoList.at(i);
+    for (int i =0; i < m_list.size(); i++){
+        if (m_list.at(i).name() == name){
+            return m_list.at(i).repo();
         }
     }
     return 0;
@@ -111,18 +91,43 @@ Repo* RepoModel::repo(QString name) const
 
 Repo* RepoModel::repo(QModelIndex i) const
 {
-    return m_repoList.at(i.row());
+    return m_list.at(i.row()).repo();
 }
-QStringList RepoModel::repoNames()
+
+QStringList RepoModel::names() const
 {
     QStringList names;
-    foreach(Repo* r, m_repoList){
-        names << r->name();
+    foreach(RepoModelItem r, m_list){
+        names << r.name();
     }
     return names;
 }
 
-QList<Repo*> RepoModel::repoList()
+QList<RepoModelItem> RepoModel::list()
 {
-    return m_repoList;
+    return m_list;
+}
+
+RepoModelItem::RepoModelItem(Synchronizer* sync, QString name) :
+    m_synchronizer(sync), m_name(name)
+{}
+
+QString RepoModelItem::name() const
+{
+    return m_name;
+}
+
+Synchronizer* RepoModelItem::synchronizer() const
+{
+    return m_synchronizer;
+}
+
+Synchronizer* RepoModelItem::s10r() const
+{
+    return m_synchronizer;
+}
+
+Repo* RepoModelItem::repo() const
+{
+    return m_synchronizer->repo();
 }

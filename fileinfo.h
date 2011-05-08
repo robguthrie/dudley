@@ -44,4 +44,5 @@ private:
     QString m_sha1;
 };
 
+QByteArray humanSize(qint64 n);
 #endif // FILEINFO_H

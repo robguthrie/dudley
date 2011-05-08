@@ -6,12 +6,14 @@
 #include "repo.h"
 #include "statelogger.h"
 #include "parser.h"
+#include "serializer.h"
 
-Synchronizer::Synchronizer(QObject *parent, Repo *repo, QString tracker_url) :
+Synchronizer::Synchronizer(QObject *parent, Repo *repo, QUrl tracker_url, QUrl self_url) :
     QObject(parent)
 {
     m_repo = repo;
     m_trackerUrl = tracker_url;
+    m_selfUrl = self_url;
     m_historyUpdateInterval = 600;
     m_numPushes = 0;
     m_numPulls = 0;
@@ -24,9 +26,19 @@ Synchronizer::Synchronizer(QObject *parent, Repo *repo, QString tracker_url) :
     connect(m_timer, SIGNAL(timeout()), this, SLOT(loop()));
 }
 
+QUrl Synchronizer::trackerUrl() const
+{
+    return m_trackerUrl;
+}
+
+Repo* Synchronizer::repo() const
+{
+    return m_repo;
+}
+
 bool Synchronizer::isReady() const
 {
-    if (m_repo && m_repo->isReady() && QUrl(m_trackerUrl).isValid()){
+    if (m_repo && m_repo->isReady() && m_trackerUrl.isValid()){
         return true;
     }else{
         return false;
@@ -51,7 +63,6 @@ void Synchronizer::stop()
 
 void Synchronizer::loop()
 {
-    qDebug() << "entering loop";
     // keep the history up to date
     // if the history is more than x minutes old pull it
     if (m_historyReceivedAt.secsTo(QDateTime::currentDateTime()) > m_historyUpdateInterval){
@@ -63,7 +74,7 @@ void Synchronizer::loop()
        if (!m_stateDiffsToPull.isEmpty()){
            QString name = m_stateDiffsToPull.takeFirst();
            m_numPulls += 1;
-           get("state_diffs/"+name);
+           get(m_trackerUrl, "state_diffs/"+name);
        }else break;
     }
 
@@ -74,7 +85,7 @@ void Synchronizer::loop()
            StateDiff diff = m_repo->logger()->loadStateDiff(name, &ok);
            if (ok){
                m_numPushes += 1;
-               post("state_diffs", diff.toJSON());
+               post(m_trackerUrl, "state_diffs", diff.toJSON());
            }else{
                qCritical() << "failed to loadStateDiff for push";
            }
@@ -82,15 +93,69 @@ void Synchronizer::loop()
     }
 
     // if numPulls and numPushes == 0 and toPull and toPush == 0
+    // so we must have pulled and pushed all statediffs
+    // so the problem of applying state
+    // incomming state diffs should be ordered alphabetically by name
+    // we then want a minimal list of operations from that
     // then presumably we have synchronized metadata
     // now we want to compare the most recent state to the repo
     // and see which files we need to download before we can recreate the state locally
 }
 
+QNetworkReply* Synchronizer::registerSelf()
+{
+   QVariantMap peer;
+   peer["url"] = m_selfUrl;
+   QVariantMap data;
+   data["peer"] = peer;
+   QJson::Serializer serializer;
+   return post(m_trackerUrl, "peers", serializer.serialize(data));
+}
+
+
+void Synchronizer::selfRegistered(QByteArray body)
+{
+    QJson::Parser parser;
+    bool ok;
+    QVariantMap data = parser.parse(body, &ok).toMap();
+    if(ok){
+        m_selfUrlRegisteredAt = QDateTime::currentDateTime();
+        m_selfUrl = QUrl(data["peer"].toMap()["url"].toString());
+    }
+}
+
+QNetworkReply* Synchronizer::requestPeers()
+{
+    return get(m_trackerUrl, "peers");
+}
+
+void Synchronizer::peersReceived(QByteArray body)
+{
+    m_peersReceivedAt = QDateTime::currentDateTime();
+    qDebug() << body;
+    QJson::Parser parser;
+    bool ok;
+    QVariantList peers = parser.parse(body, &ok).toList();
+    if (ok){
+        m_peerUrlStrings.clear();
+        foreach(QVariant peer, peers){
+            QString peer_url = peer.toMap()["peer"].toMap()["url"].toString();
+            if (peer_url != m_selfUrl.toString()){
+                m_peerUrlStrings << peer_url;
+            }
+        }
+    }
+}
+
+QStringList Synchronizer::peerUrlStrings() const
+{
+    return m_peerUrlStrings;
+}
+
 QNetworkReply* Synchronizer::requestHistory()
 {
     m_historyRequestedAt = QDateTime::currentDateTime();
-    return get("history");
+    return get(m_trackerUrl, "history");
 }
 
 void Synchronizer::historyReceived(QByteArray body)
@@ -149,26 +214,26 @@ void Synchronizer::stateDiffPulled(QByteArray body)
     }
 }
 
-QNetworkReply* Synchronizer::post(QString action, QByteArray body)
+QNetworkReply* Synchronizer::post(QUrl base_url, QString action, QByteArray body)
 {
     qDebug() << "post started: " << action;
-    QNetworkReply* reply = m_networkManager->post(request(action), body);
+    QNetworkReply* reply = m_networkManager->post(request(base_url, action), body);
     debugNetworkReply(reply);
     return reply;
 }
 
 // do an http get and return the QNetworkReply (which is a QIODevice i believe)
-QNetworkReply* Synchronizer::get(QString action)
+QNetworkReply* Synchronizer::get(QUrl base_url, QString action)
 {
     qDebug() << "get request started:" << action;
-    QNetworkReply* reply = m_networkManager->get(request(action));
+    QNetworkReply* reply = m_networkManager->get(request(base_url, action));
     debugNetworkReply(reply);
     return reply;
 }
 
-QNetworkRequest Synchronizer::request(QString action)
+QNetworkRequest Synchronizer::request(QUrl base_url, QString action)
 {
-    QUrl url(m_trackerUrl+"/"+action);
+    QUrl url(base_url.toString()+"/"+action);
     QNetworkRequest req(url);
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     req.setRawHeader("Accept", "application/json");
@@ -184,22 +249,27 @@ void Synchronizer::requestFinished(QNetworkReply* reply)
                     << reply->error()
                     << reply->errorString()
                     << reply->url().toString();
-        //QList<QByteArray> headers = reply->rawHeaderList();
-        //foreach(QByteArray h, headers){
-        //    qCritical() << QTextStream(h).readAll();
-        //}
     }else{
         m_lastReplyAt = QDateTime::currentDateTime();
     }
 
-    QString request_url = reply->request().url().toString();
-    QRegExp rx(QRegExp::escape(m_trackerUrl)+"/(file|history|state_diff)/?(.*)");
-    QString action, file_path;
+    QStringList escaped_urls;
+    escaped_urls << QRegExp::escape(m_trackerUrl.toString());
+    foreach(QString peer_url, m_peerUrlStrings){
+        escaped_urls << QRegExp::escape(peer_url);
+    }
+    foreach(QString url, escaped_urls){
+        qDebug() << "hello:" << url;
+    }
+    QString base_urls_rx = QString("(") + escaped_urls.join("|") + ")";
+    QRegExp rx(base_urls_rx+"/(peers|history|state_diffs)/?(.*)");
 
+    QString action, file_path;
+    QString request_url = reply->request().url().toString();
     if (rx.exactMatch(request_url)){
         QStringList tokens = rx.capturedTexts();
-        if (tokens.size() > 1) action = tokens.at(1);
-        if (tokens.size() > 2) file_path = tokens.at(2);
+        if (tokens.size() > 2) action = tokens.at(2);
+        if (tokens.size() > 3) file_path = tokens.at(3);
         if (file_path.startsWith("/")) file_path.remove(0, 1);
 
         //    if (action == "file"){
@@ -208,7 +278,7 @@ void Synchronizer::requestFinished(QNetworkReply* reply)
         //    }else
         if ((action == "history") && success){
             historyReceived(reply->readAll());
-        }else if (action == "state_diff"){
+        }else if (action == "state_diffs"){
             if (reply->operation() == QNetworkAccessManager::PostOperation){
                 // this is the end of a push operation
                 m_numPushes = m_numPushes - 1;
@@ -217,6 +287,14 @@ void Synchronizer::requestFinished(QNetworkReply* reply)
                 m_numPulls = m_numPulls - 1;
                 if (success){
                     stateDiffPulled(reply->readAll());
+                }
+            }
+        }else if (action == "peers"){
+            if (success) {
+                if (reply->operation() == QNetworkAccessManager::PostOperation){
+                    selfRegistered(reply->readAll());
+                }else{
+                    peersReceived(reply->readAll());
                 }
             }
         }else{

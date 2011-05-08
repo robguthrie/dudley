@@ -43,21 +43,3 @@ void Output::output(QString prefix, QString m)
         std::cout.flush();
     }
 }
-
-QByteArray humanSize(qint64 n, bool debug)
-{
-    if (n == -1) return "unknown size";
-    float num = (float) n;
-    QStringList list;
-    list << "KB" << "MB" << "GB" << "TB";
-
-    QStringListIterator i(list);
-    QString unit("bytes");
-
-    while(num >= 1024.0 && i.hasNext())
-     {
-        unit = i.next();
-        num /= 1024.0;
-    }
-    return (QString().setNum(num,'f',2)+" "+unit).toAscii()+" ("+QByteArray::number(n)+")";
-}

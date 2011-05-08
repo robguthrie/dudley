@@ -3,6 +3,7 @@
 #include <QVariant>
 #include <QCoreApplication>
 #include <QTextStream>
+#include <QDebug>
 #include "output.h"
 
 QString HttpMessage::dateFormat = QString("ddd, dd MMM yyyy hh:mm:ss G'M'T");
@@ -95,7 +96,7 @@ HttpMessage::State HttpMessage::state() const
 void HttpMessage::setState(State state, QByteArray message)
 {
     if (!message.isEmpty()){
-        g_log->info(message);
+        qDebug() << message;
     }
     m_state = state;
     switch (state){
@@ -140,7 +141,7 @@ void HttpMessage::setHeader(QByteArray key, QVariant value)
                 }else if (key.toLower() == "filename"){
                     m_formFieldFileName = value.toAscii();
                 }else{
-                    qDebug("unrecognised content-disposition keyvalue pair: "+key+"="+value);
+                    qDebug() << "unrecognised content-disposition keyvalue pair: " << key << "=" << value;
                 }
             }
         }
@@ -151,7 +152,7 @@ void HttpMessage::setHeader(QByteArray key, QVariant value)
             m_formDataBoundary = form_data_rx.cap(1).toAscii();
             m_boundry = "--"+m_formDataBoundary+"\r\n";
             m_f_boundry = "--"+m_formDataBoundary+"--\r\n";
-            qDebug("multipart message boundry: "+m_formDataBoundary);
+            qDebug() << "multipart message boundry: " << m_formDataBoundary;
         }
     }else if (key == "content-length"){
         m_contentLength = value.toLongLong();
@@ -209,7 +210,7 @@ void HttpMessage::parseLine(QByteArray line)
     }
 
     if (m_state == WaitingForContentDevice){
-        g_log->warning("message waiting for content device");
+        qDebug() << "message waiting for content device";
     }
 
     if (m_state != ReadingContent)
@@ -235,7 +236,7 @@ void HttpMessage::parseLine(QByteArray line)
             m_currentMessage->parseLine(line);
         }else{
             // this is treated as data for shitty clients that cant parse multipart
-            g_log->warning("multipart message contains fallback content. dropping");
+            qDebug() << "multipart message contains fallback content. dropping";
         }
     }else if (m_parentMessage){
         // the parent messsage scans the line first to check for boundrys

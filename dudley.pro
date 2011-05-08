@@ -12,49 +12,44 @@ SOURCES += main.cpp \
     state.cpp \
     statelogger.cpp \
     localdiskrepo.cpp \
-    output.cpp \
     httpserver.cpp \
     mainwindow.cpp \
     repodialog.cpp \
     repomodel.cpp \
     httprequest.cpp \
     httpresponse.cpp \
-    httpclientrepo.cpp \
     mimetypefinder.cpp \
-    filetransfer.cpp \
-    filetransfermanager.cpp \
     httpmessage.cpp \
     repo.cpp \
     httpcontroller.cpp \
     httpview.cpp \
     stateop.cpp \
     statediff.cpp \
-    synchroniser.cpp
+    filetransfer.cpp \
+    filetransfermanager.cpp \
+    synchronizer.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
     state.h \
     statelogger.h \
     localdiskrepo.h \
-    output.h \
     httpserver.h \
     mainwindow.h \
     repodialog.h \
     repomodel.h \
     httprequest.h \
     httpresponse.h \
-    httpclientrepo.h \
     mimetypefinder.h \
-    filetransfer.h \
-    filetransfermanager.h \
     httpmessage.h \
     repo.h \
-    readoncebuffer.h \
     httpcontroller.h \
     httpview.h \
     stateop.h \
     statediff.h \
-    synchroniser.h
+    filetransfer.h \
+    filetransfermanager.h \
+    synchronizer.h
 
 # filetransfer.h
 # filerepomanager.h
