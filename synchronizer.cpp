@@ -8,9 +8,10 @@
 #include "parser.h"
 #include "serializer.h"
 
-Synchronizer::Synchronizer(QObject *parent, Repo *repo, QUrl tracker_url, QUrl self_url) :
+Synchronizer::Synchronizer(QObject *parent, QString name, Repo *repo, QUrl tracker_url, QUrl self_url) :
     QObject(parent)
 {
+    m_name = name;
     m_repo = repo;
     m_trackerUrl = tracker_url;
     m_selfUrl = self_url;
@@ -26,9 +27,19 @@ Synchronizer::Synchronizer(QObject *parent, Repo *repo, QUrl tracker_url, QUrl s
     connect(m_timer, SIGNAL(timeout()), this, SLOT(loop()));
 }
 
+QString Synchronizer::name() const
+{
+    return m_name;
+}
+
 QUrl Synchronizer::trackerUrl() const
 {
     return m_trackerUrl;
+}
+
+QUrl Synchronizer::selfUrl() const
+{
+    return m_selfUrl;
 }
 
 Repo* Synchronizer::repo() const
@@ -59,6 +70,11 @@ void Synchronizer::stop()
 {
     qDebug() << "stopping";
     m_timer->stop();
+}
+
+QDateTime Synchronizer::historyReceivedAt() const
+{
+    return m_historyReceivedAt;
 }
 
 void Synchronizer::loop()
@@ -337,3 +353,4 @@ void Synchronizer::debugNetworkReply(QNetworkReply* reply)
         qDebug() << "Synchroniser::get() reply is finished already!";
     }
 }
+

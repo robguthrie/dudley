@@ -16,7 +16,9 @@ class Synchronizer : public QObject
     Q_OBJECT
 public:
     //explicit Synchronizer(QObject *parent = 0);
-    Synchronizer(QObject *parent, Repo *repo, QUrl tracker_url, QUrl self_url);
+    Synchronizer(QObject *parent, QString name, Repo *repo, QUrl tracker_url, QUrl self_url);
+    QString name() const;
+    Repo* repo() const;
     QUrl trackerUrl() const;
     bool isReady() const;
     bool isActive() const;
@@ -28,8 +30,8 @@ public:
     QNetworkReply* registerSelf();
     QNetworkReply* requestPeers();
     QStringList peerUrlStrings() const;
-
-    Repo* repo() const;
+    QUrl selfUrl() const;
+    QDateTime historyReceivedAt() const;
 
 signals:
 
@@ -49,7 +51,9 @@ private:
     QNetworkRequest request(QUrl base_url, QString action);
     void debugNetworkReply(QNetworkReply* reply);
 
+
     QIODevice* get() const;
+    QString m_name;
     Repo* m_repo;
     QUrl m_trackerUrl;
     QUrl m_selfUrl;

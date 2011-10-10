@@ -27,7 +27,10 @@ SOURCES += main.cpp \
     statediff.cpp \
     filetransfer.cpp \
     filetransfermanager.cpp \
-    synchronizer.cpp
+    synchronizer.cpp \
+    upnpwrapper.cpp \
+    editrepodialog.cpp \
+    synchronizermodel.cpp
 
 # filetransfer.cpp
 HEADERS += fileinfo.h \
@@ -49,18 +52,23 @@ HEADERS += fileinfo.h \
     statediff.h \
     filetransfer.h \
     filetransfermanager.h \
-    synchronizer.h
+    synchronizer.h \
+    upnpwrapper.h \
+    editrepodialog.h \
+    synchronizermodel.h
 
 # filetransfer.h
 # filerepomanager.h
 FORMS += mainwindow.ui \
-    repodialog.ui
+    repodialog.ui \
+    editrepodialog.ui
 OTHER_FILES += notes.txt \
     uploadform.html \
     apinotes.txt
 RESOURCES += icon.qrc
 
-unix:!symbian: LIBS += -L$$PWD/../qjson/build/lib/ -lqjson
+unix:!symbian: LIBS += -L$$PWD/../qjson/build/lib/ -lqjson -lminiupnpc
 
 INCLUDEPATH += $$PWD/../qjson/src
+INCLUDEPATH += $$PWD/../miniupnpc
 DEPENDPATH += $$PWD/../qjson/src

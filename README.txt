@@ -1,163 +1,86 @@
-.dudley dir
-    where we keep config
-    instance.ini - settings to identify this instance
-    repo.ini - global settings, shared amoung all the repos as they sync?
+Dudley
+======
 
-dudley http server
- index dirs and send files , nothing special for history logs
+Overview
+--------
 
-    grabbing files is a simple http get
-    putting files same.. maybe s3 like?
+Dudley is an unfinsihed program by me, Robert Guthre (rguthrie@gmail.com).
 
-mainwindows needs to hold
-    repo list tab
-        - list hosted repositories [name, path, num files, type]
-        - each repo needs its own show/edit dialog too
-    server tab - ip, port, registered dns as url, log window, transfers
-    sync tab
+It is intended to become a file synchronization and backup system for your personal
+photos, video and music collections. 
 
-    users tab - [user:password]
+Dudley is part client and part tracker. The client is written in C++ with the Qt
+Toolkit and the tracker is a Ruby On Rails application. This means the client can be 'native' on all platforms, something I think is necessary.
 
-So need to create a list of transfers from a state - state comparison.
+Dudley is designed to give cloud like features while not strictly requiring you
+to purchase cloud storage, because it takes into account the redundancy already available 
+in your local copies. 
 
-or should i think of it.. as what files are missing from the state. yes.
+Finally a feature I really want to have is the ability to seperate the collection definition from the storage, allowing dudley to recognise identical files between many collections, ultimately improving redundancy and availability of common files.
 
-so blindly merge states so they compare as equal.
-then each state should go about retrieving its missing files.
-two very different things.
+On a grand scale, I want to be able to build a decentralised file sharing social network.
 
-so today.. write tests for repo merge and make them pass
+How it is supposed to work
+--------------------------
 
-repos are hosted by dudley..they have a name then a path with some special path
-prefix for queries and stuff
+When you define a collection the Dudley client will index your files, this means fingerprinting (sha1 hashes) and recording
+sizes, name, and modification time. When changes are made to the collection
+state (IE: files are added, renamed, modified or deleted) dudley will log these changes 
+via an automatic or manual polling process and append the change to the state log.
 
-Ok so to get a list of files missing from the repo
-bool hasFile(fileInfo) static
-checking availability is different to checking for completeness
+Currently the state log is stored in JSON text files in the root of your collection in a .dudley folder. I am interested in supporting an SQLite based log too.
 
-merging histories.. history logs should have sha1s as well as datetimes
-need to write destructors to delete along my pointers
+The state log is synchronized via the Dudley server; a Rails app running at some URL.
 
-***********************
-IMPLEMENT FileRepoState::difference and see how it goes!
-************************
+As you add, remove, rename and modify files, dudley will detect the changes
+and record them in additional JSON files in its .dudley folder. 
 
-Second thinking of state to state comparison
----------------------------------------------
-Different to updateState(oldState)
- - because there can be no conflicts?
+What works currrently
+---------------------
 
-OK so how do we do this?
-When a state is updated - should we push it to the central server?
-    probably
-    centralised history? - private history?
-    ok so two files with same filepath and different sha1, which file wins?
-        ask user
-        or default to newest if there is a big time difference?
-        anyway its a conflict if both files have changed,...asdsadadadaf
+In the Dudley C++ Client:
+The filesystem scanner, which can scan a filesystem for changes and add to a JSON log.
+The client side HTTP Server, which can serve files indexed by the client and JSON logs; it can also serve browsable index pages and accept Multipart form uploads.
+A GUI that sits in the Taskbar, allowing you to see transfers, and manage collections.
+UPNP support for the client.
 
 
-we have a laptop pics repo, and a desktop pics repo
+The Ruby on Rails Server:
+Not a lot here.. need to work on the sync between the clients and server.
+The rails server should be able to tell which clients are online and redirect requests accordingly.
 
-    empty repo on laptop
-    user adds a file
-    dudley notices new file in workingrepo, adds it to state, saves new commit log
-    desktop pulls history from laptop to local cache of laptop history unmodified
-    - always merge states?!?!? i think so
+What needs to be done
+---------------------
 
-    maybe need to know last point in history both repos are the same
+I want to turn these into specs:
+Define logic for syncing logs at server.
+Define access control.
 
+Client checks in, tells the server the repos and their ids, that it holds, and it's client urls
+Clients can define a priority list of callback urls, local ip's first to enable lan connections.
+They also need to send a list of Repo names that they hold. Repo names will need to be unique to a server, and we need to include the version id
+  EG: Callback url list:
 
-    no conflicts - just play history
-        - the only time you can just play history, is when the current state of one repo matches some point of the other
-        asks laptop for history logs which it saves to its local cache for the laptop
-        assuming the repos have the same initial id you can just replay histories right?
-        desktop can see laptop added a file
-        takes the commit file verbatim
-        both have the same commit history now - identical repos
+  http://192.168.0.10:5635/
+  http://202.20.98.72:5635/
 
-    if
-        OR merge repos
-        builds a state object for the laptop repo
-            we can then compare stateA(local-desktop) to stateB(remote-laptop)
-                - is state A missing any files from state B
-                - are any existing files in stateA different in stateB
-                    files in stateA which are newer are left alone
-                    files in stateA whcih are older than the modified versions in stateB are added to downloads
-                - have any files been deleted?
-        is this going to end up looking like the same commit that laptop made inthe first place?
+  EG: Repo list
+  robsmusic,234
+  robspics,12
 
+Requesting files from the network:
+Either:
+  Client requests file from the server, and the server replys with http redirects?
+or
+  Client requests file urls from the server, and the server replys with all the known active urls available. 
 
-    downloads the commit and saves it to the local history of local repo.
+Rambling about understanding what I need to do follows:
 
-    desktop now does fileinventory and discovers it needs a file.
-    - locally it should be able to see that the laptop repo should have the sha1 it needs
-    - creates a list of possible sources for the file and attempts to download from each
-    - file location resolution - some way to list which repos have the file
-
-    then its just a matter of doing an http get for it.
-
-    need to work out where to get the file from.
-
-    in order to sync to an s3 bucket.. the pushing client must manage it's history
-    on it's behalf
-
-    needs to create a filerequest and push it to the webserver
-
-Different to updateState(oldState)
-compareState
-- what files are missing?
-    those which are not on disk
-    those which have been modified in the
+The rails server should be able to tell what files each repo currently has. 
+Dudley clients syncing the same collection need to resolve any issues. 
+So each log file has an ordered id
+A Dudley client keeps a list of uncommitted changes, it needs to get an id from the ruby server to commit, then log ids can just be numeric.
+So to sync a client requests the last id, then it can determine which log files it needs to get to be synchronised.
 
 
-write a simple webserver in ruby
-write a simple http server in dudley for sending files requested with sha1 and filename
-include support for a history listing.
-then make it a websocket server.. try to open a ws connection to the browser
-http://upload.wikimedia.org/wikipedia/commons/c/c6/Http_request_telnet_ubuntu.png
-request historys and save them
-same with files. ensure they are the same when you get them back.
-http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol
-http://doc.trolltech.com/qq/qq09-networkthread.html
-http://doc.qt.nokia.com/4.6/network-programming.html
 
-dudley dead simple file revision control and backup
-
-   dudley allows you to record a history of changes to your files
-
-   if we have an index of sha1 addressed objects, dudley can set filesystem state from the log
-
-
-   commands
-    init
-        create a dudley working directory with the current working directory
-
-    changes
-        list local changes.
-
-    accept
-        write local changes to history.
-
-    pull history from somewhere
-
-    push history to somewhere
-        show which files need to be inserted into the hashstore
-
-    push files into collection
-
-    pull files from collection
-
-    sync
-        pull history from master
-        push history to master
-        get any files required
-        push any missing on remote
-
-    ./dudley backup write
-        insert files from status into hashstore.
-        read the history, and go about inserting any files into the hashstore which need it.
-        given some more work.. this represents the update of a dudley archive
-        to backup to s3
-            we need to calculate which files s3 has..
-            and which we need to send.

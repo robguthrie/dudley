@@ -25,13 +25,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationDomain("dinotech.co.nz");
     QApplication::setApplicationName("Dudley");
 
-    QSettings* settings;
-    if (args.size() > 1){
-        settings = new QSettings(args[1]);
-    }else{
-        settings = new QSettings();
-    }
-    MainWindow mainWindow(settings);
+    MainWindow mainWindow;
     mainWindow.show();
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
     return app.exec();

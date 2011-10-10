@@ -166,9 +166,8 @@ void SynchronizerTest::testCase1()
     waitAndListen();
     sync.requestPeers();
     waitAndListen();
-    qDebug() << sync.peerUrlStrings();
-    qDebug() << self_url2.toString();
-    QVERIFY2(sync.peerUrlStrings().contains(self_url2.toString()), "should have other sync as peer");
+
+    QVERIFY2(sync.peerUrlStrings().contains("http://127.0.0.1:838383/notreal"), "should have other sync as peer");
 
 
     /*

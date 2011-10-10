@@ -19,13 +19,14 @@ public:
     bool commitChanges(StateDiff &state_diff);
     void reload();
     QStringList logNames() const;
+    bool hasStateDiff(QString name) const;
+    QByteArray loadStateDiffJson(QString name) const;
     StateDiff loadStateDiff(QString name, bool *ok) const;
 
 private:
     void playLogFile(QString name);
     void preformChangesOnState(StateDiff &sd);
     bool saveStateDiff(StateDiff &state_diff) const;
-    bool hasLogFile(QString name) const;
     QString logFilePath(QString name) const;
     QString tmpLogFilePath() const;
 

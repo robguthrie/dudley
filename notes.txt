@@ -1,3 +1,21 @@
+Wow sync is almos tthere
+a few things
+settings management
+
+Settings
+    Client ip source
+        Tracker - public ip or maybe proxy
+        Manual - gah.. hopefully unnecessary
+    Port
+        UPNP or Manual
+
+we can read the ip advertised to the tracker
+this is called trac
+
+I want to make a remote control feature possible now that we have a phone home system,
+would be good to expose sshd via dudley if we wanted to, now that we can map ports
+
+
 Synchroniser(repo, url)
     local_lognames = repo->logger->logNames()
     remote_lognames = get remote lognames from url

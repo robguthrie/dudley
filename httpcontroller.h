@@ -69,8 +69,8 @@ private:
     void actionRoot();
     void actionFavicon();
     void actionBrowserUpload();
-//    void actionHistory();
-//    void actionCommit();
+    void actionHistory();
+    void actionCommit();
     void actionBrowse();
     void actionFileByFileName();
     void actionFileByFingerprint();

@@ -72,17 +72,23 @@ void StateLogger::reload()
     }
 }
 
+QByteArray StateLogger::loadStateDiffJson(QString name) const
+{
+    if (hasStateDiff(name)){
+        QFile file(logFilePath(name));
+        if (file.open(QIODevice::ReadOnly)) {
+            return file.readAll();
+        }
+    }
+    qWarning() << "could not open file:" << logFilePath(name);
+    return QByteArray();
+}
+
 StateDiff StateLogger::loadStateDiff(QString name, bool *ok) const
 {
     StateDiff sd;
     *ok = false;
-    if (hasLogFile(name)){
-        QFile file(logFilePath(name));
-        if (file.open(QIODevice::ReadOnly)) {
-            (*ok) = sd.fromJSON(file.readAll());
-        }
-    }
-    qWarning() << "could not open file:" << logFilePath(name);
+    (*ok) = sd.fromJSON(loadStateDiffJson(name));
     return sd;
 }
 
@@ -99,7 +105,7 @@ bool StateLogger::saveStateDiff(StateDiff &state_diff) const
     return false;
 }
 
-bool StateLogger::hasLogFile(QString name) const
+bool StateLogger::hasStateDiff(QString name) const
 {
     return QFile::exists(logFilePath(name));
 }

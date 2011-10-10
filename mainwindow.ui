@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -35,36 +35,23 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="editRepoButton">
-            <property name="text">
-             <string>Edit</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QPushButton" name="removeRepoButton">
             <property name="text">
              <string>Remove</string>
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="viewRepoButton">
+            <property name="text">
+             <string>View</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>
-         <widget class="QTreeView" name="repoTreeView">
-          <property name="alternatingRowColors">
-           <bool>true</bool>
-          </property>
-          <property name="rootIsDecorated">
-           <bool>false</bool>
-          </property>
-          <property name="itemsExpandable">
-           <bool>false</bool>
-          </property>
-          <property name="sortingEnabled">
-           <bool>true</bool>
-          </property>
-         </widget>
+         <widget class="QListView" name="repoListView"/>
         </item>
        </layout>
       </widget>
@@ -93,6 +80,89 @@
         </item>
         <item>
          <widget class="QTableView" name="downloadTableView"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Settings</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Listen Port</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="manualPortSpinBox">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="minimum">
+             <number>1000</number>
+            </property>
+            <property name="maximum">
+             <number>65534</number>
+            </property>
+            <property name="value">
+             <number>22334</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveSettingsButton">
+            <property name="text">
+             <string>Save</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Upnp Status:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="upnpStatusLabel">
+          <property name="text">
+           <string>upnpstatus</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Public IP Address:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="ipAddressLabel">
+          <property name="text">
+           <string>currentIpAddress</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Updated At:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>TimeOfIPlookup</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
